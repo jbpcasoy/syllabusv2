@@ -47,13 +47,13 @@ export function DeleteCampusDialog({
     >
       <DialogBackdrop
         transition
-        className="fixed inset-0 bg-gray-900/50 transition-opacity duration-200 data-[closed]:opacity-0"
+        className="fixed inset-0 bg-gray-900/50 transition-opacity duration-200 data-closed:opacity-0"
       />
 
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <DialogPanel
           transition
-          className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl transition duration-200 data-[closed]:scale-95 data-[closed]:opacity-0"
+          className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl transition duration-200 data-closed:scale-95 data-closed:opacity-0"
         >
           <DialogTitle className="text-lg font-semibold text-gray-900">
             Delete campus
