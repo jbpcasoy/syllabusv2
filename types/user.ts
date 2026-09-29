@@ -38,3 +38,19 @@ export interface SessionUser {
   role: UserRole | null;
   avatarUrl: string | null;
 }
+
+/** Body accepted by POST /api/user and PATCH /api/user/:id. */
+export interface UserInput {
+  email: string;
+  password: string;
+  name?: string;
+  /** Use "" to clear the role. */
+  role?: UserRole | "";
+}
+
+/** The shape returned by the admin user endpoints. */
+export interface UserResponse extends SessionUser {
+  verified: boolean;
+  created: string;
+  updated: string;
+}
