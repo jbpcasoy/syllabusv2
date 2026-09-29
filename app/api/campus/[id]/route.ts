@@ -1,3 +1,5 @@
+import { requireUser } from "@/lib/auth";
+import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb, createPb, handlePbError } from "@/lib/pocketbase";
 import { parseCampusInput } from "@/lib/validators/campus";
 import type { Campus } from "@/types/campus";
@@ -19,7 +21,9 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
 // PATCH /api/campuses/:id  { "name": "New Name" }
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  // TODO: verify the caller is allowed to write
+  const auth = await requireUser(PERMISSIONS.campus.write);
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await params;
     const body: unknown = await request.json().catch(() => null);
@@ -40,7 +44,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
 // DELETE /api/campuses/:id
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  // TODO: verify the caller is allowed to write
+  const auth = await requireUser(PERMISSIONS.campus.write);
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await params;
     const pb = await createAdminPb();

@@ -1,3 +1,5 @@
+import { requireUser } from "@/lib/auth";
+import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb, createPb, handlePbError } from "@/lib/pocketbase";
 import { parseDepartmentInput } from "@/lib/validators/department";
 import type { Department } from "@/types/department";
@@ -42,7 +44,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/department  { "name": "Computer Science", "college": "<collegeId>" }
 export async function POST(request: NextRequest) {
-  // TODO: verify the caller is allowed to write (session, API key, etc.)
+  const auth = await requireUser(PERMISSIONS.department.write);
+  if (!auth.ok) return auth.response;
+
   try {
     const body: unknown = await request.json().catch(() => null);
     const parsed = parseDepartmentInput(body);

@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -33,7 +33,15 @@ vi.mock("@/lib/validators/department", () => ({
   parseDepartmentInput: mocks.parseDepartmentInput,
 }));
 
+vi.mock("@/lib/auth", () => ({
+  requireUser: vi.fn(async () => ({
+    ok: true,
+    user: { id: "u1", role: "admin" },
+  })),
+}));
+
 import { GET, POST } from "@/app/api/department/route";
+import { requireUser } from "@/lib/auth";
 import { createAdminPb, createPb } from "@/lib/pocketbase";
 
 const listResult = {
@@ -182,5 +190,18 @@ describe("POST /api/department", () => {
 
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "pb down" });
+  });
+
+  it("returns 403 when the caller lacks permission and never touches PocketBase", async () => {
+    vi.mocked(requireUser).mockResolvedValueOnce({
+      ok: false,
+      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    });
+
+    const res = await POST(post({ name: "X" }));
+
+    expect(res.status).toBe(403);
+    expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 });
