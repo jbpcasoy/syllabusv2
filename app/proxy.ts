@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // and next/headers, which the proxy shouldn't pull in.
 const AUTH_COOKIE = "pb_auth";
 const LOGIN_PATH = "/login";
+const PUBLIC_PATHS = [LOGIN_PATH, "/register"];
 
 /**
  * Cheap, optimistic check: decode the JWT payload and look at `exp`.
@@ -24,7 +25,7 @@ function isTokenExpired(token: string): boolean {
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  if (pathname === LOGIN_PATH) return NextResponse.next();
+  if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next();
 
   const token = request.cookies.get(AUTH_COOKIE)?.value;
   if (token && !isTokenExpired(token)) return NextResponse.next();

@@ -54,3 +54,11 @@ export interface UserResponse extends SessionUser {
   created: string;
   updated: string;
 }
+
+/** Body accepted by POST /api/auth/register. */
+export interface RegisterInput {
+  name: string;
+  email: string;
+  password: string;
+  passwordConfirm: string;
+}

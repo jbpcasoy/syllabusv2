@@ -1,4 +1,4 @@
-import type { SessionUser } from "@/types/user";
+import type { RegisterInput, SessionUser } from "@/types/user";
 
 export type LoginInput = { email: string; password: string };
 
@@ -38,4 +38,11 @@ export function login(input: LoginInput) {
 
 export function logout() {
   return request<void>("/api/auth/logout", { method: "POST" });
+}
+
+export function register(input: RegisterInput) {
+  return request<SessionUser>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }

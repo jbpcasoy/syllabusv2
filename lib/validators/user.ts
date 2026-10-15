@@ -2,10 +2,10 @@ import { USER_ROLES, type UserInput, type UserRole } from "@/types/user";
 
 type ParseResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MIN_PASSWORD = 8; // matches the `min` on the users.password field
-const MAX_PASSWORD = 71; // PocketBase's bcrypt limit
-const MAX_NAME = 255; // matches the `max` on the users.name field
+export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const MIN_PASSWORD = 8; // matches the `min` on the users.password field
+export const MAX_PASSWORD = 71; // PocketBase's bcrypt limit
+export const MAX_NAME = 255; // matches the `max` on the users.name field
 
 export function isUserRole(value: unknown): value is UserRole {
   return (

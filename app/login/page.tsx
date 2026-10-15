@@ -2,6 +2,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { getCurrentUser } from "@/lib/auth";
 import { safeRedirect } from "@/lib/safe-redirect";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -32,6 +33,19 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
         <div className="mt-8 rounded-lg bg-white p-6 shadow ring-1 ring-black/5">
           <LoginForm redirectTo={redirectTo} />
+          <p className="mt-6 text-center text-sm text-gray-600">
+            Don&apos;t have an account?{" "}
+            <Link
+              href={
+                redirectTo === "/"
+                  ? "/register"
+                  : `/register?next=${encodeURIComponent(redirectTo)}`
+              }
+              className="font-medium text-indigo-600 hover:text-indigo-500"
+            >
+              Create one
+            </Link>
+          </p>
         </div>
       </div>
     </main>
