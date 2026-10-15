@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "pb": "pocketbase/pocketbase serve",
+    "pb": "pocketbase serve",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

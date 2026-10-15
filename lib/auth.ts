@@ -2,6 +2,7 @@ import { createPb } from "@/lib/pocketbase";
 import type { AppUser, SessionUser, UserRole } from "@/types/user";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { cache } from "react";
 import "server-only";
 
 export const AUTH_COOKIE = "pb_auth";
@@ -36,7 +37,7 @@ export function toSessionUser(user: AppUser): SessionUser {
 }
 
 /** Validates the cookie's token against PocketBase and returns the user. */
-export async function getCurrentUser(): Promise<AppUser | null> {
+export const getCurrentUser = cache(async (): Promise<AppUser | null> => {
   const store = await cookies();
   const token = store.get(AUTH_COOKIE)?.value;
   if (!token) return null;
@@ -49,7 +50,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
   } catch {
     return null; // expired / invalid / user deleted
   }
-}
+});
 
 type AuthResult =
   | { ok: true; user: AppUser }
