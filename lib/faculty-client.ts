@@ -1,7 +1,11 @@
-import type { FacultyInput, FacultyResponse } from "@/types/faculty";
+import type {
+  FacultyInput,
+  FacultyResponse,
+  FacultyUpdateInput,
+} from "@/types/faculty";
 import type { ListResult } from "pocketbase";
 
-export type { FacultyInput, FacultyResponse };
+export type { FacultyInput, FacultyResponse, FacultyUpdateInput };
 
 export type FacultyListParams = {
   page: number;
@@ -10,6 +14,8 @@ export type FacultyListParams = {
   department?: string;
   /** Pass "me" to list only the signed-in user's memberships. */
   user?: string;
+  /** "" = both. */
+  active?: "" | "true" | "false";
 };
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -40,7 +46,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function listFaculty(
-  { page, perPage, search, department, user }: FacultyListParams,
+  { page, perPage, search, department, user, active }: FacultyListParams,
   signal?: AbortSignal,
 ) {
   const qs = new URLSearchParams({
@@ -50,6 +56,7 @@ export function listFaculty(
   if (search) qs.set("search", search);
   if (department) qs.set("department", department);
   if (user) qs.set("user", user);
+  if (active) qs.set("active", active);
 
   return request<ListResult<FacultyResponse>>(`/api/faculty?${qs}`, { signal });
 }
@@ -57,6 +64,13 @@ export function listFaculty(
 export function createFaculty(input: FacultyInput) {
   return request<FacultyResponse>("/api/faculty", {
     method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateFaculty(id: string, input: FacultyUpdateInput) {
+  return request<FacultyResponse>(`/api/faculty/${id}`, {
+    method: "PATCH",
     body: JSON.stringify(input),
   });
 }

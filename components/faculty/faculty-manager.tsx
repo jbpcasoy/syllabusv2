@@ -4,7 +4,12 @@ import {
   listDepartments,
   type DepartmentRecord,
 } from "@/lib/department-client";
-import { listFaculty, type FacultyResponse } from "@/lib/faculty-client";
+import {
+  listFaculty,
+  updateFaculty,
+  type FacultyListParams,
+  type FacultyResponse,
+} from "@/lib/faculty-client";
 import { formatDate } from "@/lib/format-date";
 import { listUsers, type UserResponse } from "@/lib/user-client";
 import { Select } from "@headlessui/react";
@@ -23,6 +28,9 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
+  const [statusFilter, setStatusFilter] =
+    useState<NonNullable<FacultyListParams["active"]>>("");
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -83,7 +91,13 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
     setError(null);
 
     listFaculty(
-      { page, perPage: PER_PAGE, search, department: departmentFilter },
+      {
+        page,
+        perPage: PER_PAGE,
+        search,
+        department: departmentFilter,
+        active: statusFilter,
+      },
       controller.signal,
     )
       .then((result) => {
@@ -104,6 +118,19 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
   const totalPages = data?.totalPages ?? 1;
   const from = totalItems === 0 ? 0 : (page - 1) * PER_PAGE + 1;
   const to = Math.min(page * PER_PAGE, totalItems);
+
+  async function toggleActive(row: FacultyResponse) {
+    setTogglingId(row.id);
+    setError(null);
+    try {
+      await updateFaculty(row.id, { active: !row.active });
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   return (
     <div>
@@ -164,6 +191,24 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
             ))}
           </Select>
         </div>
+        <div className="sm:w-40">
+          <label htmlFor="status-filter" className="sr-only">
+            Filter by status
+          </label>
+          <Select
+            id="status-filter"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as typeof statusFilter);
+              setPage(1);
+            }}
+            className="block w-full rounded-md border-0 px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+          >
+            <option value="">All statuses</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </Select>
+        </div>
       </div>
 
       {error && (
@@ -206,6 +251,12 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
               </th>
               <th
                 scope="col"
+                className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 sm:table-cell"
+              >
+                Status
+              </th>
+              <th
+                scope="col"
                 className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 md:table-cell"
               >
                 Added
@@ -233,24 +284,45 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
                 <td className="px-4 py-3 text-sm text-gray-500">
                   {row.expand?.department?.name || "—"}
                 </td>
+                <td className="hidden px-4 py-3 text-sm sm:table-cell">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      row.active
+                        ? "bg-green-50 text-green-700"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {row.active ? "Active" : "Inactive"}
+                  </span>
+                </td>
                 <td className="hidden px-4 py-3 text-sm text-gray-500 md:table-cell">
                   {formatDate(row.created)}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
                   {canManage && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setDeleteState((prev) => ({
-                          open: true,
-                          faculty: row,
-                          key: prev.key + 1,
-                        }))
-                      }
-                      className="font-medium text-red-600 hover:text-red-500"
-                    >
-                      Remove
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => toggleActive(row)}
+                        disabled={togglingId === row.id}
+                        className="font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
+                      >
+                        {row.active ? "Deactivate" : "Activate"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDeleteState((prev) => ({
+                            open: true,
+                            faculty: row,
+                            key: prev.key + 1,
+                          }))
+                        }
+                        className="ml-4 font-medium text-red-600 hover:text-red-500"
+                      >
+                        Remove
+                      </button>
+                    </>
                   )}
                 </td>
               </tr>

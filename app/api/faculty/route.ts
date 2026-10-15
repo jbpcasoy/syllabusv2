@@ -6,7 +6,7 @@ import { parseFacultyInput } from "@/lib/validators/faculty";
 import type { Faculty } from "@/types/faculty";
 import { NextResponse, type NextRequest } from "next/server";
 
-// GET /api/faculty?page=1&perPage=30&search=foo&department=<id>&user=<id|me>
+// GET /api/faculty?page=1&perPage=30&search=foo&department=<id>&user=<id|me>&active=true|false
 // Non-managers are always scoped to their own memberships.
 export async function GET(request: NextRequest) {
   const auth = await requireUser();
@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search")?.trim();
     const department = searchParams.get("department")?.trim();
     const userParam = searchParams.get("user")?.trim();
+    const activeParam = searchParams.get("active")?.trim();
 
     const userId = canManageFaculty(auth.user)
       ? userParam === "me"
@@ -47,6 +48,11 @@ export async function GET(request: NextRequest) {
     if (userId) {
       filters.push(pb.filter("user = {:userId}", { userId }));
     }
+    if (activeParam === "true" || activeParam === "false") {
+      filters.push(
+        pb.filter("active = {:active}", { active: activeParam === "true" }),
+      );
+    }
 
     const result = await pb
       .collection("faculties")
@@ -65,7 +71,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/faculty  { "user": "<userId>", "department": "<departmentId>" }
+// POST /api/faculty  { "user": "<userId>", "department": "<departmentId>", "active"?: boolean }
 export async function POST(request: NextRequest) {
   const auth = await requireUser(PERMISSIONS.faculty.write);
   if (!auth.ok) return auth.response;
@@ -79,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     const pb = await createAdminPb();
 
-    const existing = await pb.collection("faculties").getList(1, 1, {
+    const existing = await pb.collection("faculties").getList<Faculty>(1, 1, {
       skipTotal: true,
       filter: pb.filter("user = {:user} && department = {:department}", {
         user: parsed.data.user,
@@ -88,7 +94,11 @@ export async function POST(request: NextRequest) {
     });
     if (existing.items.length > 0) {
       return NextResponse.json(
-        { error: "This user is already faculty of that department" },
+        {
+          error: existing.items[0].active
+            ? "This user is already faculty of that department"
+            : "This user already has an inactive membership in that department. Reactivate it instead.",
+        },
         { status: 409 },
       );
     }

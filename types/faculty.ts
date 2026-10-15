@@ -7,6 +7,8 @@ export interface Faculty extends RecordModel {
   user: string;
   /** ID of the department. */
   department: string;
+  /** Inactive memberships are kept for history but grant nothing. */
+  active: boolean;
   expand?: {
     user?: AppUser;
     department?: Department;
@@ -16,6 +18,12 @@ export interface Faculty extends RecordModel {
 export interface FacultyInput {
   user: string;
   department: string;
+  /** Defaults to true on create. */
+  active?: boolean;
+}
+
+export interface FacultyUpdateInput {
+  active: boolean;
 }
 
 /** Safe shape sent to the browser (no tokens, no hidden user fields). */
@@ -23,6 +31,7 @@ export interface FacultyResponse {
   id: string;
   user: string;
   department: string;
+  active: boolean;
   created: string;
   updated: string;
   expand?: {
