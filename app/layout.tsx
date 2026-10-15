@@ -1,4 +1,5 @@
 import { AppHeader } from "@/components/layout/app-header";
+import { AppShell } from "@/components/layout/app-shell";
 import { APP_NAME } from "@/lib/constants";
 import type { Metadata } from "next";
 import "./globals.css";
@@ -14,7 +15,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-gray-50">
         <AppHeader />
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
