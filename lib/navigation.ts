@@ -11,6 +11,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Campuses", href: "/campus" },
   { label: "Colleges", href: "/college" },
   { label: "Departments", href: "/department" },
+  { label: "Programs", href: "/program" },
   { label: "Faculty", href: "/faculty" },
   { label: "Users", href: "/user", roles: [] }, // empty = admin only
 ];
