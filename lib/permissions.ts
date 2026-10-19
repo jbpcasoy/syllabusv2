@@ -6,6 +6,7 @@ export const PERMISSIONS = {
   campus: { read: [], write: [] },
   college: { read: [], write: ["vpaa"] },
   department: { read: [], write: ["vpaa", "dean", "departmenthead"] },
+  departmentHead: { read: [], write: ["vpaa", "dean"] },
   program: { read: [], write: ["vpaa", "dean", "departmenthead"] },
   programChair: { read: [], write: ["vpaa", "dean", "departmenthead"] },
   // Admin only for now. See the note at the end before widening this.

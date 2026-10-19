@@ -11,6 +11,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Campuses", href: "/campus" },
   { label: "Colleges", href: "/college" },
   { label: "Departments", href: "/department" },
+  { label: "Department Heads", href: "/department-head" },
   { label: "Programs", href: "/program" },
   { label: "Program Chairs", href: "/program-chair" },
   { label: "Faculty", href: "/faculty" },
