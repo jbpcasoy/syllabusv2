@@ -24,7 +24,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const pb = await createAdminPb();
     const updated = await pb
       .collection("faculties")
-      .update<Faculty>(id, parsed.data, { expand: "user,department" });
+      .update<Faculty>(id, parsed.data, { expand: "user,program" });
 
     return NextResponse.json(toFacultyResponse(updated));
   } catch (error) {

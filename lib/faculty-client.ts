@@ -11,7 +11,7 @@ export type FacultyListParams = {
   page: number;
   perPage: number;
   search?: string;
-  department?: string;
+  program?: string;
   /** Pass "me" to list only the signed-in user's memberships. */
   user?: string;
   /** "" = both. */
@@ -46,7 +46,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function listFaculty(
-  { page, perPage, search, department, user, active }: FacultyListParams,
+  { page, perPage, search, program, user, active }: FacultyListParams,
   signal?: AbortSignal,
 ) {
   const qs = new URLSearchParams({
@@ -54,7 +54,7 @@ export function listFaculty(
     perPage: String(perPage),
   });
   if (search) qs.set("search", search);
-  if (department) qs.set("department", department);
+  if (program) qs.set("program", program);
   if (user) qs.set("user", user);
   if (active) qs.set("active", active);
 

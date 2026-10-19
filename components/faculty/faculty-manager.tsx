@@ -1,16 +1,13 @@
 "use client";
 
 import {
-  listDepartments,
-  type DepartmentRecord,
-} from "@/lib/department-client";
-import {
   listFaculty,
   updateFaculty,
   type FacultyListParams,
   type FacultyResponse,
 } from "@/lib/faculty-client";
 import { formatDate } from "@/lib/format-date";
+import { listPrograms, type ProgramRecord } from "@/lib/program-client";
 import { listUsers, type UserResponse } from "@/lib/user-client";
 import { Select } from "@headlessui/react";
 import type { ListResult } from "pocketbase";
@@ -27,7 +24,7 @@ type FacultyManagerProps = {
 export function FacultyManager({ canManage }: FacultyManagerProps) {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [programFilter, setProgramFilter] = useState("");
   const [statusFilter, setStatusFilter] =
     useState<NonNullable<FacultyListParams["active"]>>("");
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -38,7 +35,7 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [programs, setPrograms] = useState<ProgramRecord[]>([]);
   const [users, setUsers] = useState<UserResponse[]>([]);
 
   const [modal, setModal] = useState({ open: false, key: 0 });
@@ -48,12 +45,12 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
     key: number;
   }>({ open: false, faculty: null, key: 0 });
 
-  // Load departments once for the filter and the form dropdown.
+  // Load programs once for the filter and the form dropdown.
   // (The API caps perPage at 100; swap in a searchable combobox if you exceed that.)
   useEffect(() => {
     const controller = new AbortController();
-    listDepartments({ page: 1, perPage: 100 }, controller.signal)
-      .then((result) => setDepartments(result.items))
+    listPrograms({ page: 1, perPage: 100 }, controller.signal)
+      .then((result) => setPrograms(result.items))
       .catch(() => {
         // The dropdown just stays empty; the main list surfaces its own errors.
       });
@@ -95,7 +92,7 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
         page,
         perPage: PER_PAGE,
         search,
-        department: departmentFilter,
+        program: programFilter,
         active: statusFilter,
       },
       controller.signal,
@@ -111,7 +108,7 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
       });
 
     return () => controller.abort();
-  }, [page, search, departmentFilter, reloadKey]);
+  }, [page, search, programFilter, statusFilter, reloadKey]);
 
   const items = data?.items ?? [];
   const totalItems = data?.totalItems ?? 0;
@@ -139,8 +136,8 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
           <h1 className="text-2xl font-semibold text-gray-900">Faculty</h1>
           <p className="mt-1 text-sm text-gray-600">
             {canManage
-              ? "Manage which departments each user belongs to."
-              : "The departments you belong to."}
+              ? "Manage which programs each user belongs to."
+              : "The programs you belong to."}
           </p>
         </div>
         {canManage && (
@@ -171,22 +168,22 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
           />
         </div>
         <div className="sm:w-56">
-          <label htmlFor="department-filter" className="sr-only">
-            Filter by department
+          <label htmlFor="program-filter" className="sr-only">
+            Filter by program
           </label>
           <Select
-            id="department-filter"
-            value={departmentFilter}
+            id="program-filter"
+            value={programFilter}
             onChange={(e) => {
-              setDepartmentFilter(e.target.value);
+              setProgramFilter(e.target.value);
               setPage(1);
             }}
             className="block w-full rounded-md border-0 px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
           >
-            <option value="">All departments</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name || d.id}
+            <option value="">All programs</option>
+            {programs.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name || p.id}
               </option>
             ))}
           </Select>
@@ -247,7 +244,7 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
                 scope="col"
                 className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500"
               >
-                Department
+                Program
               </th>
               <th
                 scope="col"
@@ -282,7 +279,7 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
                   {row.expand?.user?.email || "—"}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-500">
-                  {row.expand?.department?.name || "—"}
+                  {row.expand?.program?.name || "—"}
                 </td>
                 <td className="hidden px-4 py-3 text-sm sm:table-cell">
                   <span
@@ -331,10 +328,10 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
             {!loading && items.length === 0 && !error && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-4 py-10 text-center text-sm text-gray-500"
                 >
-                  {search || departmentFilter
+                  {search || programFilter || statusFilter
                     ? "No faculty match your filters."
                     : "No faculty assignments yet."}
                 </td>
@@ -344,7 +341,7 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
             {loading && items.length === 0 && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-4 py-10 text-center text-sm text-gray-500"
                 >
                   Loading…
@@ -398,7 +395,7 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
           key={`modal-${modal.key}`}
           open={modal.open}
           users={users}
-          departments={departments}
+          programs={programs}
           onClose={() => setModal((prev) => ({ ...prev, open: false }))}
           onSaved={() => {
             setModal((prev) => ({ ...prev, open: false }));

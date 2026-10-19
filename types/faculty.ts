@@ -1,23 +1,23 @@
 import type { RecordModel } from "pocketbase";
-import type { Department } from "./department";
+import type { Program } from "./program";
 import type { AppUser } from "./user";
 
 export interface Faculty extends RecordModel {
   /** ID of the user. */
   user: string;
-  /** ID of the department. */
-  department: string;
+  /** ID of the program. */
+  program: string;
   /** Inactive memberships are kept for history but grant nothing. */
   active: boolean;
   expand?: {
     user?: AppUser;
-    department?: Department;
+    program?: Program;
   };
 }
 
 export interface FacultyInput {
   user: string;
-  department: string;
+  program: string;
   /** Defaults to true on create. */
   active?: boolean;
 }
@@ -30,12 +30,12 @@ export interface FacultyUpdateInput {
 export interface FacultyResponse {
   id: string;
   user: string;
-  department: string;
+  program: string;
   active: boolean;
   created: string;
   updated: string;
   expand?: {
     user?: { id: string; name: string; email: string };
-    department?: { id: string; name: string };
+    program?: { id: string; name: string; code: string };
   };
 }

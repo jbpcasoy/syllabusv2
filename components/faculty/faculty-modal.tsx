@@ -1,7 +1,7 @@
 "use client";
 
-import type { DepartmentRecord } from "@/lib/department-client";
 import { createFaculty } from "@/lib/faculty-client";
+import type { ProgramRecord } from "@/lib/program-client";
 import type { UserResponse } from "@/lib/user-client";
 import {
   Dialog,
@@ -17,7 +17,7 @@ import { useState, type FormEvent } from "react";
 type FacultyModalProps = {
   open: boolean;
   users: UserResponse[];
-  departments: DepartmentRecord[];
+  programs: ProgramRecord[];
   onClose: () => void;
   onSaved: () => void;
 };
@@ -28,24 +28,24 @@ const inputClass =
 export function FacultyModal({
   open,
   users,
-  departments,
+  programs,
   onClose,
   onSaved,
 }: FacultyModalProps) {
   const [userId, setUserId] = useState("");
-  const [departmentId, setDepartmentId] = useState("");
+  const [programId, setProgramId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!userId) return setError("Select a user.");
-    if (!departmentId) return setError("Select a department.");
+    if (!programId) return setError("Select a program.");
 
     setSaving(true);
     setError(null);
     try {
-      await createFaculty({ user: userId, department: departmentId });
+      await createFaculty({ user: userId, program: programId });
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -70,7 +70,7 @@ export function FacultyModal({
           className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl transition duration-200 data-closed:scale-95 data-closed:opacity-0"
         >
           <DialogTitle className="text-lg font-semibold text-gray-900">
-            Add faculty to a department
+            Add faculty to a program
           </DialogTitle>
 
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
@@ -95,18 +95,18 @@ export function FacultyModal({
 
             <Field>
               <Label className="block text-sm font-medium text-gray-900">
-                Department
+                Program
               </Label>
               <Select
-                value={departmentId}
-                onChange={(e) => setDepartmentId(e.target.value)}
+                value={programId}
+                onChange={(e) => setProgramId(e.target.value)}
                 disabled={saving}
                 className={inputClass}
               >
-                <option value="">Select a department…</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name || d.id}
+                <option value="">Select a program…</option>
+                {programs.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.code ? `${p.name} (${p.code})` : p.name || p.id}
                   </option>
                 ))}
               </Select>

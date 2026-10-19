@@ -41,7 +41,7 @@ export function DeleteFacultyDialog({
 
   const who =
     faculty?.expand?.user?.name || faculty?.expand?.user?.email || "this user";
-  const where = faculty?.expand?.department?.name || "this department";
+  const where = faculty?.expand?.program?.name || "this program";
 
   return (
     <Dialog
