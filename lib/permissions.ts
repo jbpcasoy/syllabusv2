@@ -9,6 +9,8 @@ export const PERMISSIONS = {
   departmentHead: { read: [], write: ["vpaa", "dean"] },
   program: { read: [], write: ["vpaa", "dean", "departmenthead"] },
   programChair: { read: [], write: ["vpaa", "dean", "departmenthead"] },
+  // Only the VPAA (and admin) can appoint the university's FDIS chair.
+  fdisChair: { read: [], write: ["vpaa"] },
   // Admin only for now. See the note at the end before widening this.
   faculty: { read: [], write: [] },
   // Admin always passes, so an empty list means "admin only".
