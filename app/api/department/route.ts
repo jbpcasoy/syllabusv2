@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/permissions";
-import { createAdminPb, createPb, handlePbError } from "@/lib/pocketbase";
+import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { parseDepartmentInput } from "@/lib/validators/department";
 import type { Department } from "@/types/department";
 import { NextResponse, type NextRequest } from "next/server";
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search")?.trim();
     const college = searchParams.get("college")?.trim();
 
-    const pb = createPb();
+    const pb = await createAdminPb();
 
     // pb.filter() safely binds params to prevent filter injection
     const filters: string[] = [];

@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/permissions";
-import { createAdminPb, createPb, handlePbError } from "@/lib/pocketbase";
+import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { parseCampusInput } from "@/lib/validators/campus";
 import { Campus } from "@/types/campus";
 import { NextResponse, type NextRequest } from "next/server";
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     );
     const search = searchParams.get("search")?.trim();
 
-    const pb = createPb();
+    const pb = await createAdminPb();
     const result = await pb
       .collection("campuses")
       .getList<Campus>(page, perPage, {

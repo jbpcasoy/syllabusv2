@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/permissions";
-import { createAdminPb, createPb, handlePbError } from "@/lib/pocketbase";
+import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { parseCampusInput } from "@/lib/validators/campus";
 import type { Campus } from "@/types/campus";
 import { NextResponse, type NextRequest } from "next/server";
@@ -11,7 +11,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function GET(_request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params;
-    const pb = createPb();
+    const pb = await createAdminPb();
     const campus = await pb.collection("campuses").getOne<Campus>(id);
     return NextResponse.json(campus);
   } catch (error) {

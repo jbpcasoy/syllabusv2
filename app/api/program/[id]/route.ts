@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/permissions";
-import { createAdminPb, createPb, handlePbError } from "@/lib/pocketbase";
+import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { parseProgramInput } from "@/lib/validators/program";
 import type { Program } from "@/types/program";
 import { NextResponse, type NextRequest } from "next/server";
@@ -11,7 +11,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function GET(_request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params;
-    const pb = createPb();
+    const pb = await createAdminPb();
     const program = await pb
       .collection("programs")
       .getOne<Program>(id, { expand: "department" });
