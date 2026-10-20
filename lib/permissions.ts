@@ -5,6 +5,8 @@ type Rule = { write: readonly UserRole[]; read: readonly UserRole[] };
 export const PERMISSIONS = {
   campus: { read: [], write: [] },
   college: { read: [], write: ["vpaa"] },
+  // The VPAA appoints deans for colleges.
+  dean: { read: [], write: ["vpaa"] },
   department: { read: [], write: ["vpaa", "dean", "departmenthead"] },
   departmentHead: { read: [], write: ["vpaa", "dean"] },
   program: { read: [], write: ["vpaa", "dean", "departmenthead"] },
