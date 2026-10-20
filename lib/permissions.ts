@@ -16,6 +16,10 @@ export const PERMISSIONS = {
     read: [],
     write: ["vpaa", "dean", "departmenthead", "programchair"],
   },
+  prospectusItem: {
+    read: [],
+    write: ["vpaa", "dean", "departmenthead", "programchair"],
+  },
   // Only the VPAA (and admin) can appoint the university's FDIS chair.
   fdisChair: { read: [], write: ["vpaa"] },
   // Only the VPAA (and admin) can appoint the CITL director.
