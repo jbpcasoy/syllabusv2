@@ -1,0 +1,68 @@
+# .clineignore
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js Build Outputs & Caches
+.next/
+out/
+build/
+dist/
+.vercel/
+
+# Environment Variables (Keep Secrets Safe)
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Testing & Coverage Artifacts
+coverage/
+.nyc_output/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Lock Files (Optional, but recommended if they are very large)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+
+# OS/Editor Artifacts
+.DS_Store
+*.pem
+.vscode/
+.idea/
+
+# Large Data & Media Files (Exclude to save context)
+*.csv
+*.xlsx
+*.sqlite
+*.db
+public/**/*.png
+public/**/*.jpg
+public/**/*.jpeg
+public/**/*.gif
+public/**/*.svg
+public/**/*.ico
+public/**/*.webp
+public/**/*.mp4
+
+# Minified or Generated Code
+*.min.js
+*.map
+
+# PocketBase Local Database
+pb_data/
+*.db
+*.sqlite
+*.sqlite-journal
