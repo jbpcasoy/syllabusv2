@@ -249,6 +249,7 @@ describe("POST /api/user", () => {
     expect(mocks.create).toHaveBeenCalledWith({
       ...withAdmin,
       passwordConfirm: withAdmin.password,
+      verified: true,
     });
   });
 
@@ -266,6 +267,7 @@ describe("POST /api/user", () => {
     expect(mocks.create).toHaveBeenCalledWith({
       ...data,
       passwordConfirm: data.password,
+      verified: true,
     });
     expect(mocks.toUserResponse).toHaveBeenCalledWith(created);
   });

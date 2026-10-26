@@ -4,6 +4,8 @@ export interface AppUser extends RecordModel {
   email: string;
   name: string;
   avatar: string;
+  /** Set when the user opens the emailed link. Unverified users can't sign in. */
+  verified?: boolean;
   /** `can()` reads it through getUserRoles, not from here. */
   isAdmin?: boolean;
 }
@@ -60,4 +62,11 @@ export interface RegisterInput {
   email: string;
   password: string;
   passwordConfirm: string;
+}
+
+/** Returned by POST /api/auth/register. The new account is not signed in. */
+export interface RegisterResponse {
+  email: string;
+  /** False when PocketBase couldn't send the email; signing in resends it. */
+  verificationSent: boolean;
 }

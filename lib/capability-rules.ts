@@ -25,7 +25,8 @@ export type Capability =
   | "program.delete"
   | "departmentHead.write"
   | "programChair.write"
-  | "faculty.write";
+  | "faculty.write"
+  | "programJoinRequest.review";
 
 /** The org chain a target sits in, resolved program → department → college. */
 export type ScopeChain = {
@@ -77,6 +78,8 @@ const RULES: Record<Capability, Rule> = {
   "departmentHead.write": anyOf(vpaa, dean),
   "programChair.write": anyOf(vpaa, dean, head),
   "faculty.write": chair,
+  // Approving creates a faculty record, so it mirrors faculty.write.
+  "programJoinRequest.review": chair,
 };
 
 export const CAPABILITIES = Object.keys(RULES) as Capability[];

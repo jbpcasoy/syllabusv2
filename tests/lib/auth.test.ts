@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   token: undefined as string | undefined,
   save: vi.fn(),
   authRefresh: vi.fn(),
+  requestVerification: vi.fn(),
   can: vi.fn(),
 }));
 
@@ -29,7 +30,10 @@ vi.mock("@/lib/pocketbase", async () => {
   return {
     createPb: vi.fn(() => ({
       authStore: { save: mocks.save },
-      collection: () => ({ authRefresh: mocks.authRefresh }),
+      collection: () => ({
+        authRefresh: mocks.authRefresh,
+        requestVerification: mocks.requestVerification,
+      }),
       files: { getURL: vi.fn() },
     })),
     handlePbError: vi.fn((error: unknown) => {
@@ -44,14 +48,19 @@ vi.mock("@/lib/pocketbase", async () => {
 
 vi.mock("@/lib/capabilities", () => ({ can: mocks.can }));
 
-import { authorize, requireUser, toSessionUser } from "@/lib/auth";
+import {
+  authorize,
+  requestEmailVerification,
+  requireUser,
+  toSessionUser,
+} from "@/lib/auth";
 import { NO_ROLES } from "@/types/roles";
 import type { AppUser } from "@/types/user";
 
 function signIn(record: Record<string, unknown> = {}) {
   mocks.token = "jwt";
   mocks.authRefresh.mockResolvedValue({
-    record: { id: "me1me1me1me1me1", isAdmin: false, ...record },
+    record: { id: "me1me1me1me1me1", isAdmin: false, verified: true, ...record },
   });
 }
 
@@ -74,6 +83,12 @@ describe("requireUser()", () => {
   it("returns 401 when the token no longer validates", async () => {
     mocks.token = "jwt";
     mocks.authRefresh.mockRejectedValue({ status: 401 });
+
+    expect(await statusOf(requireUser())).toBe(401);
+  });
+
+  it("returns 401 for a valid token of an unverified account", async () => {
+    signIn({ verified: false });
 
     expect(await statusOf(requireUser())).toBe(401);
   });
@@ -159,6 +174,23 @@ describe("toSessionUser", () => {
     const session = toSessionUser(record, { ...NO_ROLES, isAdmin: true });
     expect(session.isAdmin).toBe(true);
     expect(session.roleLabels).toEqual(["Administrator"]);
+  });
+});
+
+describe("requestEmailVerification", () => {
+  it("returns true once PocketBase accepts the request", async () => {
+    mocks.requestVerification.mockResolvedValue(true);
+
+    expect(await requestEmailVerification("a@buksu.edu.ph")).toBe(true);
+    expect(mocks.requestVerification).toHaveBeenCalledWith("a@buksu.edu.ph");
+  });
+
+  it("returns false instead of throwing when sending fails", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.requestVerification.mockRejectedValue(new Error("smtp down"));
+
+    expect(await requestEmailVerification("a@buksu.edu.ph")).toBe(false);
+    spy.mockRestore();
   });
 });
 

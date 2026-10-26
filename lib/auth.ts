@@ -43,7 +43,25 @@ export function toSessionUser(user: AppUser, roles: UserRoles): SessionUser {
   };
 }
 
-/** Validates the cookie's token against PocketBase and returns the user. */
+/**
+ * Asks PocketBase to email a verification link. Returns false instead of
+ * throwing when sending fails (for example SMTP is not configured), so the
+ * caller can still answer and the user can retry by signing in.
+ */
+export async function requestEmailVerification(email: string): Promise<boolean> {
+  try {
+    await createPb().collection("users").requestVerification(email);
+    return true;
+  } catch (error) {
+    console.error("Failed to send verification email", error);
+    return false;
+  }
+}
+
+/**
+ * Validates the cookie's token against PocketBase and returns the user.
+ * Unverified accounts count as signed out, even with a valid token.
+ */
 export const getCurrentUser = cache(async (): Promise<AppUser | null> => {
   const store = await cookies();
   const token = store.get(AUTH_COOKIE)?.value;
@@ -53,7 +71,7 @@ export const getCurrentUser = cache(async (): Promise<AppUser | null> => {
     const pb = createPb();
     pb.authStore.save(token, null);
     const { record } = await pb.collection("users").authRefresh();
-    return record as AppUser;
+    return record.verified ? (record as AppUser) : null;
   } catch {
     return null; // expired / invalid / user deleted
   }

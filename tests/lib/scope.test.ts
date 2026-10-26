@@ -20,6 +20,7 @@ const records: Record<string, Record<string, unknown>> = {
   "departments/nocolgnocolgnoc": { college: "" },
   "program_chairs/chairAchairAcha": { program: "progAprogAprogA" },
   "faculties/factyAfactyAfact": { program: "progAprogAprogA" },
+  "program_join_requests/jreqAjreqAjreqA": { program: "progAprogAprogA" },
   "department_heads/headAheadAheadA": { department: "deptAdeptAdeptA" },
 };
 
@@ -85,6 +86,17 @@ describe("resolveScope", () => {
   it("resolves a faculty membership through its program", async () => {
     expect(await resolveScope({ faculty: "factyAfactyAfact" })).toEqual(
       fullChain,
+    );
+  });
+
+  it("resolves a program join request through its program", async () => {
+    expect(
+      await resolveScope({ programJoinRequest: "jreqAjreqAjreqA" }),
+    ).toEqual(fullChain);
+    expect(mocks.getOne).toHaveBeenCalledWith(
+      "program_join_requests",
+      "jreqAjreqAjreqA",
+      { fields: "program" },
     );
   });
 

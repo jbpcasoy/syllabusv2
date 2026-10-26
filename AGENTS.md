@@ -112,6 +112,11 @@ Add every new check as a capability in `lib/capability-rules.ts`. Never branch o
 
 **Org chain:** campus, college, department, program. A program must have a department and a department must have a college.
 
+**Registration and membership:**
+
+- Self-registration accepts only `ALLOWED_EMAIL_DOMAINS` (comma-separated, default `buksu.edu.ph`). Sign-in requires a verified email; `getCurrentUser()` treats unverified accounts as signed out. Admin-created users start verified.
+- A signed-in user asks to join a program (GE included) with an optional note. The program's chair or an admin approves (creating or reactivating the `faculties` record in one batch) or rejects with a reason. Nobody decides their own request. The requester may withdraw while pending. One pending request per user and program.
+
 **Review chain (no skipping):** Faculty submits, then 1 Program Chair, 2 Department Head, 3 Dean, 4 FDIS Chair, 5 CITL Director, 6 VPAA.
 
 - Outcomes are Approve or Return for revision only. There is no reject.
@@ -140,11 +145,9 @@ Add every new check as a capability in `lib/capability-rules.ts`. Never branch o
 
 ## Data model
 
-**Existing:** `users` (with `isAdmin`; `role` removed), `campuses`, `colleges`, `departments`, `programs`, `deans`, `department_heads`, `program_chairs`, `faculties`, `fdis_chairs`, `citl_directors`, `vpaas`, `prospectuses`, `prospectus_items`.
+**Existing:** `users` (with `isAdmin`; `role` removed), `campuses`, `colleges`, `departments`, `programs`, `deans`, `department_heads`, `program_chairs`, `faculties`, `fdis_chairs`, `citl_directors`, `vpaas`, `prospectuses` (`school_year` relation), `prospectus_items` (`course` relation), `school_years`, `terms`, `courses`, `program_join_requests`.
 
-**Planned changes:** `prospectuses.school_year` becomes a relation, and `prospectus_items` references a `course` instead of free-text code and title.
-
-**Planned collections:** `school_years`, `terms` (unique per school year and semester), `courses` (unique code, required owning program, nominal duration in hours), `program_join_requests`, `syllabi`, `syllabus_versions`, `syllabus_reviews`, `form17_answers`, `form18_points`, `syllabus_signed_copies`, `audit_log`.
+**Planned collections:** `syllabi`, `syllabus_versions`, `syllabus_reviews`, `form17_answers`, `form18_points`, `syllabus_signed_copies`, `audit_log`.
 
 ## Roadmap and status
 
@@ -153,8 +156,8 @@ Work in this order and do not start a phase before the previous one is done unle
 | Phase | Scope                                                                                                       | Status      |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ----------- |
 | A     | `isAdmin`, roles resolver, scoped capabilities, required department and college, remove `role`, test helper | Done        |
-| 1     | School years, terms, courses, prospectus and items, duplicate prospectus (admin only)                       | Not started |
-| 1b    | Program membership requests                                                                                 | Not started |
+| 1     | School years, terms, courses, prospectus and items, duplicate prospectus (admin only)                       | Done        |
+| 1b    | Program membership requests, institutional-domain registration, email verification                         | Done        |
 | 2     | Syllabus submission, PDF versions, co-authors, protected file route                                         | Not started |
 | 3     | Review engine, Form 17, Form 18-1, proxy, approval references, signed scan                                  | Not started |
 | 4     | Reviewer queues, PDF viewer, timeline, faculty return view                                                  | Not started |

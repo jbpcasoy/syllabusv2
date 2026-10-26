@@ -1,4 +1,8 @@
-import type { RegisterInput, SessionUser } from "@/types/user";
+import type {
+  RegisterInput,
+  RegisterResponse,
+  SessionUser,
+} from "@/types/user";
 
 export type LoginInput = { email: string; password: string };
 
@@ -41,7 +45,7 @@ export function logout() {
 }
 
 export function register(input: RegisterInput) {
-  return request<SessionUser>("/api/auth/register", {
+  return request<RegisterResponse>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(input),
   });

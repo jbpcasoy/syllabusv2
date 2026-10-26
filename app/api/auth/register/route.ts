@@ -1,8 +1,7 @@
-import { setSessionCookie, toSessionUser } from "@/lib/auth";
-import { createAdminPb, createPb, handlePbError } from "@/lib/pocketbase";
-import { parseRegisterInput } from "@/lib/validators/auth";
-import { NO_ROLES } from "@/types/roles";
-import type { AppUser } from "@/types/user";
+import { requestEmailVerification } from "@/lib/auth";
+import { createAdminPb, handlePbError } from "@/lib/pocketbase";
+import { parseDomainList, parseRegisterInput } from "@/lib/validators/auth";
+import type { AppUser, RegisterResponse } from "@/types/user";
 import { NextResponse, type NextRequest } from "next/server";
 import { ClientResponseError } from "pocketbase";
 
@@ -15,10 +14,15 @@ function isDuplicateEmail(error: unknown): boolean {
 }
 
 // POST /api/auth/register  { "name": "...", "email": "...", "password": "...", "passwordConfirm": "..." }
+// Only institutional emails (ALLOWED_EMAIL_DOMAINS). The account stays signed
+// out until the emailed verification link is opened.
 export async function POST(request: NextRequest) {
   try {
     const body: unknown = await request.json().catch(() => null);
-    const parsed = parseRegisterInput(body);
+    const parsed = parseRegisterInput(
+      body,
+      parseDomainList(process.env.ALLOWED_EMAIL_DOMAINS),
+    );
     if (!parsed.ok) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
@@ -34,18 +38,14 @@ export async function POST(request: NextRequest) {
       password,
       passwordConfirm: password, // required by PocketBase auth collections
       emailVisibility: false,
+      verified: false,
     });
 
-    // Sign the new user in with a plain client, same as the login route.
-    const pb = createPb();
-    const { token, record } = await pb
-      .collection("users")
-      .authWithPassword(email, password);
-
-    await setSessionCookie(token);
-    return NextResponse.json(toSessionUser(record as AppUser, NO_ROLES), {
-      status: 201,
-    });
+    const result: RegisterResponse = {
+      email,
+      verificationSent: await requestEmailVerification(email),
+    };
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
     if (isDuplicateEmail(error)) {
       return NextResponse.json(

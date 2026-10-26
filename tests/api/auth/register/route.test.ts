@@ -4,12 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
-  authWithPassword: vi.fn(),
+  requestEmailVerification: vi.fn(),
   setSessionCookie: vi.fn(),
-  toSessionUser: vi.fn((u: Record<string, unknown>) => ({
-    ...u,
-    mapped: true,
-  })),
 }));
 
 vi.mock("@/lib/pocketbase", async () => {
@@ -17,9 +13,6 @@ vi.mock("@/lib/pocketbase", async () => {
   return {
     createAdminPb: vi.fn(async () => ({
       collection: () => ({ create: mocks.create }),
-    })),
-    createPb: vi.fn(() => ({
-      collection: () => ({ authWithPassword: mocks.authWithPassword }),
     })),
     handlePbError: vi.fn((error: unknown) =>
       NextResponse.json(
@@ -31,17 +24,16 @@ vi.mock("@/lib/pocketbase", async () => {
 });
 
 vi.mock("@/lib/auth", () => ({
+  requestEmailVerification: mocks.requestEmailVerification,
   setSessionCookie: mocks.setSessionCookie,
-  toSessionUser: mocks.toSessionUser,
 }));
 
 import { POST } from "@/app/api/auth/register/route";
 import { createAdminPb } from "@/lib/pocketbase";
-import { NO_ROLES } from "@/types/roles";
 
 const valid = {
   name: " Juan ",
-  email: " Juan@Example.com ",
+  email: " Juan@BukSU.edu.ph ",
   password: "supersecret",
   passwordConfirm: "supersecret",
 };
@@ -56,52 +48,72 @@ function post(body: unknown, raw = false) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
+  mocks.requestEmailVerification.mockResolvedValue(true);
 });
 
 describe("POST /api/auth/register", () => {
-  it("creates an unassigned user, signs them in and returns 201", async () => {
+  it("creates an unverified user, emails a link and returns 201 without signing in", async () => {
     mocks.create.mockResolvedValue({ id: "abc123abc123abc" });
-    mocks.authWithPassword.mockResolvedValue({
-      token: "jwt",
-      record: { id: "abc123abc123abc", email: "juan@example.com" },
-    });
 
     const res = await POST(post(valid));
 
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({
-      id: "abc123abc123abc",
-      email: "juan@example.com",
-      mapped: true,
+      email: "juan@buksu.edu.ph",
+      verificationSent: true,
     });
     expect(mocks.create).toHaveBeenCalledWith({
       name: "Juan",
-      email: "juan@example.com",
+      email: "juan@buksu.edu.ph",
       password: "supersecret",
       passwordConfirm: "supersecret",
       emailVisibility: false,
+      verified: false,
     });
-    // A brand-new account has no admin flag and no assignments.
-    expect(mocks.toSessionUser).toHaveBeenCalledWith(
-      expect.anything(),
-      NO_ROLES,
+    expect(mocks.requestEmailVerification).toHaveBeenCalledWith(
+      "juan@buksu.edu.ph",
     );
-    expect(mocks.authWithPassword).toHaveBeenCalledWith(
-      "juan@example.com",
-      "supersecret",
-    );
-    expect(mocks.setSessionCookie).toHaveBeenCalledWith("jwt");
+    expect(mocks.setSessionCookie).not.toHaveBeenCalled();
   });
 
-  it("ignores isAdmin or a role supplied by the client", async () => {
+  it("still returns 201 when the email could not be sent", async () => {
     mocks.create.mockResolvedValue({});
-    mocks.authWithPassword.mockResolvedValue({ token: "jwt", record: {} });
+    mocks.requestEmailVerification.mockResolvedValue(false);
 
-    await POST(post({ ...valid, isAdmin: true, role: "admin" }));
+    const res = await POST(post(valid));
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toMatchObject({ verificationSent: false });
+  });
+
+  it("ignores isAdmin, verified or a role supplied by the client", async () => {
+    mocks.create.mockResolvedValue({});
+
+    await POST(post({ ...valid, isAdmin: true, role: "admin", verified: true }));
 
     const payload = mocks.create.mock.calls[0][0] as Record<string, unknown>;
     expect(payload).not.toHaveProperty("isAdmin");
     expect(payload).not.toHaveProperty("role");
+    expect(payload.verified).toBe(false);
+  });
+
+  it("rejects an email outside the default institutional domain", async () => {
+    const res = await POST(post({ ...valid, email: "juan@gmail.com" }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("@buksu.edu.ph");
+    expect(createAdminPb).not.toHaveBeenCalled();
+  });
+
+  it("reads the allowed domains from ALLOWED_EMAIL_DOMAINS", async () => {
+    vi.stubEnv("ALLOWED_EMAIL_DOMAINS", "example.edu");
+    mocks.create.mockResolvedValue({});
+
+    expect((await POST(post(valid))).status).toBe(400);
+    expect(
+      (await POST(post({ ...valid, email: "juan@example.edu" }))).status,
+    ).toBe(201);
   });
 
   it.each([
@@ -139,7 +151,7 @@ describe("POST /api/auth/register", () => {
     const res = await POST(post(valid));
 
     expect(res.status).toBe(409);
-    expect(mocks.setSessionCookie).not.toHaveBeenCalled();
+    expect(mocks.requestEmailVerification).not.toHaveBeenCalled();
   });
 
   it("delegates other errors to handlePbError", async () => {

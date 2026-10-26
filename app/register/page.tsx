@@ -1,6 +1,7 @@
 import { RegisterForm } from "@/components/auth/register-form";
 import { getCurrentUser } from "@/lib/auth";
 import { safeRedirect } from "@/lib/safe-redirect";
+import { parseDomainList } from "@/lib/validators/auth";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -45,7 +46,10 @@ export default async function RegisterPage({
         </div>
 
         <div className="mt-8 rounded-lg bg-white p-6 shadow ring-1 ring-black/5">
-          <RegisterForm redirectTo={redirectTo} />
+          <RegisterForm
+            loginHref={loginHref}
+            allowedDomains={parseDomainList(process.env.ALLOWED_EMAIL_DOMAINS)}
+          />
         </div>
       </div>
     </main>

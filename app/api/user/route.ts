@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
     const created = await pb.collection("users").create<AppUser>({
       ...parsed.data,
       passwordConfirm: parsed.data.password, // required by PocketBase auth collections
+      verified: true, // an admin vouches for accounts they create
     });
 
     return NextResponse.json(toUserResponse(created), { status: 201 });

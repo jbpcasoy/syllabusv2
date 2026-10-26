@@ -13,9 +13,25 @@ export type ParsedRegistration = Pick<
   "name" | "email" | "password"
 >;
 
-/** Deliberately ignores `isAdmin` and any other field: self-registration can't grant access. */
+/** Used when ALLOWED_EMAIL_DOMAINS is unset, so registration is never wide open by accident. */
+export const DEFAULT_EMAIL_DOMAINS = ["buksu.edu.ph"];
+
+/** Parses a comma-separated domain list such as "buksu.edu.ph, example.edu". */
+export function parseDomainList(value: string | undefined): string[] {
+  const domains = (value ?? "")
+    .split(",")
+    .map((d) => d.trim().toLowerCase().replace(/^@/, ""))
+    .filter(Boolean);
+  return domains.length > 0 ? domains : DEFAULT_EMAIL_DOMAINS;
+}
+
+/**
+ * Deliberately ignores `isAdmin` and any other field: self-registration can't grant access.
+ * The email must belong to one of `allowedDomains` (exact match, no subdomains).
+ */
 export function parseRegisterInput(
   body: unknown,
+  allowedDomains: readonly string[],
 ): ParseResult<ParsedRegistration> {
   if (typeof body !== "object" || body === null) {
     return { ok: false, error: "Body must be a JSON object" };
@@ -52,6 +68,15 @@ export function parseRegisterInput(
     };
   }
 
+  const normalizedEmail = email.trim().toLowerCase();
+  const domain = normalizedEmail.slice(normalizedEmail.lastIndexOf("@") + 1);
+  if (!allowedDomains.includes(domain)) {
+    return {
+      ok: false,
+      error: `Use your institutional email (${allowedDomains.map((d) => `@${d}`).join(", ")})`,
+    };
+  }
+
   if (password !== passwordConfirm) {
     return { ok: false, error: "Passwords do not match" };
   }
@@ -60,7 +85,7 @@ export function parseRegisterInput(
     ok: true,
     data: {
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
       password,
     },
   };

@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getNavItems } from "@/lib/navigation";
 import { getUserRoles } from "@/lib/roles";
 import { hasAnyRole } from "@/types/roles";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { Sidebar } from "./sidebar";
 
@@ -25,7 +26,13 @@ export async function AppShell({ children }: { children: ReactNode }) {
           >
             Your account isn&apos;t assigned to a program or office yet. You
             can browse the university structure, but you can&apos;t submit or
-            review syllabi until a program chair or administrator adds you.
+            review syllabi until a program chair or administrator adds you.{" "}
+            <Link
+              href="/program-join-request"
+              className="font-medium underline hover:text-amber-900"
+            >
+              Request to join a program
+            </Link>
           </div>
         )}
         {children}

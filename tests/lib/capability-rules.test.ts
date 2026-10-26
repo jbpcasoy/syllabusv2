@@ -206,6 +206,24 @@ describe("faculty.write", () => {
   });
 });
 
+describe("programJoinRequest.review", () => {
+  it("a chair passes only for their own program", () => {
+    expect(can(chair, "programJoinRequest.review", SCOPE)).toBe(true);
+    expect(
+      can(chair, "programJoinRequest.review", {
+        ...SCOPE,
+        programId: OTHER.program,
+      }),
+    ).toBe(false);
+  });
+
+  it("VPAA, dean, head and plain faculty are denied", () => {
+    for (const r of [vpaa, dean, head, facultyOnly, NO_ROLES]) {
+      expect(can(r, "programJoinRequest.review", SCOPE)).toBe(false);
+    }
+  });
+});
+
 describe("users who hold several roles", () => {
   it("combines scoped powers", () => {
     expect(can(multiRole, "faculty.write", SCOPE)).toBe(true);
