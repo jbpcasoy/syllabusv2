@@ -36,7 +36,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   }
 }
 
-// PATCH /api/prospectus-item/:id  { "semester"?, "year_level"?, "subject_code"?, "title"? }
+// PATCH /api/prospectus-item/:id  { "course"?, "semester"?, "year_level"? }
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const auth = await requireUser("prospectusItem.write");
   if (!auth.ok) return auth.response;
@@ -51,14 +51,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
     const pb = await createAdminPb();
 
-    // Changing any part of the unique key must not collide with another item
-    // of the same prospectus.
-    const { subject_code, year_level, semester } = parsed.data;
-    if (
-      subject_code !== undefined ||
-      year_level !== undefined ||
-      semester !== undefined
-    ) {
+    // Changing the course must not collide with another item of the same prospectus.
+    if (parsed.data.course !== undefined) {
       const current = await pb
         .collection("prospectus_items")
         .getOne<ProspectusItem>(id);
@@ -67,22 +61,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         .getList<ProspectusItem>(1, 1, {
           skipTotal: true,
           filter: pb.filter(
-            "prospectus = {:prospectus} && subject_code = {:subjectCode} && year_level = {:yearLevel} && semester = {:semester} && id != {:id}",
-            {
-              prospectus: current.prospectus,
-              subjectCode: subject_code ?? current.subject_code,
-              yearLevel: year_level ?? current.year_level,
-              semester: semester ?? current.semester,
-              id,
-            },
+            "prospectus = {:prospectus} && course = {:course} && id != {:id}",
+            { prospectus: current.prospectus, course: parsed.data.course, id },
           ),
         });
       if (duplicate.items.length > 0) {
         return NextResponse.json(
-          {
-            error:
-              "That subject is already listed for this year level and semester of the prospectus",
-          },
+          { error: "That course is already listed in this prospectus" },
           { status: 409 },
         );
       }

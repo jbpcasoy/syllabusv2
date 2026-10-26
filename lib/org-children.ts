@@ -59,6 +59,12 @@ const CHILDREN: Record<OrgParent, Child[]> = {
       singular: "prospectus",
       plural: "prospectuses",
     },
+    {
+      collection: "courses",
+      field: "program",
+      singular: "course",
+      plural: "courses",
+    },
   ],
 };
 

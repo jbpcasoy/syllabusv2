@@ -43,7 +43,7 @@ export function DeleteProspectusItemDialog({
   }
 
   const subject = item
-    ? `${item.subject_code} — ${item.title}`
+    ? `${item.expand?.course?.code ?? ""} — ${item.expand?.course?.title ?? ""}`
     : "this prospectus item";
 
   return (

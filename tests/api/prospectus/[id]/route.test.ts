@@ -42,6 +42,7 @@ vi.mock("@/lib/validators/prospectus", () => ({
 }));
 
 vi.mock("@/lib/prospectus", () => ({
+  PROSPECTUS_EXPAND: "program,school_year",
   toProspectusResponse: mocks.toProspectusResponse,
 }));
 
@@ -94,7 +95,7 @@ describe("GET /api/prospectus/:id", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ...record, mapped: true });
     expect(requireUserMock).toHaveBeenCalledWith();
-    expect(mocks.getOne).toHaveBeenCalledWith(ID, { expand: "program" });
+    expect(mocks.getOne).toHaveBeenCalledWith(ID, { expand: "program,school_year" });
   });
 
   it("hides an unpublished record from a non-manager", async () => {
@@ -152,50 +153,50 @@ describe("PATCH /api/prospectus/:id", () => {
     expect(mocks.update).toHaveBeenCalledWith(
       ID,
       { published: true },
-      { expand: "program" },
+      { expand: "program,school_year" },
     );
   });
 
   it("checks for a duplicate (excluding itself) when the year changes", async () => {
     mocks.parseProspectusUpdate.mockReturnValue({
       ok: true,
-      data: { school_year: "2027-2028" },
+      data: { school_year: "sy2027sy2027sy2" },
     });
     mocks.getOne.mockResolvedValue({
       id: ID,
       program: PROGRAM_ID,
-      school_year: "2026-2027",
+      school_year: "sy2026sy2026sy2",
     });
     mocks.getList.mockResolvedValue({ items: [] });
     mocks.update.mockResolvedValue({ id: ID });
 
-    const res = await PATCH(req("PATCH", { school_year: "2027-2028" }), ctx);
+    const res = await PATCH(req("PATCH", { school_year: "sy2027sy2027sy2" }), ctx);
 
     expect(res.status).toBe(200);
     expect(mocks.filter).toHaveBeenCalledWith(
       "program = {:program} && school_year = {:schoolYear} && id != {:id}",
-      { program: PROGRAM_ID, schoolYear: "2027-2028", id: ID },
+      { program: PROGRAM_ID, schoolYear: "sy2027sy2027sy2", id: ID },
     );
     expect(mocks.update).toHaveBeenCalledWith(
       ID,
-      { school_year: "2027-2028" },
-      { expand: "program" },
+      { school_year: "sy2027sy2027sy2" },
+      { expand: "program,school_year" },
     );
   });
 
   it("skips the duplicate check when the year is unchanged", async () => {
     mocks.parseProspectusUpdate.mockReturnValue({
       ok: true,
-      data: { school_year: "2026-2027" },
+      data: { school_year: "sy2026sy2026sy2" },
     });
     mocks.getOne.mockResolvedValue({
       id: ID,
       program: PROGRAM_ID,
-      school_year: "2026-2027",
+      school_year: "sy2026sy2026sy2",
     });
     mocks.update.mockResolvedValue({ id: ID });
 
-    const res = await PATCH(req("PATCH", { school_year: "2026-2027" }), ctx);
+    const res = await PATCH(req("PATCH", { school_year: "sy2026sy2026sy2" }), ctx);
 
     expect(res.status).toBe(200);
     expect(mocks.getList).not.toHaveBeenCalled();
@@ -204,16 +205,16 @@ describe("PATCH /api/prospectus/:id", () => {
   it("returns 409 when the new year collides with another prospectus", async () => {
     mocks.parseProspectusUpdate.mockReturnValue({
       ok: true,
-      data: { school_year: "2027-2028" },
+      data: { school_year: "sy2027sy2027sy2" },
     });
     mocks.getOne.mockResolvedValue({
       id: ID,
       program: PROGRAM_ID,
-      school_year: "2026-2027",
+      school_year: "sy2026sy2026sy2",
     });
     mocks.getList.mockResolvedValue({ items: [{ id: "other" }] });
 
-    const res = await PATCH(req("PATCH", { school_year: "2027-2028" }), ctx);
+    const res = await PATCH(req("PATCH", { school_year: "sy2027sy2027sy2" }), ctx);
 
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({

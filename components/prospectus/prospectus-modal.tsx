@@ -6,10 +6,7 @@ import {
   updateProspectus,
   type ProspectusResponse,
 } from "@/lib/prospectus-client";
-import {
-  isValidSchoolYear,
-  SCHOOL_YEAR_ERROR,
-} from "@/lib/validators/prospectus";
+import type { SchoolYearResponse } from "@/lib/school-year-client";
 import {
   Checkbox,
   Description,
@@ -18,7 +15,6 @@ import {
   DialogPanel,
   DialogTitle,
   Field,
-  Input,
   Label,
   Select,
 } from "@headlessui/react";
@@ -31,6 +27,7 @@ type ProspectusModalProps = {
   mode: ProspectusModalMode;
   prospectus: ProspectusResponse | null;
   programs: ProgramRecord[];
+  schoolYears: SchoolYearResponse[];
   onClose: () => void;
   onSaved: () => void;
 };
@@ -48,13 +45,16 @@ export function ProspectusModal({
   mode,
   prospectus,
   programs,
+  schoolYears,
   onClose,
   onSaved,
 }: ProspectusModalProps) {
   const isEdit = mode === "edit" && prospectus !== null;
 
   const [programId, setProgramId] = useState(prospectus?.program ?? "");
-  const [schoolYear, setSchoolYear] = useState(prospectus?.school_year ?? "");
+  const [schoolYearId, setSchoolYearId] = useState(
+    prospectus?.school_year ?? "",
+  );
   const [published, setPublished] = useState(prospectus?.published ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,30 +63,28 @@ export function ProspectusModal({
   const currentProgram = prospectus?.expand?.program;
   const hasCurrentInList =
     !currentProgram || programs.some((p) => p.id === currentProgram.id);
+  const currentYear = prospectus?.expand?.school_year;
+  const hasCurrentYearInList =
+    !currentYear || schoolYears.some((y) => y.id === currentYear.id);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const trimmedYear = schoolYear.trim();
 
     if (!isEdit && !programId) return setError("Select a program.");
-    if (!isValidSchoolYear(trimmedYear)) {
-      return setError(
-        SCHOOL_YEAR_ERROR.replace("`school_year`", "School year"),
-      );
-    }
+    if (!schoolYearId) return setError("Select a school year.");
 
     setSaving(true);
     setError(null);
     try {
       if (isEdit) {
         await updateProspectus(prospectus.id, {
-          school_year: trimmedYear,
+          school_year: schoolYearId,
           published,
         });
       } else {
         await createProspectus({
           program: programId,
-          school_year: trimmedYear,
+          school_year: schoolYearId,
           published,
         });
       }
@@ -151,16 +149,22 @@ export function ProspectusModal({
               <Label className="block text-sm font-medium text-gray-900">
                 School year
               </Label>
-              <Input
-                type="text"
-                value={schoolYear}
-                onChange={(e) => setSchoolYear(e.target.value)}
-                autoFocus
+              <Select
+                value={schoolYearId}
+                onChange={(e) => setSchoolYearId(e.target.value)}
                 disabled={saving}
-                maxLength={9}
-                placeholder="2026-2027"
                 className={inputClass}
-              />
+              >
+                <option value="">Select a school year…</option>
+                {!hasCurrentYearInList && currentYear && (
+                  <option value={currentYear.id}>{currentYear.label}</option>
+                )}
+                {schoolYears.map((y) => (
+                  <option key={y.id} value={y.id}>
+                    {y.label}
+                  </option>
+                ))}
+              </Select>
             </Field>
 
             <Field className="flex items-center gap-3">

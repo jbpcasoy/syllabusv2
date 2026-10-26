@@ -8,10 +8,15 @@ import {
   type ProspectusListParams,
   type ProspectusResponse,
 } from "@/lib/prospectus-client";
+import {
+  listSchoolYears,
+  type SchoolYearResponse,
+} from "@/lib/school-year-client";
 import { Select } from "@headlessui/react";
 import type { ListResult } from "pocketbase";
 import { useEffect, useState } from "react";
 import { DeleteProspectusDialog } from "./delete-prospectus-dialog";
+import { DuplicateProspectusDialog } from "./duplicate-prospectus-dialog";
 import { ProspectusModal, type ProspectusModalMode } from "./prospectus-modal";
 
 const PER_PAGE = 10;
@@ -37,6 +42,7 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [programFilter, setProgramFilter] = useState("");
+  const [schoolYearFilter, setSchoolYearFilter] = useState("");
   const [statusFilter, setStatusFilter] =
     useState<NonNullable<ProspectusListParams["published"]>>("");
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -48,6 +54,7 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
   const [error, setError] = useState<string | null>(null);
 
   const [programs, setPrograms] = useState<ProgramRecord[]>([]);
+  const [schoolYears, setSchoolYears] = useState<SchoolYearResponse[]>([]);
 
   const [modal, setModal] = useState<ModalState>({
     open: false,
@@ -60,8 +67,13 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
     prospectus: ProspectusResponse | null;
     key: number;
   }>({ open: false, prospectus: null, key: 0 });
+  const [duplicateState, setDuplicateState] = useState<{
+    open: boolean;
+    prospectus: ProspectusResponse | null;
+    key: number;
+  }>({ open: false, prospectus: null, key: 0 });
 
-  // Load programs once for the filter and the form dropdown.
+  // Load programs and school years once for the filters and the form dropdowns.
   // (The API caps perPage at 100; swap in a searchable combobox if you exceed that.)
   useEffect(() => {
     const controller = new AbortController();
@@ -69,6 +81,11 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
       .then((result) => setPrograms(result.items))
       .catch(() => {
         // The dropdown just stays empty; the main list surfaces its own errors.
+      });
+    listSchoolYears({ page: 1, perPage: 100 }, controller.signal)
+      .then((result) => setSchoolYears(result.items))
+      .catch(() => {
+        // Same as above.
       });
     return () => controller.abort();
   }, []);
@@ -97,6 +114,7 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
         perPage: PER_PAGE,
         search,
         program: programFilter,
+        schoolYear: schoolYearFilter,
         published: statusFilter,
       },
       controller.signal,
@@ -112,7 +130,7 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
       });
 
     return () => controller.abort();
-  }, [page, search, programFilter, statusFilter, reloadKey]);
+  }, [page, search, programFilter, schoolYearFilter, statusFilter, reloadKey]);
 
   function openModal(
     mode: ProspectusModalMode,
@@ -197,6 +215,27 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
             ))}
           </Select>
         </div>
+        <div className="sm:w-40">
+          <label htmlFor="school-year-filter" className="sr-only">
+            Filter by school year
+          </label>
+          <Select
+            id="school-year-filter"
+            value={schoolYearFilter}
+            onChange={(e) => {
+              setSchoolYearFilter(e.target.value);
+              setPage(1);
+            }}
+            className={selectClass}
+          >
+            <option value="">All years</option>
+            {schoolYears.map((y) => (
+              <option key={y.id} value={y.id}>
+                {y.label}
+              </option>
+            ))}
+          </Select>
+        </div>
         {canManage && (
           <div className="sm:w-40">
             <label htmlFor="status-filter" className="sr-only">
@@ -274,7 +313,9 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
                   )}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-500">
-                  {row.school_year}
+                  {row.expand?.school_year?.label || (
+                    <span className="text-gray-400">Unknown</span>
+                  )}
                 </td>
                 <td className="hidden px-4 py-3 text-sm sm:table-cell">
                   <span
@@ -300,6 +341,19 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
                         className="font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
                       >
                         {row.published ? "Unpublish" : "Publish"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDuplicateState((prev) => ({
+                            open: true,
+                            prospectus: row,
+                            key: prev.key + 1,
+                          }))
+                        }
+                        className="ml-4 font-medium text-indigo-600 hover:text-indigo-500"
+                      >
+                        Duplicate
                       </button>
                       <button
                         type="button"
@@ -333,7 +387,7 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
                   colSpan={5}
                   className="px-4 py-10 text-center text-sm text-gray-500"
                 >
-                  {search || programFilter || statusFilter
+                  {search || programFilter || schoolYearFilter || statusFilter
                     ? "No prospectuses match your filters."
                     : "No prospectuses yet."}
                 </td>
@@ -399,9 +453,25 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
           mode={modal.mode}
           prospectus={modal.prospectus}
           programs={programs}
+          schoolYears={schoolYears}
           onClose={() => setModal((prev) => ({ ...prev, open: false }))}
           onSaved={() => {
             setModal((prev) => ({ ...prev, open: false }));
+            setReloadKey((k) => k + 1);
+          }}
+        />
+      )}
+      {canManage && (
+        <DuplicateProspectusDialog
+          key={`duplicate-${duplicateState.key}`}
+          open={duplicateState.open}
+          source={duplicateState.prospectus}
+          schoolYears={schoolYears}
+          onClose={() =>
+            setDuplicateState((prev) => ({ ...prev, open: false }))
+          }
+          onDuplicated={() => {
+            setDuplicateState((prev) => ({ ...prev, open: false }));
             setReloadKey((k) => k + 1);
           }}
         />

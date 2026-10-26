@@ -1,12 +1,12 @@
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/capabilities";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
-import { toProspectusResponse } from "@/lib/prospectus";
+import { PROSPECTUS_EXPAND, toProspectusResponse } from "@/lib/prospectus";
 import { parseProspectusInput } from "@/lib/validators/prospectus";
 import { Prospectus } from "@/types/prospectus";
 import { NextResponse, type NextRequest } from "next/server";
 
-// GET /api/prospectus?page=1&perPage=30&search=foo&program=<id>&school_year=2026-2027&published=true|false
+// GET /api/prospectus?page=1&perPage=30&search=foo&program=<id>&school_year=<id>&published=true|false
 // Non-managers only ever see published prospectuses.
 export async function GET(request: NextRequest) {
   const auth = await requireUser();
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       filters.push(
         pb.filter(
-          "(school_year ~ {:search} || program.name ~ {:search} || program.code ~ {:search})",
+          "(school_year.label ~ {:search} || program.name ~ {:search} || program.code ~ {:search})",
           { search },
         ),
       );
@@ -58,8 +58,8 @@ export async function GET(request: NextRequest) {
     const result = await pb
       .collection("prospectuses")
       .getList<Prospectus>(page, perPage, {
-        sort: "-school_year,-created",
-        expand: "program",
+        sort: "-school_year.label,-created",
+        expand: PROSPECTUS_EXPAND,
         ...(filters.length > 0 && { filter: filters.join(" && ") }),
       });
 
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/prospectus  { "program": "<programId>", "school_year": "2026-2027", "published"?: boolean }
+// POST /api/prospectus  { "program": "<programId>", "school_year": "<schoolYearId>", "published"?: boolean }
 export async function POST(request: NextRequest) {
   const auth = await requireUser("prospectus.write");
   if (!auth.ok) return auth.response;
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     // The unique index still guards against a race between two requests.
     const created = await pb
       .collection("prospectuses")
-      .create<Prospectus>(parsed.data, { expand: "program" });
+      .create<Prospectus>(parsed.data, { expand: PROSPECTUS_EXPAND });
 
     return NextResponse.json(toProspectusResponse(created), { status: 201 });
   } catch (error) {

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     const filters: string[] = [];
     if (search) {
       filters.push(
-        pb.filter("(subject_code ~ {:search} || title ~ {:search})", {
+        pb.filter("(course.code ~ {:search} || course.title ~ {:search})", {
           search,
         }),
       );
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     const result = await pb
       .collection("prospectus_items")
       .getList<ProspectusItem>(page, perPage, {
-        sort: "subject_code",
+        sort: "course.code",
         expand: PROSPECTUS_ITEM_EXPAND,
         ...(filters.length > 0 && { filter: filters.join(" && ") }),
       });
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/prospectus-item
-// { "prospectus": "<id>", "semester": "First Semester", "year_level": "First Year", "subject_code": "CS101", "title": "Intro to Computing" }
+// { "prospectus": "<id>", "course": "<courseId>", "semester": "First Semester", "year_level": "First Year" }
 export async function POST(request: NextRequest) {
   const auth = await requireUser("prospectusItem.write");
   if (!auth.ok) return auth.response;
@@ -94,22 +94,14 @@ export async function POST(request: NextRequest) {
       .collection("prospectus_items")
       .getList<ProspectusItem>(1, 1, {
         skipTotal: true,
-        filter: pb.filter(
-          "prospectus = {:prospectus} && subject_code = {:subjectCode} && year_level = {:yearLevel} && semester = {:semester}",
-          {
-            prospectus: parsed.data.prospectus,
-            subjectCode: parsed.data.subject_code,
-            yearLevel: parsed.data.year_level,
-            semester: parsed.data.semester,
-          },
-        ),
+        filter: pb.filter("prospectus = {:prospectus} && course = {:course}", {
+          prospectus: parsed.data.prospectus,
+          course: parsed.data.course,
+        }),
       });
     if (existing.items.length > 0) {
       return NextResponse.json(
-        {
-          error:
-            "That subject is already listed for this year level and semester of the prospectus",
-        },
+        { error: "That course is already listed in this prospectus" },
         { status: 409 },
       );
     }

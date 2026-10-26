@@ -66,6 +66,13 @@ describe("describeChildren", () => {
     );
   });
 
+  it("blocks deleting a program that still owns courses", async () => {
+    seed({ courses: 5 });
+    expect(await describeChildren("program", ID)).toBe(
+      "This program still has 5 courses. Remove or reassign them first.",
+    );
+  });
+
   it("checks programs and department heads for a department", async () => {
     seed({ programs: 2, department_heads: 1 });
     expect(await describeChildren("department", ID)).toContain(

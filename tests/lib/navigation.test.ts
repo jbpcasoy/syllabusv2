@@ -20,4 +20,10 @@ describe("getNavItems", () => {
       expect(items).toContain("/program");
     }
   });
+
+  it("shows the academic pages to any signed-in user (reads are open)", () => {
+    expect(hrefs(getNavItems(NO_ROLES))).toEqual(
+      expect.arrayContaining(["/school-year", "/course", "/prospectus"]),
+    );
+  });
 });

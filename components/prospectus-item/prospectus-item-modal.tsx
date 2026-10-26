@@ -1,12 +1,15 @@
 "use client";
 
+import {
+  CourseCombobox,
+  type CourseOption,
+} from "@/components/course/course-combobox";
 import type { ProspectusResponse } from "@/lib/prospectus-client";
 import {
   createProspectusItem,
   updateProspectusItem,
   type ProspectusItemResponse,
 } from "@/lib/prospectus-item-client";
-import { MAX_SUBJECT_CODE, MAX_TITLE } from "@/lib/validators/prospectus-item";
 import {
   SEMESTERS,
   YEAR_LEVELS,
@@ -20,7 +23,6 @@ import {
   DialogPanel,
   DialogTitle,
   Field,
-  Input,
   Label,
   Select,
 } from "@headlessui/react";
@@ -46,12 +48,15 @@ const inputClass =
   "mt-1 block w-full rounded-md border-0 px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 disabled:bg-gray-50";
 
 function labelOf(p: {
-  school_year: string;
-  expand?: { program?: { name?: string; code?: string } };
+  expand?: {
+    program?: { name?: string; code?: string };
+    school_year?: { label: string };
+  };
 }) {
   const program = p.expand?.program;
   const name = program?.name || program?.code;
-  return name ? `${name} — ${p.school_year}` : p.school_year;
+  const year = p.expand?.school_year?.label ?? "";
+  return name ? `${name} — ${year}` : year;
 }
 
 export function ProspectusItemModal({
@@ -71,8 +76,9 @@ export function ProspectusItemModal({
   const [semester, setSemester] = useState<Semester>(
     item?.semester ?? SEMESTERS[0],
   );
-  const [subjectCode, setSubjectCode] = useState(item?.subject_code ?? "");
-  const [title, setTitle] = useState(item?.title ?? "");
+  const [course, setCourse] = useState<CourseOption | null>(
+    item?.expand?.course ?? null,
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,38 +89,25 @@ export function ProspectusItemModal({
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const code = subjectCode.trim();
-    const name = title.trim();
 
     if (!isEdit && !prospectusId) return setError("Select a prospectus.");
-    if (!code || code.length > MAX_SUBJECT_CODE) {
-      return setError(
-        `Subject code is required and must be at most ${MAX_SUBJECT_CODE} characters.`,
-      );
-    }
-    if (!name || name.length > MAX_TITLE) {
-      return setError(
-        `Title is required and must be at most ${MAX_TITLE} characters.`,
-      );
-    }
+    if (!course) return setError("Select a course.");
 
     setSaving(true);
     setError(null);
     try {
       if (isEdit) {
         await updateProspectusItem(item.id, {
+          course: course.id,
           year_level: yearLevel,
           semester,
-          subject_code: code,
-          title: name,
         });
       } else {
         await createProspectusItem({
           prospectus: prospectusId,
+          course: course.id,
           year_level: yearLevel,
           semester,
-          subject_code: code,
-          title: name,
         });
       }
       onSaved();
@@ -159,8 +152,10 @@ export function ProspectusItemModal({
                 {!hasCurrentInList && current && (
                   <option value={current.id}>
                     {labelOf({
-                      school_year: current.school_year,
-                      expand: { program: current.program },
+                      expand: {
+                        program: current.program,
+                        school_year: current.school_year,
+                      },
                     })}
                   </option>
                 )}
@@ -217,33 +212,16 @@ export function ProspectusItemModal({
 
             <Field>
               <Label className="block text-sm font-medium text-gray-900">
-                Subject code
+                Course
               </Label>
-              <Input
-                type="text"
-                value={subjectCode}
-                onChange={(e) => setSubjectCode(e.target.value)}
-                autoFocus
+              <CourseCombobox
+                value={course}
+                onChange={setCourse}
                 disabled={saving}
-                maxLength={MAX_SUBJECT_CODE}
-                placeholder="CS 101"
-                className={inputClass}
               />
-            </Field>
-
-            <Field>
-              <Label className="block text-sm font-medium text-gray-900">
-                Title
-              </Label>
-              <Input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                disabled={saving}
-                maxLength={MAX_TITLE}
-                placeholder="Introduction to Computing"
-                className={inputClass}
-              />
+              <Description className="mt-1 text-xs text-gray-500">
+                Any program&apos;s course can be listed, including GE courses.
+              </Description>
             </Field>
 
             {error && (

@@ -3,9 +3,19 @@ import type {
   ProspectusResponse,
   ProspectusUpdateInput,
 } from "@/types/prospectus";
+import type {
+  ProspectusDuplicateInput,
+  ProspectusDuplicateResponse,
+} from "@/types/prospectus-duplicate";
 import type { ListResult } from "pocketbase";
 
-export type { ProspectusInput, ProspectusResponse, ProspectusUpdateInput };
+export type {
+  ProspectusDuplicateInput,
+  ProspectusDuplicateResponse,
+  ProspectusInput,
+  ProspectusResponse,
+  ProspectusUpdateInput,
+};
 
 export type ProspectusListParams = {
   page: number;
@@ -85,4 +95,24 @@ export function updateProspectus(id: string, input: ProspectusUpdateInput) {
 
 export function deleteProspectus(id: string) {
   return request<void>(`/api/prospectus/${id}`, { method: "DELETE" });
+}
+
+export function previewProspectusDuplicate(
+  input: ProspectusDuplicateInput,
+  signal?: AbortSignal,
+) {
+  const qs = new URLSearchParams({ ...input });
+  return request<ProspectusDuplicateResponse>(
+    `/api/prospectus/duplicate?${qs}`,
+    { signal },
+  );
+}
+
+export function duplicateProspectus(input: ProspectusDuplicateInput) {
+  return request<
+    ProspectusDuplicateResponse & { prospectus: ProspectusResponse }
+  >("/api/prospectus/duplicate", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }

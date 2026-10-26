@@ -39,6 +39,7 @@ vi.mock("@/lib/validators/prospectus", () => ({
 
 // Mocked wholesale so the real module (and "server-only") is never loaded.
 vi.mock("@/lib/prospectus", () => ({
+  PROSPECTUS_EXPAND: "program,school_year",
   toProspectusResponse: mocks.toProspectusResponse,
 }));
 
@@ -59,7 +60,7 @@ const rows = [
   {
     id: "abc123abc123abc",
     program: PROGRAM_ID,
-    school_year: "2026-2027",
+    school_year: "sy2026sy2026sy2",
     published: true,
   },
 ];
@@ -72,7 +73,7 @@ const listResult = {
   items: rows,
 };
 
-const base = { sort: "-school_year,-created", expand: "program" };
+const base = { sort: "-school_year.label,-created", expand: "program,school_year" };
 
 function get(query = "") {
   return new NextRequest(`http://localhost/api/prospectus${query}`);
@@ -138,23 +139,23 @@ describe("GET /api/prospectus", () => {
     expect(mocks.getList).toHaveBeenCalledWith(1, 30, base);
   });
 
-  it("binds a search filter over school year, program name and code", async () => {
+  it("binds a search filter over school year label, program name and code", async () => {
     await GET(get("?search=%20bscs%20"));
 
     expect(mocks.filter).toHaveBeenCalledWith(
-      "(school_year ~ {:search} || program.name ~ {:search} || program.code ~ {:search})",
+      "(school_year.label ~ {:search} || program.name ~ {:search} || program.code ~ {:search})",
       { search: "bscs" }, // trimmed
     );
   });
 
   it("filters by program and school year", async () => {
-    await GET(get(`?program=${PROGRAM_ID}&school_year=2026-2027`));
+    await GET(get(`?program=${PROGRAM_ID}&school_year=sy2026sy2026sy2`));
 
     expect(mocks.filter).toHaveBeenCalledWith("program = {:program}", {
       program: PROGRAM_ID,
     });
     expect(mocks.filter).toHaveBeenCalledWith("school_year = {:schoolYear}", {
-      schoolYear: "2026-2027",
+      schoolYear: "sy2026sy2026sy2",
     });
   });
 
@@ -237,7 +238,7 @@ describe("GET /api/prospectus", () => {
 describe("POST /api/prospectus", () => {
   const data = {
     program: PROGRAM_ID,
-    school_year: "2026-2027",
+    school_year: "sy2026sy2026sy2",
     published: false,
   };
 
@@ -257,7 +258,7 @@ describe("POST /api/prospectus", () => {
     expect(requireUserMock).toHaveBeenCalledWith("prospectus.write");
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.collectionSpy).toHaveBeenCalledWith("prospectuses");
-    expect(mocks.create).toHaveBeenCalledWith(data, { expand: "program" });
+    expect(mocks.create).toHaveBeenCalledWith(data, { expand: "program,school_year" });
     expect(mocks.toProspectusResponse).toHaveBeenCalledWith(created);
   });
 
@@ -268,7 +269,7 @@ describe("POST /api/prospectus", () => {
 
     expect(mocks.filter).toHaveBeenCalledWith(
       "program = {:program} && school_year = {:schoolYear}",
-      { program: PROGRAM_ID, schoolYear: "2026-2027" },
+      { program: PROGRAM_ID, schoolYear: "sy2026sy2026sy2" },
     );
     expect(mocks.getList).toHaveBeenCalledWith(
       1,

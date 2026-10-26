@@ -47,7 +47,8 @@ const thClass =
 function prospectusLabel(p: ProspectusResponse) {
   const program = p.expand?.program;
   const name = program?.name || program?.code;
-  return name ? `${name} — ${p.school_year}` : p.school_year;
+  const year = p.expand?.school_year?.label ?? "";
+  return name ? `${name} — ${year}` : year;
 }
 
 // Prospectus as embedded in a prospectus item response.
@@ -55,7 +56,8 @@ function itemProspectusLabel(
   p: NonNullable<NonNullable<ProspectusItemResponse["expand"]>["prospectus"]>,
 ) {
   const name = p.program?.name || p.program?.code;
-  return name ? `${name} — ${p.school_year}` : p.school_year;
+  const year = p.school_year?.label ?? "";
+  return name ? `${name} — ${year}` : year;
 }
 
 export function ProspectusItemManager({
@@ -175,8 +177,8 @@ export function ProspectusItemManager({
           </h1>
           <p className="mt-1 text-sm text-gray-600">
             {canManage
-              ? "Manage the subjects listed in each prospectus."
-              : "Subjects listed in published prospectuses."}
+              ? "Manage the courses listed in each prospectus."
+              : "Courses listed in published prospectuses."}
           </p>
         </div>
         {canManage && (
@@ -200,7 +202,7 @@ export function ProspectusItemManager({
             type="search"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by subject code or title…"
+            placeholder="Search by course code or title…"
             className="block w-full rounded-md border-0 px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
           />
         </div>
@@ -317,9 +319,13 @@ export function ProspectusItemManager({
             {items.map((row) => (
               <tr key={row.id} className="hover:bg-gray-50">
                 <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                  {row.subject_code}
+                  {row.expand?.course?.code || (
+                    <span className="text-gray-400">Unknown</span>
+                  )}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-900">{row.title}</td>
+                <td className="px-4 py-3 text-sm text-gray-900">
+                  {row.expand?.course?.title}
+                </td>
                 <td className="hidden px-4 py-3 text-sm text-gray-500 sm:table-cell">
                   {row.year_level}
                   <span className="block text-xs text-gray-400">

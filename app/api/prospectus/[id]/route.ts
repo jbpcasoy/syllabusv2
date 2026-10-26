@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/capabilities";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
-import { toProspectusResponse } from "@/lib/prospectus";
+import { PROSPECTUS_EXPAND, toProspectusResponse } from "@/lib/prospectus";
 import { parseProspectusUpdate } from "@/lib/validators/prospectus";
 import { Prospectus } from "@/types/prospectus";
 import { NextResponse, type NextRequest } from "next/server";
@@ -18,7 +18,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     const pb = await createAdminPb();
     const record = await pb
       .collection("prospectuses")
-      .getOne<Prospectus>(id, { expand: "program" });
+      .getOne<Prospectus>(id, { expand: PROSPECTUS_EXPAND });
 
     if (!record.published && !(await can(auth.user, "prospectus.write"))) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -30,7 +30,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   }
 }
 
-// PATCH /api/prospectus/:id  { "school_year"?: string, "published"?: boolean }
+// PATCH /api/prospectus/:id  { "school_year"?: "<schoolYearId>", "published"?: boolean }
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const auth = await requireUser("prospectus.write");
   if (!auth.ok) return auth.response;
@@ -78,7 +78,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
     const updated = await pb
       .collection("prospectuses")
-      .update<Prospectus>(id, parsed.data, { expand: "program" });
+      .update<Prospectus>(id, parsed.data, { expand: PROSPECTUS_EXPAND });
 
     return NextResponse.json(toProspectusResponse(updated));
   } catch (error) {

@@ -43,7 +43,7 @@ export function DeleteProspectusDialog({
   }
 
   const program = prospectus?.expand?.program?.name || "this program";
-  const year = prospectus?.school_year || "";
+  const year = prospectus?.expand?.school_year?.label || "";
 
   return (
     <Dialog

@@ -6,17 +6,8 @@ import type {
 type ParseResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
 const PB_ID = /^[a-z0-9]{15}$/;
-const SCHOOL_YEAR = /^\d{4}-\d{4}$/;
 
-export const SCHOOL_YEAR_ERROR =
-  "`school_year` must be two consecutive years, like 2026-2027";
-
-/** "2026-2027" passes; "2026-2028" and "26-27" don't. */
-export function isValidSchoolYear(value: string): boolean {
-  if (!SCHOOL_YEAR.test(value)) return false;
-  const [start, end] = value.split("-").map(Number);
-  return end === start + 1;
-}
+const SCHOOL_YEAR_ERROR = "`school_year` must be a valid school year id";
 
 export function parseProspectusInput(
   body: unknown,
@@ -30,10 +21,7 @@ export function parseProspectusInput(
   if (typeof program !== "string" || !PB_ID.test(program)) {
     return { ok: false, error: "`program` must be a valid program id" };
   }
-  if (
-    typeof school_year !== "string" ||
-    !isValidSchoolYear(school_year.trim())
-  ) {
+  if (typeof school_year !== "string" || !PB_ID.test(school_year)) {
     return { ok: false, error: SCHOOL_YEAR_ERROR };
   }
   if (published !== undefined && typeof published !== "boolean") {
@@ -42,11 +30,7 @@ export function parseProspectusInput(
 
   return {
     ok: true,
-    data: {
-      program,
-      school_year: school_year.trim(),
-      published: published ?? false,
-    },
+    data: { program, school_year, published: published ?? false },
   };
 }
 
@@ -62,13 +46,10 @@ export function parseProspectusUpdate(
   const data: ProspectusUpdateInput = {};
 
   if (school_year !== undefined) {
-    if (
-      typeof school_year !== "string" ||
-      !isValidSchoolYear(school_year.trim())
-    ) {
+    if (typeof school_year !== "string" || !PB_ID.test(school_year)) {
       return { ok: false, error: SCHOOL_YEAR_ERROR };
     }
-    data.school_year = school_year.trim();
+    data.school_year = school_year;
   }
   if (published !== undefined) {
     if (typeof published !== "boolean") {
