@@ -224,6 +224,32 @@ describe("programJoinRequest.review", () => {
   });
 });
 
+describe("syllabusReference.request", () => {
+  it("a chair passes only for their own program", () => {
+    expect(can(chair, "syllabusReference.request", SCOPE)).toBe(true);
+    expect(
+      can(chair, "syllabusReference.request", {
+        ...SCOPE,
+        programId: OTHER.program,
+      }),
+    ).toBe(false);
+  });
+
+  it("is denied without a scope", () => {
+    expect(can(chair, "syllabusReference.request")).toBe(false);
+  });
+
+  it("VPAA, dean, head and plain faculty are denied", () => {
+    for (const r of [vpaa, dean, head, facultyOnly, NO_ROLES]) {
+      expect(can(r, "syllabusReference.request", SCOPE)).toBe(false);
+    }
+  });
+
+  it("admin passes", () => {
+    expect(can({ ...NO_ROLES, isAdmin: true }, "syllabusReference.request", SCOPE)).toBe(true);
+  });
+});
+
 describe("users who hold several roles", () => {
   it("combines scoped powers", () => {
     expect(can(multiRole, "faculty.write", SCOPE)).toBe(true);

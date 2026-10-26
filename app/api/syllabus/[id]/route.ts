@@ -1,0 +1,151 @@
+import { requireUser } from "@/lib/auth";
+import { createAdminPb, handlePbError } from "@/lib/pocketbase";
+import { getUserRoles } from "@/lib/roles";
+import {
+  activeFacultyAmong,
+  getSyllabusAccess,
+  resolveSyllabusAccess,
+  SYLLABUS_EXPAND,
+  toSyllabusResponse,
+} from "@/lib/syllabus";
+import { hasLiveReferenceTo } from "@/lib/syllabus-reference";
+import { parseSyllabusUpdateInput } from "@/lib/validators/syllabus";
+import type { Syllabus } from "@/types/syllabus";
+import { NextResponse, type NextRequest } from "next/server";
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+// Same answer as a missing record, so ids can't be probed.
+function notFound() {
+  return NextResponse.json({ error: "Not found" }, { status: 404 });
+}
+
+function leadOnly() {
+  return NextResponse.json(
+    { error: "Only the lead can change this syllabus." },
+    { status: 403 },
+  );
+}
+
+function notDraft() {
+  return NextResponse.json(
+    { error: "A submitted syllabus can't be changed." },
+    { status: 409 },
+  );
+}
+
+// GET /api/syllabus/:id
+// Lead, co-authors, admin, and faculty of programs referencing it.
+export async function GET(_request: NextRequest, { params }: RouteContext) {
+  const { id } = await params;
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+
+  try {
+    const pb = await createAdminPb();
+    const [syllabus, roles] = await Promise.all([
+      pb.collection("syllabi").getOne<Syllabus>(id, { expand: SYLLABUS_EXPAND }),
+      getUserRoles(auth.user.id),
+    ]);
+    const access = await resolveSyllabusAccess(
+      pb,
+      auth.user.id,
+      roles,
+      syllabus,
+    );
+    if (!access) return notFound();
+
+    return NextResponse.json(toSyllabusResponse(syllabus, access));
+  } catch (error) {
+    return handlePbError(error);
+  }
+}
+
+// PATCH /api/syllabus/:id  { "co_authors": ["<userId>", ...] }
+// Lead only, while a draft. Replaces the list; each co-author must be active
+// faculty of the target program.
+export async function PATCH(request: NextRequest, { params }: RouteContext) {
+  const { id } = await params;
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+
+  try {
+    const body: unknown = await request.json().catch(() => null);
+    const parsed = parseSyllabusUpdateInput(body);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+
+    const pb = await createAdminPb();
+    const [syllabus, roles] = await Promise.all([
+      pb.collection("syllabi").getOne<Syllabus>(id),
+      getUserRoles(auth.user.id),
+    ]);
+    const access = getSyllabusAccess(auth.user.id, roles, syllabus);
+    if (!access) return notFound();
+    if (access !== "lead") return leadOnly();
+    if (syllabus.status !== "draft") return notDraft();
+
+    const { co_authors } = parsed.data;
+    if (co_authors.includes(syllabus.lead)) {
+      return NextResponse.json(
+        { error: "The lead can't also be a co-author." },
+        { status: 400 },
+      );
+    }
+    const eligible = await activeFacultyAmong(pb, syllabus.program, co_authors);
+    if (co_authors.some((userId) => !eligible.has(userId))) {
+      return NextResponse.json(
+        { error: "Every co-author must be active faculty of this program." },
+        { status: 409 },
+      );
+    }
+
+    const updated = await pb
+      .collection("syllabi")
+      .update<Syllabus>(id, { co_authors }, { expand: SYLLABUS_EXPAND });
+    return NextResponse.json(toSyllabusResponse(updated, "lead"));
+  } catch (error) {
+    return handlePbError(error);
+  }
+}
+
+// DELETE /api/syllabus/:id
+// Lead only, for a draft that was never submitted and no program is
+// referencing. Versions and ended references cascade.
+export async function DELETE(_request: NextRequest, { params }: RouteContext) {
+  const { id } = await params;
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+
+  try {
+    const pb = await createAdminPb();
+    const [syllabus, roles] = await Promise.all([
+      pb.collection("syllabi").getOne<Syllabus>(id),
+      getUserRoles(auth.user.id),
+    ]);
+    const access = getSyllabusAccess(auth.user.id, roles, syllabus);
+    if (!access) return notFound();
+    if (access !== "lead") return leadOnly();
+    if (syllabus.status !== "draft" || syllabus.submitted_at) {
+      return NextResponse.json(
+        { error: "Only a draft that was never submitted can be deleted." },
+        { status: 409 },
+      );
+    }
+    if (await hasLiveReferenceTo(pb, id)) {
+      return NextResponse.json(
+        {
+          error:
+            "Another program references this syllabus. Reject or revoke its reference first.",
+        },
+        { status: 409 },
+      );
+    }
+
+    await pb.collection("syllabi").delete(id);
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    return handlePbError(error);
+  }
+}

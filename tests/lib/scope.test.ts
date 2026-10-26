@@ -21,6 +21,7 @@ const records: Record<string, Record<string, unknown>> = {
   "program_chairs/chairAchairAcha": { program: "progAprogAprogA" },
   "faculties/factyAfactyAfact": { program: "progAprogAprogA" },
   "program_join_requests/jreqAjreqAjreqA": { program: "progAprogAprogA" },
+  "syllabus_references/srefAsrefAsrefA": { program: "progAprogAprogA" },
   "department_heads/headAheadAheadA": { department: "deptAdeptAdeptA" },
 };
 
@@ -96,6 +97,17 @@ describe("resolveScope", () => {
     expect(mocks.getOne).toHaveBeenCalledWith(
       "program_join_requests",
       "jreqAjreqAjreqA",
+      { fields: "program" },
+    );
+  });
+
+  it("resolves a syllabus reference through the referencing program", async () => {
+    expect(
+      await resolveScope({ syllabusReference: "srefAsrefAsrefA" }),
+    ).toEqual(fullChain);
+    expect(mocks.getOne).toHaveBeenCalledWith(
+      "syllabus_references",
+      "srefAsrefAsrefA",
       { fields: "program" },
     );
   });

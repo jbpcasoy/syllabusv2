@@ -9,6 +9,12 @@ export type NavItem = {
 };
 
 export const NAV_ITEMS: readonly NavItem[] = [
+  { label: "My Syllabi", href: "/syllabus" },
+  {
+    label: "Syllabus References",
+    href: "/syllabus-reference",
+    capability: "syllabusReference.request",
+  },
   { label: "Campuses", href: "/campus" },
   { label: "Colleges", href: "/college" },
   { label: "Deans", href: "/dean" },

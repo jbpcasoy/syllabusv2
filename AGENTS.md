@@ -92,7 +92,7 @@ Vitest, one test file per route file, mirroring the `app/api` path under `tests/
 - `users.isAdmin` is the only stored role. Every other role is derived from active assignment records (`program_chairs`, `department_heads`, `deans`, `faculties`, `fdis_chairs`, `citl_directors`, `vpaas`).
 - `getUserRoles(userId)` queries those collections in parallel, cached per request with `cache()`.
 - `can(user, capability, target?)` in `lib/capabilities.ts`, rules in `lib/capability-rules.ts`. `requireUser(capability?, target?)` with no argument means any signed-in user. Admin always passes. Use `authorize()` when the target comes from the request body, and `canSomewhere()` in pages to decide whether to show management controls.
-- Targets (`lib/scope.ts`): `{ program }`, `{ department }`, `{ college }`, or an assignment record id (`{ programChair }`, `{ departmentHead }`, `{ faculty }`).
+- Targets (`lib/scope.ts`): `{ program }`, `{ department }`, `{ college }`, or an assignment record id (`{ programChair }`, `{ departmentHead }`, `{ faculty }`, `{ programJoinRequest }`, `{ syllabusReference }`, the last resolving through the referencing program).
 - Lists are scoped (`lib/org-visibility.ts`): admin, VPAA, FDIS chair and CITL director see everything; deans, department heads and program chairs see their scope; everyone else sees their own assignment records. Org lists stay fully visible so unassigned users can find a program to join.
 - Scope is derived through program, then department, then college. A dean manages only their college, a department head only their department, a program chair only their program.
 - A user can hold several roles at once. Never assume a single role.
@@ -105,6 +105,9 @@ Vitest, one test file per route file, mirroring the `app/api` path under `tests/
 | department head (write)                                   | VPAA; Dean for their college                                       | Scoped |
 | program chair (write)                                     | VPAA; Dean for their college; Department Head for their department | Scoped |
 | faculty (write)                                           | Program Chair of that program                                      | Scoped |
+| syllabus reference (request, withdraw)                    | Program Chair of the referencing program                           | Scoped |
+
+Syllabus access (lead, co-author, admin) is a relationship to one record, not a role, so it is checked by `getSyllabusAccess()` in `lib/syllabus.ts`, not by a capability. The same goes for the source lead (or admin) deciding or revoking a reference.
 
 Add every new check as a capability in `lib/capability-rules.ts`. Never branch on role names in routes or components.
 
@@ -137,17 +140,22 @@ Add every new check as a capability in `lib/capability-rules.ts`. Never branch o
 
 **Syllabi:**
 
-- Unique per course and term. One lead (the only editor) and any number of co-authors (view only).
+- Each syllabus is written for a target program (`syllabi.program`), so a GE course can have per-field variants (IT, Nursing, Business). Unique per course, term and target program. The target program's chain reviews it.
+- One lead (the only editor) and any number of co-authors (view only). A second instructor in the same program is added as a co-author.
 - A course has a required owning program. GE courses belong to a GE program and are referenced from other programs' prospectuses.
-- A syllabus can only be created for a course and term that appear in a published prospectus, and only by faculty with an active assignment in the course's owning program.
+- A syllabus can only be created for a course and term listed in the target program's published prospectus (matching school year and semester, term open), and only by active faculty of the target program. Co-authors must meet the same rule.
+- References: instead of writing its own, a program's chair may request to reference another program's syllabus for the same course and term. The source lead approves or rejects (self-approval allowed); admin may approve, reject and revoke on the lead's behalf. Any source status can be referenced and no second review happens. The chair may withdraw and the source lead may revoke. A program has either its own syllabus or one pending or approved reference per course and term.
+- Phase 2 spec: `docs/specs/phase-2-syllabus-submission.md`.
 
 **Files:** PDFs are validated server-side (MIME type, magic bytes, size) and are served only through a scoped route that checks the caller's access. Never expose raw S3 URLs.
 
 ## Data model
 
-**Existing:** `users` (with `isAdmin`; `role` removed), `campuses`, `colleges`, `departments`, `programs`, `deans`, `department_heads`, `program_chairs`, `faculties`, `fdis_chairs`, `citl_directors`, `vpaas`, `prospectuses` (`school_year` relation), `prospectus_items` (`course` relation), `school_years`, `terms`, `courses`, `program_join_requests`.
+**Existing:** `users` (with `isAdmin`; `role` removed), `campuses`, `colleges`, `departments`, `programs`, `deans`, `department_heads`, `program_chairs`, `faculties`, `fdis_chairs`, `citl_directors`, `vpaas`, `prospectuses` (`school_year` relation), `prospectus_items` (`course` relation), `school_years`, `terms`, `courses`, `program_join_requests`, `syllabi`, `syllabus_versions` (protected PDF `file`, 20 MB), `syllabus_references` (one pending or approved per program, course and term).
 
-**Planned collections:** `syllabi`, `syllabus_versions`, `syllabus_reviews`, `form17_answers`, `form18_points`, `syllabus_signed_copies`, `audit_log`.
+**Storage:** set `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET` and `S3_FORCE_PATH_STYLE` in PocketBase's environment before migrating to store files in S3. Unset means local disk.
+
+**Planned collections:** `syllabus_reviews`, `form17_answers`, `form18_points`, `syllabus_signed_copies`, `audit_log`.
 
 ## Roadmap and status
 
@@ -158,7 +166,7 @@ Work in this order and do not start a phase before the previous one is done unle
 | A     | `isAdmin`, roles resolver, scoped capabilities, required department and college, remove `role`, test helper | Done        |
 | 1     | School years, terms, courses, prospectus and items, duplicate prospectus (admin only)                       | Done        |
 | 1b    | Program membership requests, institutional-domain registration, email verification                         | Done        |
-| 2     | Syllabus submission, PDF versions, co-authors, protected file route                                         | Not started |
+| 2     | Syllabus submission, PDF versions, co-authors, protected file route, syllabus references                    | Done        |
 | 3     | Review engine, Form 17, Form 18-1, proxy, approval references, signed scan                                  | Not started |
 | 4     | Reviewer queues, PDF viewer, timeline, faculty return view                                                  | Not started |
 | 5     | Notifications, deadlines, dashboards                                                                        | Not started |
@@ -166,11 +174,13 @@ Work in this order and do not start a phase before the previous one is done unle
 
 Update the status column when a phase finishes.
 
+Carried into Phase 3 from Phase 2: start a new term's syllabus from the previous approved one, lead transfer (Program Chair or admin), reviewer access in `getSyllabusAccess`, and a concurrency guard on workflow transitions (two simultaneous submits both pass today; harmless for submit, not for approve and return).
+
 ## Open questions (ask before assuming)
 
 1. Who may set the justification flag, and may it ever block routing?
 2. Who uploads the signed scan (proposed: CITL director or admin)?
-3. Are GE instructors co-authors on the single syllabus per course and term?
+3. ~~Are GE instructors co-authors on the single syllabus per course and term?~~ Answered: no single GE syllabus. Each target program has its own variant, or references another program's (see Syllabi).
 4. ~~Do scoped managers see only their scope in lists?~~ Answered: yes, scoped (see Authorization).
 
 ## Working agreement

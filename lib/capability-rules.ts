@@ -26,7 +26,8 @@ export type Capability =
   | "departmentHead.write"
   | "programChair.write"
   | "faculty.write"
-  | "programJoinRequest.review";
+  | "programJoinRequest.review"
+  | "syllabusReference.request";
 
 /** The org chain a target sits in, resolved program → department → college. */
 export type ScopeChain = {
@@ -80,6 +81,9 @@ const RULES: Record<Capability, Rule> = {
   "faculty.write": chair,
   // Approving creates a faculty record, so it mirrors faculty.write.
   "programJoinRequest.review": chair,
+  // Request or withdraw a reference to another program's syllabus. The
+  // source lead's decision is a relationship check, not a capability.
+  "syllabusReference.request": chair,
 };
 
 export const CAPABILITIES = Object.keys(RULES) as Capability[];

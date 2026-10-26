@@ -1,0 +1,23 @@
+{
+  "1": "pocketbase",
+  "3": "createAdminPb",
+  "13": "program-join-request/route.ts",
+  "16": "react",
+  "17": "dean/route.ts",
+  "19": "vpaa/route.ts",
+  "22": "lib/prospectus-duplicate.ts",
+  "25": "pocketbase.ts",
+  "28": "vitest",
+  "31": "campus-client.ts",
+  "36": "lib/roles.ts",
+  "53": "fdis-chair/route.ts",
+  "56": "school-year/[id]/route.ts",
+  "110": "course/[id]/route.ts",
+  "111": "org-visibility.ts",
+  "112": "dean/route.test.ts",
+  "113": "faculty/route.test.ts",
+  "114": "program-chair/route.test.ts",
+  "115": "program-join-request/[id]/route.test.ts",
+  "116": "1793000007_updated_users_verified.js",
+  "117": "1793000008_created_program_join_requests.js"
+}

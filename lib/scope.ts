@@ -13,7 +13,8 @@ export type ScopeTarget =
   | { programChair: string }
   | { departmentHead: string }
   | { faculty: string }
-  | { programJoinRequest: string };
+  | { programJoinRequest: string }
+  | { syllabusReference: string };
 
 /**
  * Walks program → department → college. A missing record throws PocketBase's
@@ -56,7 +57,10 @@ export async function resolveScope(target: ScopeTarget): Promise<ScopeChain> {
       ? ["program_chairs", target.programChair]
       : "faculty" in target
         ? ["faculties", target.faculty]
-        : ["program_join_requests", target.programJoinRequest];
+        : "programJoinRequest" in target
+          ? ["program_join_requests", target.programJoinRequest]
+          : // The referencing program, not the source syllabus's program.
+            ["syllabus_references", target.syllabusReference];
   const record = await pb
     .collection(collection)
     .getOne<{ program: string }>(id, { fields: "program" });
