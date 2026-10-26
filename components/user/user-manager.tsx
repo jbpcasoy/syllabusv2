@@ -1,8 +1,11 @@
 "use client";
 
 import { formatDate } from "@/lib/format-date";
-import { listUsers, type UserResponse } from "@/lib/user-client";
-import { ROLE_LABELS, USER_ROLES, type UserRole } from "@/types/user";
+import {
+  listUsers,
+  type UserKind,
+  type UserResponse,
+} from "@/lib/user-client";
 import { Select } from "@headlessui/react";
 import type { ListResult } from "pocketbase";
 import { useEffect, useState } from "react";
@@ -10,6 +13,23 @@ import { DeleteUserDialog } from "./delete-user-modal";
 import { UserModal, type UserModalMode } from "./user-modal";
 
 const PER_PAGE = 10;
+
+const KIND_LABELS: Record<UserKind, string> = {
+  admin: "Administrators",
+  assigned: "Has assignments",
+  unassigned: "Unassigned",
+};
+
+/** "Administrator", "Program Chair (BSCS)", ... or "Unassigned". */
+function describeAccess(user: UserResponse): string {
+  const parts = [
+    ...(user.isAdmin ? ["Administrator"] : []),
+    ...(user.assignments ?? []).map((a) =>
+      a.scope ? `${a.title} (${a.scope})` : a.title,
+    ),
+  ];
+  return parts.length > 0 ? parts.join(", ") : "Unassigned";
+}
 
 type ModalState = {
   open: boolean;
@@ -25,7 +45,7 @@ type UserManagerProps = {
 export function UserManager({ currentUserId }: UserManagerProps) {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<UserRole | "">("");
+  const [kindFilter, setKindFilter] = useState<UserKind | "">("");
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -64,7 +84,7 @@ export function UserManager({ currentUserId }: UserManagerProps) {
     setError(null);
 
     listUsers(
-      { page, perPage: PER_PAGE, search, role: roleFilter },
+      { page, perPage: PER_PAGE, search, kind: kindFilter },
       controller.signal,
     )
       .then((result) => {
@@ -78,7 +98,7 @@ export function UserManager({ currentUserId }: UserManagerProps) {
       });
 
     return () => controller.abort();
-  }, [page, search, roleFilter, reloadKey]);
+  }, [page, search, kindFilter, reloadKey]);
 
   function openModal(mode: UserModalMode, user: UserResponse | null = null) {
     setModal((prev) => ({ open: true, mode, user, key: prev.key + 1 }));
@@ -123,22 +143,22 @@ export function UserManager({ currentUserId }: UserManagerProps) {
           />
         </div>
         <div className="sm:w-56">
-          <label htmlFor="role-filter" className="sr-only">
-            Filter by role
+          <label htmlFor="kind-filter" className="sr-only">
+            Filter by access
           </label>
           <Select
-            id="role-filter"
-            value={roleFilter}
+            id="kind-filter"
+            value={kindFilter}
             onChange={(e) => {
-              setRoleFilter(e.target.value as UserRole | "");
+              setKindFilter(e.target.value as UserKind | "");
               setPage(1);
             }}
             className="block w-full rounded-md border-0 px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
           >
-            <option value="">All roles</option>
-            {USER_ROLES.map((role) => (
-              <option key={role} value={role}>
-                {ROLE_LABELS[role]}
+            <option value="">All users</option>
+            {(Object.keys(KIND_LABELS) as UserKind[]).map((kind) => (
+              <option key={kind} value={kind}>
+                {KIND_LABELS[kind]}
               </option>
             ))}
           </Select>
@@ -181,7 +201,7 @@ export function UserManager({ currentUserId }: UserManagerProps) {
                 scope="col"
                 className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 md:table-cell"
               >
-                Role
+                Access
               </th>
               <th
                 scope="col"
@@ -217,7 +237,7 @@ export function UserManager({ currentUserId }: UserManagerProps) {
                     {user.email}
                   </td>
                   <td className="hidden px-4 py-3 text-sm text-gray-500 md:table-cell">
-                    {user.role ? ROLE_LABELS[user.role] : "—"}
+                    {describeAccess(user)}
                   </td>
                   <td className="hidden px-4 py-3 text-sm text-gray-500 lg:table-cell">
                     {formatDate(user.updated)}
@@ -265,7 +285,7 @@ export function UserManager({ currentUserId }: UserManagerProps) {
                   colSpan={5}
                   className="px-4 py-10 text-center text-sm text-gray-500"
                 >
-                  {search || roleFilter
+                  {search || kindFilter
                     ? "No users match your filters."
                     : "No users yet. Create your first one."}
                 </td>

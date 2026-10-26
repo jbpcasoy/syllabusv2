@@ -1,18 +1,7 @@
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
 import type { Program } from "@/types/program";
 import type { ProgramChair, ProgramChairResponse } from "@/types/program-chair";
-import type { AppUser, UserRole } from "@/types/user";
 import "server-only";
-
-/** Admins, plus any role listed in PERMISSIONS.programChair.write. */
-export function canManageProgramChairs(user: AppUser): boolean {
-  if (user.role === "admin") return true;
-  return (
-    !!user.role &&
-    (PERMISSIONS.programChair.write as readonly UserRole[]).includes(user.role)
-  );
-}
 
 export function toProgramChairResponse(
   record: ProgramChair,

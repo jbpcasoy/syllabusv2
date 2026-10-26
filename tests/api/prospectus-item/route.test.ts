@@ -2,17 +2,17 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  requireUser: vi.fn(),
   getList: vi.fn(),
   create: vi.fn(),
   filter: vi.fn((expr: string) => expr),
-  canManage: vi.fn(),
 }));
 
-vi.mock("@/lib/auth", () => ({ requireUser: mocks.requireUser }));
-vi.mock("@/lib/permissions", () => ({
-  PERMISSIONS: { prospectusItem: { read: [], write: ["dean"] } },
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
+vi.mock("@/lib/capabilities", async () =>
+  (await import("@/tests/helpers/mock-auth")).capabilitiesModuleMock(),
+);
 vi.mock("@/lib/pocketbase", () => ({
   createAdminPb: async () => ({
     filter: mocks.filter,
@@ -23,11 +23,11 @@ vi.mock("@/lib/pocketbase", () => ({
 }));
 vi.mock("@/lib/prospectus-item", () => ({
   PROSPECTUS_ITEM_EXPAND: "prospectus.program",
-  canManageProspectusItems: mocks.canManage,
   toProspectusItemResponse: (r: unknown) => r,
 }));
 
 import { GET, POST } from "@/app/api/prospectus-item/route";
+import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const PID = "abcde12345fghij";
 const validBody = {
@@ -47,16 +47,12 @@ function post(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.requireUser.mockResolvedValue({ ok: true, user: { role: "dean" } });
-  mocks.canManage.mockReturnValue(true);
+  mockAuth({ isAdmin: true });
 });
 
 describe("GET /api/prospectus-item", () => {
   it("returns the auth response when unauthenticated", async () => {
-    mocks.requireUser.mockResolvedValue({
-      ok: false,
-      response: new Response(null, { status: 401 }),
-    });
+    mockAuth({ signedIn: false });
     const res = await GET(
       new NextRequest("http://localhost/api/prospectus-item"),
     );
@@ -79,8 +75,8 @@ describe("GET /api/prospectus-item", () => {
     expect(opts.filter).not.toContain("published");
   });
 
-  it("restricts non-managers to published prospectuses", async () => {
-    mocks.canManage.mockReturnValue(false);
+  it("restricts non-admins (even deans) to published prospectuses", async () => {
+    mockAuth({ roles: { deanOfColleges: ["colgacolgacolga"] } });
     mocks.getList.mockResolvedValue({ items: [], totalPages: 1 });
     await GET(new NextRequest("http://localhost/api/prospectus-item"));
     expect(mocks.getList.mock.calls[0][2].filter).toBe(
@@ -111,5 +107,20 @@ describe("POST /api/prospectus-item", () => {
     expect(mocks.create).toHaveBeenCalledWith(validBody, {
       expand: "prospectus.program",
     });
+    expect(requireUserMock).toHaveBeenCalledWith("prospectusItem.write");
+  });
+
+  it("returns 403 for a non-admin and creates nothing", async () => {
+    mockAuth({ roles: { chairOfPrograms: ["progaprogaproga"] } });
+    const res = await POST(post(validBody));
+    expect(res.status).toBe(403);
+    expect(mocks.getList).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when not signed in", async () => {
+    mockAuth({ signedIn: false });
+    const res = await POST(post(validBody));
+    expect(res.status).toBe(401);
   });
 });

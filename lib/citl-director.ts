@@ -1,17 +1,6 @@
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
 import type { CitlDirector, CitlDirectorResponse } from "@/types/citl-director";
-import type { AppUser, UserRole } from "@/types/user";
 import "server-only";
-
-/** Admins, plus any role listed in PERMISSIONS.citlDirector.write. */
-export function canManageCitlDirectors(user: AppUser): boolean {
-  if (user.role === "admin") return true;
-  return (
-    !!user.role &&
-    (PERMISSIONS.citlDirector.write as readonly UserRole[]).includes(user.role)
-  );
-}
 
 export function toCitlDirectorResponse(
   record: CitlDirector,

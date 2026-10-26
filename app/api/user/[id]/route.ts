@@ -1,7 +1,6 @@
-import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
+import { authorize, requireUser } from "@/lib/auth";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
-import { toUserResponse } from "@/lib/users";
+import { hasOtherAdmin, toUserResponse } from "@/lib/users";
 import { parseUserInput } from "@/lib/validators/user";
 import type { AppUser } from "@/types/user";
 import { NextResponse, type NextRequest } from "next/server";
@@ -15,8 +14,9 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
   try {
     const { id } = await params;
-    if (auth.user.role !== "admin" && auth.user.id !== id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (auth.user.id !== id) {
+      const denied = await authorize(auth.user, "user.read");
+      if (denied) return denied;
     }
 
     const pb = await createAdminPb();
@@ -27,9 +27,9 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   }
 }
 
-// PATCH /api/user/:id  { "email"?, "password"?, "name"?, "role"? }
+// PATCH /api/user/:id  { "email"?, "password"?, "name"?, "isAdmin"? }
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.user.write);
+  const auth = await requireUser("user.write");
   if (!auth.ok) return auth.response;
 
   try {
@@ -40,16 +40,20 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
 
-    // Guard against an admin locking themselves out by changing their own role.
-    if (
-      id === auth.user.id &&
-      parsed.data.role !== undefined &&
-      parsed.data.role !== "admin"
-    ) {
-      return NextResponse.json(
-        { error: "You can't remove your own admin role" },
-        { status: 400 },
-      );
+    // Guard against an admin locking themselves (or everyone) out.
+    if (parsed.data.isAdmin === false) {
+      if (id === auth.user.id) {
+        return NextResponse.json(
+          { error: "You can't remove your own admin access" },
+          { status: 400 },
+        );
+      }
+      if (!(await hasOtherAdmin(id))) {
+        return NextResponse.json(
+          { error: "At least one administrator must remain" },
+          { status: 409 },
+        );
+      }
     }
 
     const pb = await createAdminPb();
@@ -67,7 +71,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
 // DELETE /api/user/:id
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.user.write);
+  const auth = await requireUser("user.write");
   if (!auth.ok) return auth.response;
 
   try {
@@ -76,6 +80,12 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
       return NextResponse.json(
         { error: "You can't delete your own account" },
         { status: 400 },
+      );
+    }
+    if (!(await hasOtherAdmin(id))) {
+      return NextResponse.json(
+        { error: "At least one administrator must remain" },
+        { status: 409 },
       );
     }
 

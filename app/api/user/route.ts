@@ -1,14 +1,18 @@
 import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
-import { toUserResponse } from "@/lib/users";
-import { isUserRole, parseUserInput } from "@/lib/validators/user";
+import {
+  listActiveAssignments,
+  toUserResponse,
+  userKindFilter,
+} from "@/lib/users";
+import { isUserKind, parseUserInput } from "@/lib/validators/user";
 import type { AppUser } from "@/types/user";
 import { NextResponse, type NextRequest } from "next/server";
 
-// GET /api/user?page=1&perPage=30&search=foo&role=dean
+// GET /api/user?page=1&perPage=30&search=foo&kind=admin|assigned|unassigned
+// Each item includes its active assignments.
 export async function GET(request: NextRequest) {
-  const auth = await requireUser(PERMISSIONS.user.read);
+  const auth = await requireUser("user.read");
   if (!auth.ok) return auth.response;
 
   try {
@@ -19,10 +23,10 @@ export async function GET(request: NextRequest) {
       Math.max(1, Number(searchParams.get("perPage")) || 30),
     );
     const search = searchParams.get("search")?.trim();
-    const role = searchParams.get("role")?.trim();
+    const kind = searchParams.get("kind")?.trim();
 
-    if (role && !isUserRole(role)) {
-      return NextResponse.json({ error: "Invalid `role`" }, { status: 400 });
+    if (kind && !isUserKind(kind)) {
+      return NextResponse.json({ error: "Invalid `kind`" }, { status: 400 });
     }
 
     // The collection's listRule only lets users see themselves,
@@ -36,8 +40,8 @@ export async function GET(request: NextRequest) {
         pb.filter("(name ~ {:search} || email ~ {:search})", { search }),
       );
     }
-    if (role) {
-      filters.push(pb.filter("role = {:role}", { role }));
+    if (kind && isUserKind(kind)) {
+      filters.push(userKindFilter(kind));
     }
 
     const result = await pb
@@ -47,18 +51,24 @@ export async function GET(request: NextRequest) {
         ...(filters.length > 0 && { filter: filters.join(" && ") }),
       });
 
+    const assignments = await listActiveAssignments(
+      result.items.map((u) => u.id),
+    );
+
     return NextResponse.json({
       ...result,
-      items: result.items.map(toUserResponse),
+      items: result.items.map((u) =>
+        toUserResponse(u, assignments.get(u.id) ?? []),
+      ),
     });
   } catch (error) {
     return handlePbError(error);
   }
 }
 
-// POST /api/user  { "email": "...", "password": "...", "name"?: "...", "role"?: "dean" }
+// POST /api/user  { "email": "...", "password": "...", "name"?: "...", "isAdmin"?: boolean }
 export async function POST(request: NextRequest) {
-  const auth = await requireUser(PERMISSIONS.user.write);
+  const auth = await requireUser("user.write");
   if (!auth.ok) return auth.response;
 
   try {

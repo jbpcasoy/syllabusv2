@@ -63,14 +63,12 @@ export function DepartmentModal({
     e.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName) return setError("Name is required.");
+    if (!collegeId) return setError("Select a college.");
 
     setSaving(true);
     setError(null);
     try {
-      const input = {
-        name: trimmedName,
-        college: collegeId, // "" clears the relation
-      };
+      const input = { name: trimmedName, college: collegeId };
       if (mode === "edit" && department) {
         await updateDepartment(department.id, input);
       } else {
@@ -166,7 +164,7 @@ export function DepartmentModal({
                   disabled={saving}
                   className={inputClass}
                 >
-                  <option value="">No college</option>
+                  <option value="">Select a college…</option>
                   {!hasCurrentInList && currentCollege && (
                     <option value={currentCollege.id}>
                       {currentCollege.name || currentCollege.id}

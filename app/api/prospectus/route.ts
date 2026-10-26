@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
+import { can } from "@/lib/capabilities";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
-import { canManageProspectuses, toProspectusResponse } from "@/lib/prospectus";
+import { toProspectusResponse } from "@/lib/prospectus";
 import { parseProspectusInput } from "@/lib/validators/prospectus";
 import { Prospectus } from "@/types/prospectus";
 import { NextResponse, type NextRequest } from "next/server";
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const schoolYear = searchParams.get("school_year")?.trim();
     const publishedParam = searchParams.get("published")?.trim();
 
-    const canManage = canManageProspectuses(auth.user);
+    const canManage = await can(auth.user, "prospectus.write");
 
     // Collection rules are null, so reads go through the superuser client.
     const pb = await createAdminPb();
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/prospectus  { "program": "<programId>", "school_year": "2026-2027", "published"?: boolean }
 export async function POST(request: NextRequest) {
-  const auth = await requireUser(PERMISSIONS.prospectus.write);
+  const auth = await requireUser("prospectus.write");
   if (!auth.ok) return auth.response;
 
   try {

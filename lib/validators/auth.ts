@@ -13,7 +13,7 @@ export type ParsedRegistration = Pick<
   "name" | "email" | "password"
 >;
 
-/** Deliberately ignores `role` and any other field: self-registration can't pick a role. */
+/** Deliberately ignores `isAdmin` and any other field: self-registration can't grant access. */
 export function parseRegisterInput(
   body: unknown,
 ): ParseResult<ParsedRegistration> {

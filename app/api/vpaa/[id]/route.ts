@@ -1,5 +1,4 @@
 import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { parseVpaaUpdate } from "@/lib/validators/vpaa";
 import { hasActiveVpaa, toVpaaResponse } from "@/lib/vpaa";
@@ -10,7 +9,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 // PATCH /api/vpaa/:id { "active": boolean }
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.vpaa.write);
+  const auth = await requireUser("vpaa.write");
   if (!auth.ok) return auth.response;
 
   try {
@@ -43,7 +42,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
 // DELETE /api/vpaa/:id
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.vpaa.write);
+  const auth = await requireUser("vpaa.write");
   if (!auth.ok) return auth.response;
 
   try {

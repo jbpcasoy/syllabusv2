@@ -1,4 +1,4 @@
-import { USER_ROLES, type UserInput, type UserRole } from "@/types/user";
+import { USER_KINDS, type UserInput, type UserKind } from "@/types/user";
 
 type ParseResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -7,10 +7,10 @@ export const MIN_PASSWORD = 8; // matches the `min` on the users.password field
 export const MAX_PASSWORD = 71; // PocketBase's bcrypt limit
 export const MAX_NAME = 255; // matches the `max` on the users.name field
 
-export function isUserRole(value: unknown): value is UserRole {
+export function isUserKind(value: unknown): value is UserKind {
   return (
     typeof value === "string" &&
-    (USER_ROLES as readonly string[]).includes(value)
+    (USER_KINDS as readonly string[]).includes(value)
   );
 }
 
@@ -22,7 +22,10 @@ export function parseUserInput(
     return { ok: false, error: "Body must be a JSON object" };
   }
 
-  const { email, password, name, role } = body as Record<string, unknown>;
+  const { email, password, name, isAdmin } = body as Record<
+    string,
+    unknown
+  >;
   const data: Partial<UserInput> = {};
 
   if (email !== undefined) {
@@ -60,18 +63,11 @@ export function parseUserInput(
     data.name = name.trim();
   }
 
-  if (role !== undefined) {
-    // "" or null clears the role; otherwise it must be a known role.
-    if (role === null || role === "") {
-      data.role = "";
-    } else if (isUserRole(role)) {
-      data.role = role;
-    } else {
-      return {
-        ok: false,
-        error: `\`role\` must be one of: ${USER_ROLES.join(", ")}`,
-      };
+  if (isAdmin !== undefined) {
+    if (typeof isAdmin !== "boolean") {
+      return { ok: false, error: "`isAdmin` must be a boolean" };
     }
+    data.isAdmin = isAdmin;
   }
 
   return { ok: true, data };

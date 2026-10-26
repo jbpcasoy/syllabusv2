@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -37,17 +37,13 @@ vi.mock("@/lib/faculty", () => ({
   toFacultyResponse: mocks.toFacultyResponse,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "u1", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
 
 import { DELETE, PATCH } from "@/app/api/faculty/[id]/route";
-import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
+import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const ID = "abc123abc123abc";
 const ctx = { params: Promise.resolve({ id: ID }) };
@@ -63,21 +59,17 @@ function req(method: string, body?: unknown) {
 }
 
 function unauthorized() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-  });
+  mockAuth({ signedIn: false });
 }
 
+/** Signed in, but with no roles. */
 function forbidden() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-  });
+  mockAuth();
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAuth({ isAdmin: true });
 });
 
 describe("PATCH /api/faculty/:id", () => {
@@ -93,7 +85,7 @@ describe("PATCH /api/faculty/:id", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ...updated, mapped: true });
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.faculty.write);
+    expect(requireUserMock).toHaveBeenCalledWith("faculty.write", { faculty: ID });
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.update).toHaveBeenCalledWith(
       ID,
@@ -168,7 +160,7 @@ describe("DELETE /api/faculty/:id", () => {
 
     expect(res.status).toBe(204);
     expect(await res.text()).toBe("");
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.faculty.write);
+    expect(requireUserMock).toHaveBeenCalledWith("faculty.write", { faculty: ID });
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.delete).toHaveBeenCalledWith(ID);
   });
@@ -197,6 +189,52 @@ describe("DELETE /api/faculty/:id", () => {
 
     expect(res.status).toBe(403);
     expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe("scope (faculty.write on the membership's program)", () => {
+  const chain = {
+    programId: "progaprogaproga",
+    departmentId: "deptadeptadepta",
+    collegeId: "colgacolgacolga",
+  };
+
+  beforeEach(() => {
+    mocks.parseFacultyUpdate.mockReturnValue({
+      ok: true,
+      data: { active: false },
+    });
+    mocks.update.mockResolvedValue({ id: ID });
+    mocks.delete.mockResolvedValue(true);
+  });
+
+  it("lets the chair of the program update and delete", async () => {
+    mockAuth({ roles: { chairOfPrograms: [chain.programId] }, scope: chain });
+
+    expect((await PATCH(req("PATCH", { active: false }), ctx)).status).toBe(
+      200,
+    );
+    expect((await DELETE(req("DELETE"), ctx)).status).toBe(204);
+  });
+
+  it("returns 403 for the chair of another program and changes nothing", async () => {
+    mockAuth({ roles: { chairOfPrograms: ["otherprogramoth"] }, scope: chain });
+
+    expect((await PATCH(req("PATCH", { active: false }), ctx)).status).toBe(
+      403,
+    );
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for the dean and department head above the program", async () => {
+    for (const roles of [
+      { deanOfColleges: [chain.collegeId] },
+      { headOfDepartments: [chain.departmentId] },
+    ]) {
+      mockAuth({ roles, scope: chain });
+      expect((await DELETE(req("DELETE"), ctx)).status).toBe(403);
+    }
     expect(mocks.delete).not.toHaveBeenCalled();
   });
 });

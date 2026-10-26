@@ -1,5 +1,4 @@
 import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import {
   programHasActiveChair,
@@ -12,12 +11,13 @@ import { NextResponse, type NextRequest } from "next/server";
 type RouteContext = { params: Promise<{ id: string }> };
 
 // PATCH /api/program-chair/:id  { "active": boolean }
+// Scoped by the record's program.
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.programChair.write);
+  const { id } = await params;
+  const auth = await requireUser("programChair.write", { programChair: id });
   if (!auth.ok) return auth.response;
 
   try {
-    const { id } = await params;
     const body: unknown = await request.json().catch(() => null);
     const parsed = parseProgramChairUpdate(body);
     if (!parsed.ok) {
@@ -53,11 +53,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
 // DELETE /api/program-chair/:id
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.programChair.write);
+  const { id } = await params;
+  const auth = await requireUser("programChair.write", { programChair: id });
   if (!auth.ok) return auth.response;
 
   try {
-    const { id } = await params;
     const pb = await createAdminPb();
     await pb.collection("program_chairs").delete(id);
     return new NextResponse(null, { status: 204 });

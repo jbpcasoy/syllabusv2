@@ -85,17 +85,15 @@ Vitest, one test file per route file, mirroring the `app/api` path under `tests/
 
 - Mock `@/lib/pocketbase`, `@/lib/auth`, the validator and the `@/lib/<x>` module (mocked wholesale so `server-only` never loads).
 - Cover: success, validation 400, malformed JSON passed as `null`, 401, 403 with nothing touching PocketBase, 404 propagation, `handlePbError` delegation, and each 409 case.
-- Once the shared helper exists, use `mockAuth({ isAdmin, roles })` instead of hand-written `requireUser` mocks.
+- Use `mockAuth({ isAdmin, roles, scope })` from `tests/helpers/mock-auth.ts` with `authModuleMock()`, `rolesModuleMock()` and `capabilitiesModuleMock()` instead of hand-written `requireUser` mocks. Cover in scope, out of scope and admin override for every scoped capability.
 
 ## Authorization
 
-**Current state (being replaced):** `users.role` plus `PERMISSIONS` and `canManage*` helpers. These check role only, not scope.
-
-**Target (Phase A):**
-
-- Replace `role` with an `isAdmin` boolean. Every other role is derived from active assignment records (`program_chairs`, `department_heads`, `deans`, `faculties`, `fdis_chairs`, `citl_directors`, `vpaas`).
+- `users.isAdmin` is the only stored role. Every other role is derived from active assignment records (`program_chairs`, `department_heads`, `deans`, `faculties`, `fdis_chairs`, `citl_directors`, `vpaas`).
 - `getUserRoles(userId)` queries those collections in parallel, cached per request with `cache()`.
-- `can(user, capability, target?)` replaces `PERMISSIONS` and `canManage*`. `requireUser(capability?, target?)` with no argument means any signed-in user. Admin always passes.
+- `can(user, capability, target?)` in `lib/capabilities.ts`, rules in `lib/capability-rules.ts`. `requireUser(capability?, target?)` with no argument means any signed-in user. Admin always passes. Use `authorize()` when the target comes from the request body, and `canSomewhere()` in pages to decide whether to show management controls.
+- Targets (`lib/scope.ts`): `{ program }`, `{ department }`, `{ college }`, or an assignment record id (`{ programChair }`, `{ departmentHead }`, `{ faculty }`).
+- Lists are scoped (`lib/org-visibility.ts`): admin, VPAA, FDIS chair and CITL director see everything; deans, department heads and program chairs see their scope; everyone else sees their own assignment records. Org lists stay fully visible so unassigned users can find a program to join.
 - Scope is derived through program, then department, then college. A dean manages only their college, a department head only their department, a program chair only their program.
 - A user can hold several roles at once. Never assume a single role.
 
@@ -108,7 +106,7 @@ Vitest, one test file per route file, mirroring the `app/api` path under `tests/
 | program chair (write)                                     | VPAA; Dean for their college; Department Head for their department | Scoped |
 | faculty (write)                                           | Program Chair of that program                                      | Scoped |
 
-Until Phase A ships, do not add new role-based checks that depend on `users.role`. Add them through a capability name so migration is mechanical.
+Add every new check as a capability in `lib/capability-rules.ts`. Never branch on role names in routes or components.
 
 ## Domain rules
 
@@ -142,9 +140,9 @@ Until Phase A ships, do not add new role-based checks that depend on `users.role
 
 ## Data model
 
-**Existing:** `users`, `campuses`, `colleges`, `departments`, `programs`, `deans`, `department_heads`, `program_chairs`, `faculties`, `fdis_chairs`, `citl_directors`, `vpaas`, `prospectuses`, `prospectus_items`.
+**Existing:** `users` (with `isAdmin`; `role` removed), `campuses`, `colleges`, `departments`, `programs`, `deans`, `department_heads`, `program_chairs`, `faculties`, `fdis_chairs`, `citl_directors`, `vpaas`, `prospectuses`, `prospectus_items`.
 
-**Planned changes:** `users.isAdmin` (then drop `role`), required `programs.department` and `departments.college`, `prospectuses.school_year` becomes a relation, and `prospectus_items` references a `course` instead of free-text code and title.
+**Planned changes:** `prospectuses.school_year` becomes a relation, and `prospectus_items` references a `course` instead of free-text code and title.
 
 **Planned collections:** `school_years`, `terms` (unique per school year and semester), `courses` (unique code, required owning program, nominal duration in hours), `program_join_requests`, `syllabi`, `syllabus_versions`, `syllabus_reviews`, `form17_answers`, `form18_points`, `syllabus_signed_copies`, `audit_log`.
 
@@ -154,7 +152,7 @@ Work in this order and do not start a phase before the previous one is done unle
 
 | Phase | Scope                                                                                                       | Status      |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ----------- |
-| A     | `isAdmin`, roles resolver, scoped capabilities, required department and college, remove `role`, test helper | Not started |
+| A     | `isAdmin`, roles resolver, scoped capabilities, required department and college, remove `role`, test helper | Done        |
 | 1     | School years, terms, courses, prospectus and items, duplicate prospectus (admin only)                       | Not started |
 | 1b    | Program membership requests                                                                                 | Not started |
 | 2     | Syllabus submission, PDF versions, co-authors, protected file route                                         | Not started |
@@ -170,7 +168,7 @@ Update the status column when a phase finishes.
 1. Who may set the justification flag, and may it ever block routing?
 2. Who uploads the signed scan (proposed: CITL director or admin)?
 3. Are GE instructors co-authors on the single syllabus per course and term?
-4. Do scoped managers see only their scope in lists (proposed) or the whole university?
+4. ~~Do scoped managers see only their scope in lists?~~ Answered: yes, scoped (see Authorization).
 
 ## Working agreement
 

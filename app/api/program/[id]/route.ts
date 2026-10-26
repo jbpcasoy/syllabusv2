@@ -1,20 +1,33 @@
-import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
+import { authorize, requireUser } from "@/lib/auth";
+import { describeChildren } from "@/lib/org-children";
+import { orgVisibility, programVisible } from "@/lib/org-visibility";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
+import { getUserRoles } from "@/lib/roles";
 import { parseProgramInput } from "@/lib/validators/program";
 import type { Program } from "@/types/program";
 import { NextResponse, type NextRequest } from "next/server";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-// GET /api/program/:id
+// GET /api/program/:id  (404 when outside the caller's scope)
 export async function GET(_request: NextRequest, { params }: RouteContext) {
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await params;
     const pb = await createAdminPb();
     const program = await pb
       .collection("programs")
       .getOne<Program>(id, { expand: "department" });
+
+    const visibility = orgVisibility(await getUserRoles(auth.user.id));
+    if (
+      !programVisible(visibility, program, program.expand?.department?.college)
+    ) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     return NextResponse.json(program);
   } catch (error) {
     return handlePbError(error);
@@ -22,12 +35,13 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 }
 
 // PATCH /api/program/:id  { "name"?: string, "code"?: string, "department"?: string }
+// Moving to another department also needs program.create there.
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.program.write);
+  const { id } = await params;
+  const auth = await requireUser("program.update", { program: id });
   if (!auth.ok) return auth.response;
 
   try {
-    const { id } = await params;
     const body: unknown = await request.json().catch(() => null);
     const parsed = parseProgramInput(body, { partial: true });
     if (!parsed.ok) {
@@ -35,6 +49,18 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     }
 
     const pb = await createAdminPb();
+
+    const newDepartment = parsed.data.department;
+    if (newDepartment !== undefined) {
+      const current = await pb.collection("programs").getOne<Program>(id);
+      if (current.department !== newDepartment) {
+        const denied = await authorize(auth.user, "program.create", {
+          department: newDepartment,
+        });
+        if (denied) return denied;
+      }
+    }
+
     const updated = await pb
       .collection("programs")
       .update<Program>(id, parsed.data, { expand: "department" });
@@ -44,13 +70,18 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 }
 
-// DELETE /api/program/:id
+// DELETE /api/program/:id  (409 while it still has faculty, chairs or prospectuses)
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.program.write);
+  const { id } = await params;
+  const auth = await requireUser("program.delete", { program: id });
   if (!auth.ok) return auth.response;
 
   try {
-    const { id } = await params;
+    const blocked = await describeChildren("program", id);
+    if (blocked) {
+      return NextResponse.json({ error: blocked }, { status: 409 });
+    }
+
     const pb = await createAdminPb();
     await pb.collection("programs").delete(id);
     return new NextResponse(null, { status: 204 });

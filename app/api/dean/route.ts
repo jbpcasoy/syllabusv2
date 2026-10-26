@@ -1,17 +1,14 @@
 import { requireUser } from "@/lib/auth";
-import {
-  canManageDeans,
-  collegeHasActiveDean,
-  toDeanResponse,
-} from "@/lib/dean";
-import { PERMISSIONS } from "@/lib/permissions";
+import { collegeHasActiveDean, toDeanResponse } from "@/lib/dean";
+import { assignmentScopeFilter } from "@/lib/org-visibility";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
+import { getUserRoles } from "@/lib/roles";
 import { parseDeanInput } from "@/lib/validators/dean";
 import type { Dean } from "@/types/dean";
 import { NextResponse, type NextRequest } from "next/server";
 
 // GET /api/dean?page=1&perPage=30&search=foo&college=<id>&user=<id|me>&active=true|false
-// Non-managers are always scoped to their own assignments.
+// University-wide roles see all; everyone else only their own records.
 export async function GET(request: NextRequest) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
@@ -28,11 +25,8 @@ export async function GET(request: NextRequest) {
     const userParam = searchParams.get("user")?.trim();
     const activeParam = searchParams.get("active")?.trim();
 
-    const userId = canManageDeans(auth.user)
-      ? userParam === "me"
-        ? auth.user.id
-        : userParam
-      : auth.user.id;
+    const userId = userParam === "me" ? auth.user.id : userParam;
+    const roles = await getUserRoles(auth.user.id);
 
     // Superuser client: the users collection's rules hide other users from `expand`.
     const pb = await createAdminPb();
@@ -57,6 +51,13 @@ export async function GET(request: NextRequest) {
         pb.filter("active = {:active}", { active: activeParam === "true" }),
       );
     }
+    const scope = assignmentScopeFilter(
+      (expr, params) => pb.filter(expr, params),
+      roles,
+      auth.user.id,
+      {},
+    );
+    if (scope) filters.push(scope);
 
     const result = await pb.collection("deans").getList<Dean>(page, perPage, {
       sort: "-created",
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/dean  { "user": "<userId>", "college": "<collegeId>", "active"?: boolean }
 export async function POST(request: NextRequest) {
-  const auth = await requireUser(PERMISSIONS.dean.write);
+  const auth = await requireUser("dean.write");
   if (!auth.ok) return auth.response;
 
   try {

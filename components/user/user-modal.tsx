@@ -2,13 +2,9 @@
 
 import { formatDate } from "@/lib/format-date";
 import { createUser, updateUser, type UserResponse } from "@/lib/user-client";
+import type { UserInput } from "@/types/user";
 import {
-  ROLE_LABELS,
-  USER_ROLES,
-  type UserInput,
-  type UserRole,
-} from "@/types/user";
-import {
+  Checkbox,
   Description,
   Dialog,
   DialogBackdrop,
@@ -17,7 +13,6 @@ import {
   Field,
   Input,
   Label,
-  Select,
 } from "@headlessui/react";
 import { useState, type FormEvent } from "react";
 
@@ -58,7 +53,7 @@ export function UserModal({
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole | "">(user?.role ?? "");
+  const [isAdmin, setIsAdmin] = useState(user?.isAdmin ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,7 +82,8 @@ export function UserModal({
         const input: Partial<UserInput> = {
           name: name.trim(),
           email: trimmedEmail,
-          role, // "" clears the role
+          // The server refuses to remove your own flag; don't even send it.
+          ...(!isSelf && { isAdmin }),
           // Only send a password when the admin typed a new one.
           ...(password && { password }),
         };
@@ -97,7 +93,7 @@ export function UserModal({
           name: name.trim(),
           email: trimmedEmail,
           password,
-          role,
+          isAdmin,
         });
       }
       onSaved();
@@ -133,9 +129,10 @@ export function UserModal({
                 <Detail label="Name" value={user.name || "—"} />
                 <Detail label="Email" value={user.email} />
                 <Detail
-                  label="Role"
-                  value={user.role ? ROLE_LABELS[user.role] : "—"}
+                  label="Administrator"
+                  value={user.isAdmin ? "Yes" : "No"}
                 />
+                <Assignments user={user} />
                 <Detail label="Verified" value={user.verified ? "Yes" : "No"} />
                 <Detail label="ID" value={user.id} mono />
                 <Detail label="Created" value={formatDate(user.created)} />
@@ -210,29 +207,43 @@ export function UserModal({
                 </Description>
               </Field>
 
-              <Field>
-                <Label className="block text-sm font-medium text-gray-900">
-                  Role
-                </Label>
-                <Select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRole | "")}
-                  disabled={saving || isSelf}
-                  className={inputClass}
+              <Field disabled={saving || isSelf} className="flex gap-3">
+                <Checkbox
+                  checked={isAdmin}
+                  onChange={setIsAdmin}
+                  className="group mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border border-gray-300 bg-white data-checked:border-indigo-600 data-checked:bg-indigo-600 data-disabled:opacity-50 data-focus:outline-2 data-focus:outline-offset-2 data-focus:outline-indigo-600"
                 >
-                  <option value="">No role</option>
-                  {USER_ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABELS[r]}
-                    </option>
-                  ))}
-                </Select>
-                {isSelf && (
-                  <Description className="mt-1 text-xs text-gray-500">
-                    You can&apos;t change your own role.
+                  <svg
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    aria-hidden
+                    className="size-3 stroke-white opacity-0 group-data-checked:opacity-100"
+                  >
+                    <path
+                      d="M3 8L6 11L11 3.5"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </Checkbox>
+                <div>
+                  <Label className="block text-sm font-medium text-gray-900">
+                    Administrator
+                  </Label>
+                  <Description className="text-xs text-gray-500">
+                    {isSelf
+                      ? "You can't remove your own administrator access."
+                      : "Full access to everything, including users."}
                   </Description>
-                )}
+                </div>
               </Field>
+
+              {isEdit && (
+                <dl className="text-sm">
+                  <Assignments user={user} />
+                </dl>
+              )}
 
               {error && (
                 <p role="alert" className="text-sm text-red-600">
@@ -266,6 +277,32 @@ export function UserModal({
         </DialogPanel>
       </div>
     </Dialog>
+  );
+}
+
+/** Read-only: assignments are managed on their own pages (Deans, Faculty, ...). */
+function Assignments({ user }: { user: UserResponse }) {
+  const assignments = user.assignments ?? [];
+  return (
+    <div>
+      <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">
+        Assignments
+      </dt>
+      <dd className="mt-0.5 text-gray-900">
+        {assignments.length === 0 ? (
+          <span className="text-gray-500">None (unassigned)</span>
+        ) : (
+          <ul className="list-inside list-disc space-y-0.5">
+            {assignments.map((a, i) => (
+              <li key={i}>
+                {a.title}
+                {a.scope && <span className="text-gray-500"> · {a.scope}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </dd>
+    </div>
   );
 }
 

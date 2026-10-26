@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
     ...user,
     mapped: true,
   })),
+  listActiveAssignments: vi.fn(),
+  userKindFilter: vi.fn((kind: string) => `kind:${kind}`),
 }));
 
 vi.mock("@/lib/pocketbase", async () => {
@@ -32,7 +34,7 @@ vi.mock("@/lib/pocketbase", async () => {
   };
 });
 
-// Keep the real isUserRole; only stub parseUserInput.
+// Keep the real isUserKind; only stub parseUserInput.
 vi.mock("@/lib/validators/user", async () => {
   const actual = await vi.importActual<typeof import("@/lib/validators/user")>(
     "@/lib/validators/user",
@@ -42,18 +44,17 @@ vi.mock("@/lib/validators/user", async () => {
 
 vi.mock("@/lib/users", () => ({
   toUserResponse: mocks.toUserResponse,
+  listActiveAssignments: mocks.listActiveAssignments,
+  userKindFilter: mocks.userKindFilter,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "u1", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
 
 import { GET, POST } from "@/app/api/user/route";
-import { requireUser } from "@/lib/auth";
 import { createAdminPb } from "@/lib/pocketbase";
+import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const users = [
   { id: "abc123abc123abc", email: "a@example.com", name: "Alice" },
@@ -82,20 +83,19 @@ function post(body: unknown, raw = false) {
   });
 }
 
-function forbidden() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-  });
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAuth({ isAdmin: true });
 });
 
 describe("GET /api/user", () => {
+  const aliceAssignments = [{ title: "Program Chair", scope: "BSCS" }];
+
   beforeEach(() => {
     mocks.getList.mockResolvedValue(listResult);
+    mocks.listActiveAssignments.mockResolvedValue(
+      new Map([[users[0].id, aliceAssignments]]),
+    );
   });
 
   it("returns the list mapped through toUserResponse", async () => {
@@ -110,6 +110,19 @@ describe("GET /api/user", () => {
     expect(mocks.getList).toHaveBeenCalledWith(1, 30, base);
   });
 
+  it("attaches each user's active assignments (empty when none)", async () => {
+    await GET(get());
+
+    expect(mocks.listActiveAssignments).toHaveBeenCalledWith(
+      users.map((u) => u.id),
+    );
+    expect(mocks.toUserResponse).toHaveBeenCalledWith(
+      users[0],
+      aliceAssignments,
+    );
+    expect(mocks.toUserResponse).toHaveBeenCalledWith(users[1], []);
+  });
+
   it("uses the superuser client because listRule only exposes the caller", async () => {
     await GET(get());
     expect(createAdminPb).toHaveBeenCalledOnce();
@@ -117,7 +130,7 @@ describe("GET /api/user", () => {
 
   it("checks permissions with the user read rule", async () => {
     await GET(get());
-    expect(requireUser).toHaveBeenCalledWith([]);
+    expect(requireUserMock).toHaveBeenCalledWith("user.read");
   });
 
   it("respects page and perPage", async () => {
@@ -149,42 +162,48 @@ describe("GET /api/user", () => {
     );
   });
 
-  it("filters by a valid role", async () => {
-    await GET(get("?role=dean"));
+  it.each(["admin", "assigned", "unassigned"])(
+    "filters by kind=%s",
+    async (kind) => {
+      await GET(get(`?kind=${kind}`));
 
-    expect(mocks.filter).toHaveBeenCalledWith("role = {:role}", {
-      role: "dean",
-    });
-  });
+      expect(mocks.userKindFilter).toHaveBeenCalledWith(kind);
+      const options = mocks.getList.mock.calls[0][2] as { filter: string };
+      expect(options.filter).toBe(`kind:${kind}`);
+    },
+  );
 
-  it("combines search and role filters with &&", async () => {
-    await GET(get("?search=ali&role=vpaa"));
+  it("combines search and kind filters with &&", async () => {
+    await GET(get("?search=ali&kind=admin"));
 
     const options = mocks.getList.mock.calls[0][2] as { filter: string };
     expect(options.filter).toContain(" && ");
   });
 
   it("does not filter on empty params", async () => {
-    await GET(get("?search=%20%20&role="));
+    await GET(get("?search=%20%20&kind="));
 
     expect(mocks.filter).not.toHaveBeenCalled();
+    expect(mocks.userKindFilter).not.toHaveBeenCalled();
     expect(mocks.getList).toHaveBeenCalledWith(1, 30, base);
   });
 
-  it("returns 400 for an unknown role without querying PocketBase", async () => {
-    const res = await GET(get("?role=superhero"));
+  it("returns 400 for an unknown kind without querying PocketBase", async () => {
+    const res = await GET(get("?kind=superhero"));
 
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "Invalid `role`" });
+    expect(await res.json()).toEqual({ error: "Invalid `kind`" });
     expect(createAdminPb).not.toHaveBeenCalled();
     expect(mocks.getList).not.toHaveBeenCalled();
   });
 
+  it("ignores the removed role param", async () => {
+    await GET(get("?role=dean"));
+    expect(mocks.getList).toHaveBeenCalledWith(1, 30, base);
+  });
+
   it("returns 401 when not signed in", async () => {
-    vi.mocked(requireUser).mockResolvedValueOnce({
-      ok: false,
-      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    });
+    mockAuth({ signedIn: false });
 
     const res = await GET(get());
 
@@ -193,8 +212,8 @@ describe("GET /api/user", () => {
     expect(mocks.getList).not.toHaveBeenCalled();
   });
 
-  it("returns 403 when the caller lacks permission", async () => {
-    forbidden();
+  it("returns 403 for a non-admin, even the VPAA", async () => {
+    mockAuth({ roles: { isVpaa: true } });
 
     const res = await GET(get());
 
@@ -218,8 +237,20 @@ describe("POST /api/user", () => {
     email: "new@example.com",
     password: "supersecret",
     name: "New User",
-    role: "dean" as const,
   };
+
+  it("passes the isAdmin flag through to PocketBase", async () => {
+    const withAdmin = { ...data, isAdmin: true };
+    mocks.parseUserInput.mockReturnValue({ ok: true, data: withAdmin });
+    mocks.create.mockResolvedValue({ id: "x" });
+
+    await POST(post(withAdmin));
+
+    expect(mocks.create).toHaveBeenCalledWith({
+      ...withAdmin,
+      passwordConfirm: withAdmin.password,
+    });
+  });
 
   it("creates a user with passwordConfirm and returns 201", async () => {
     const created = { id: "abc123abc123abc", email: data.email };
@@ -245,7 +276,7 @@ describe("POST /api/user", () => {
 
     await POST(post(data));
 
-    expect(requireUser).toHaveBeenCalledWith([]);
+    expect(requireUserMock).toHaveBeenCalledWith("user.write");
   });
 
   it("returns 400 on validation failure and never touches PocketBase", async () => {
@@ -282,10 +313,7 @@ describe("POST /api/user", () => {
   });
 
   it("returns 401 when not signed in", async () => {
-    vi.mocked(requireUser).mockResolvedValueOnce({
-      ok: false,
-      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    });
+    mockAuth({ signedIn: false });
 
     const res = await POST(post(data));
 
@@ -295,7 +323,7 @@ describe("POST /api/user", () => {
   });
 
   it("returns 403 when the caller lacks permission and never touches PocketBase", async () => {
-    forbidden();
+    mockAuth({ roles: { deanOfColleges: ["colgacolgacolga"] } });
 
     const res = await POST(post(data));
 

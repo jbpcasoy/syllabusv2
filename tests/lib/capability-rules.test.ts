@@ -1,0 +1,269 @@
+import {
+  CAPABILITIES,
+  canAnywhere,
+  evaluateCapability,
+  type Capability,
+  type ScopeChain,
+} from "@/lib/capability-rules";
+import { NO_ROLES, type UserRoles } from "@/types/roles";
+import { describe, expect, it } from "vitest";
+
+const roles = (partial: Partial<UserRoles>): UserRoles => ({
+  ...NO_ROLES,
+  ...partial,
+});
+
+const SCOPE: ScopeChain = {
+  collegeId: "colgAcolgAcolgA",
+  departmentId: "deptAdeptAdeptA",
+  programId: "progAprogAprogA",
+};
+const OTHER = {
+  college: "colgBcolgBcolgB",
+  department: "deptBdeptBdeptB",
+  program: "progBprogBprogB",
+};
+
+const ADMIN_ONLY: Capability[] = [
+  "campus.write",
+  "user.read",
+  "user.write",
+  "vpaa.write",
+  "schoolYear.write",
+  "term.write",
+  "course.write",
+  "prospectus.write",
+  "prospectusItem.write",
+];
+const VPAA_GLOBAL: Capability[] = [
+  "college.write",
+  "dean.write",
+  "fdisChair.write",
+  "citlDirector.write",
+];
+
+const admin = roles({ isAdmin: true });
+const vpaa = roles({ isVpaa: true });
+const dean = roles({ deanOfColleges: [SCOPE.collegeId!] });
+const head = roles({ headOfDepartments: [SCOPE.departmentId!] });
+const chair = roles({ chairOfPrograms: [SCOPE.programId!] });
+const facultyOnly = roles({ facultyOfPrograms: [SCOPE.programId!] });
+// The six-role account from the audit (jbpacaso), all scoped to A.
+const multiRole = roles({
+  chairOfPrograms: [SCOPE.programId!],
+  headOfDepartments: [SCOPE.departmentId!],
+  deanOfColleges: [SCOPE.collegeId!],
+  facultyOfPrograms: [SCOPE.programId!],
+  isFdisChair: true,
+  isCitlDirector: true,
+});
+
+const can = evaluateCapability;
+
+describe("admin override", () => {
+  it.each(CAPABILITIES)("admin passes %s, with or without scope", (cap) => {
+    expect(can(admin, cap)).toBe(true);
+    expect(can(admin, cap, { collegeId: OTHER.college })).toBe(true);
+  });
+});
+
+describe("admin-only capabilities", () => {
+  it.each(ADMIN_ONLY)("%s is denied to every non-admin profile", (cap) => {
+    for (const r of [
+      NO_ROLES,
+      vpaa,
+      dean,
+      head,
+      chair,
+      facultyOnly,
+      multiRole,
+    ]) {
+      expect(can(r, cap, SCOPE)).toBe(false);
+    }
+  });
+});
+
+describe("VPAA-global capabilities", () => {
+  it.each(VPAA_GLOBAL)("%s: VPAA passes without any scope", (cap) => {
+    expect(can(vpaa, cap)).toBe(true);
+  });
+
+  it.each(VPAA_GLOBAL)("%s: nobody else passes", (cap) => {
+    for (const r of [NO_ROLES, dean, head, chair, facultyOnly, multiRole]) {
+      expect(can(r, cap, SCOPE)).toBe(false);
+    }
+  });
+});
+
+describe.each(["department", "program"] as const)("%s management", (kind) => {
+  const create = `${kind}.create` as Capability;
+  const update = `${kind}.update` as Capability;
+  const del = `${kind}.delete` as Capability;
+
+  it("VPAA can create, update and delete anywhere", () => {
+    for (const cap of [create, update, del]) expect(can(vpaa, cap)).toBe(true);
+  });
+
+  it("a dean can create, update and delete inside their college", () => {
+    for (const cap of [create, update, del]) {
+      expect(can(dean, cap, SCOPE)).toBe(true);
+    }
+  });
+
+  it("a dean is denied outside their college", () => {
+    const out: ScopeChain = { ...SCOPE, collegeId: OTHER.college };
+    for (const cap of [create, update, del]) {
+      expect(can(dean, cap, out)).toBe(false);
+    }
+  });
+
+  it("a dean is denied when no scope is given", () => {
+    expect(can(dean, create)).toBe(false);
+  });
+
+  it("a department head can update only inside their own department", () => {
+    expect(can(head, update, SCOPE)).toBe(true);
+    expect(
+      can(head, update, { ...SCOPE, departmentId: OTHER.department }),
+    ).toBe(false);
+  });
+
+  it("a department head cannot create or delete", () => {
+    expect(can(head, create, SCOPE)).toBe(false);
+    expect(can(head, del, SCOPE)).toBe(false);
+  });
+
+  it("chairs and plain faculty get nothing", () => {
+    for (const r of [chair, facultyOnly, NO_ROLES]) {
+      for (const cap of [create, update, del]) {
+        expect(can(r, cap, SCOPE)).toBe(false);
+      }
+    }
+  });
+});
+
+describe("departmentHead.write", () => {
+  it("VPAA passes anywhere", () => {
+    expect(can(vpaa, "departmentHead.write")).toBe(true);
+  });
+
+  it("a dean passes only for departments of their college", () => {
+    expect(can(dean, "departmentHead.write", SCOPE)).toBe(true);
+    expect(
+      can(dean, "departmentHead.write", { ...SCOPE, collegeId: OTHER.college }),
+    ).toBe(false);
+  });
+
+  it("department heads and chairs cannot appoint heads", () => {
+    expect(can(head, "departmentHead.write", SCOPE)).toBe(false);
+    expect(can(chair, "departmentHead.write", SCOPE)).toBe(false);
+  });
+});
+
+describe("programChair.write", () => {
+  it("VPAA passes anywhere", () => {
+    expect(can(vpaa, "programChair.write")).toBe(true);
+  });
+
+  it("a dean passes only inside their college", () => {
+    expect(can(dean, "programChair.write", SCOPE)).toBe(true);
+    expect(
+      can(dean, "programChair.write", { ...SCOPE, collegeId: OTHER.college }),
+    ).toBe(false);
+  });
+
+  it("a department head passes only for programs of their department", () => {
+    expect(can(head, "programChair.write", SCOPE)).toBe(true);
+    expect(
+      can(head, "programChair.write", {
+        ...SCOPE,
+        departmentId: OTHER.department,
+      }),
+    ).toBe(false);
+  });
+
+  it("a chair cannot appoint chairs", () => {
+    expect(can(chair, "programChair.write", SCOPE)).toBe(false);
+  });
+});
+
+describe("faculty.write", () => {
+  it("a chair passes only for their own program", () => {
+    expect(can(chair, "faculty.write", SCOPE)).toBe(true);
+    expect(
+      can(chair, "faculty.write", { ...SCOPE, programId: OTHER.program }),
+    ).toBe(false);
+  });
+
+  it("denied when no scope is given", () => {
+    expect(can(chair, "faculty.write")).toBe(false);
+  });
+
+  it("VPAA, dean, head and plain faculty are denied", () => {
+    for (const r of [vpaa, dean, head, facultyOnly, NO_ROLES]) {
+      expect(can(r, "faculty.write", SCOPE)).toBe(false);
+    }
+  });
+});
+
+describe("users who hold several roles", () => {
+  it("combines scoped powers", () => {
+    expect(can(multiRole, "faculty.write", SCOPE)).toBe(true);
+    expect(can(multiRole, "department.create", SCOPE)).toBe(true);
+    expect(can(multiRole, "programChair.write", SCOPE)).toBe(true);
+  });
+
+  it("is still limited to its own scope", () => {
+    const out: ScopeChain = {
+      collegeId: OTHER.college,
+      departmentId: OTHER.department,
+      programId: OTHER.program,
+    };
+    expect(can(multiRole, "faculty.write", out)).toBe(false);
+    expect(can(multiRole, "department.create", out)).toBe(false);
+  });
+
+  it("FDIS chair and CITL director grant no write power by themselves", () => {
+    expect(can(multiRole, "college.write")).toBe(false);
+    expect(can(multiRole, "campus.write")).toBe(false);
+  });
+});
+
+describe("users with no roles", () => {
+  it.each(CAPABILITIES)("are denied %s", (cap) => {
+    expect(can(NO_ROLES, cap, SCOPE)).toBe(false);
+    expect(can(NO_ROLES, cap)).toBe(false);
+  });
+});
+
+describe("canAnywhere", () => {
+  it.each(CAPABILITIES)("is true for admin on %s", (cap) => {
+    expect(canAnywhere(roles({ isAdmin: true }), cap)).toBe(true);
+  });
+
+  it("is true for a global role without any scope", () => {
+    expect(canAnywhere(roles({ isVpaa: true }), "college.write")).toBe(true);
+  });
+
+  it("is true when the capability holds in one of the user's scopes", () => {
+    const dean = roles({ deanOfColleges: [SCOPE.collegeId!] });
+    const head = roles({ headOfDepartments: [SCOPE.departmentId!] });
+    const chair = roles({ chairOfPrograms: [SCOPE.programId!] });
+
+    expect(canAnywhere(dean, "programChair.write")).toBe(true);
+    expect(canAnywhere(head, "programChair.write")).toBe(true);
+    expect(canAnywhere(head, "department.update")).toBe(true);
+    expect(canAnywhere(chair, "faculty.write")).toBe(true);
+  });
+
+  it("is false when none of the user's scopes grants it", () => {
+    const head = roles({ headOfDepartments: [SCOPE.departmentId!] });
+    const chair = roles({ chairOfPrograms: [SCOPE.programId!] });
+    const faculty = roles({ facultyOfPrograms: [SCOPE.programId!] });
+
+    expect(canAnywhere(head, "department.create")).toBe(false);
+    expect(canAnywhere(chair, "programChair.write")).toBe(false);
+    expect(canAnywhere(faculty, "faculty.write")).toBe(false);
+    expect(canAnywhere(NO_ROLES, "user.read")).toBe(false);
+  });
+});

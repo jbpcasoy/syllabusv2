@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -41,17 +41,13 @@ vi.mock("@/lib/department-head", () => ({
   toDepartmentHeadResponse: mocks.toDepartmentHeadResponse,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "u1", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
 
 import { DELETE, PATCH } from "@/app/api/department-head/[id]/route";
-import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
+import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const ID = "abc123abc123abc";
 const DEPARTMENT_ID = "dept1dept1dept1";
@@ -68,21 +64,17 @@ function req(method: string, body?: unknown) {
 }
 
 function unauthorized() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-  });
+  mockAuth({ signedIn: false });
 }
 
+/** Signed in, but with no roles. */
 function forbidden() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-  });
+  mockAuth();
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAuth({ isAdmin: true });
   mocks.departmentHasActiveHead.mockResolvedValue(false);
 });
 
@@ -99,7 +91,7 @@ describe("PATCH /api/department-head/:id", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ...updated, mapped: true });
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.departmentHead.write);
+    expect(requireUserMock).toHaveBeenCalledWith("departmentHead.write", { departmentHead: ID });
     expect(mocks.getOne).not.toHaveBeenCalled();
     expect(mocks.departmentHasActiveHead).not.toHaveBeenCalled();
     expect(mocks.update).toHaveBeenCalledWith(
@@ -233,7 +225,7 @@ describe("DELETE /api/department-head/:id", () => {
 
     expect(res.status).toBe(204);
     expect(await res.text()).toBe("");
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.departmentHead.write);
+    expect(requireUserMock).toHaveBeenCalledWith("departmentHead.write", { departmentHead: ID });
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.delete).toHaveBeenCalledWith(ID);
   });
@@ -263,5 +255,50 @@ describe("DELETE /api/department-head/:id", () => {
     expect(res.status).toBe(403);
     expect(createAdminPb).not.toHaveBeenCalled();
     expect(mocks.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe("scope (departmentHead.write on the record's department)", () => {
+  const chain = { departmentId: DEPARTMENT_ID, collegeId: "colgacolgacolga" };
+
+  beforeEach(() => {
+    mocks.parseDepartmentHeadUpdate.mockReturnValue({
+      ok: true,
+      data: { active: false },
+    });
+    mocks.update.mockResolvedValue({ id: ID });
+    mocks.delete.mockResolvedValue(true);
+  });
+
+  it("passes the record id as the scope target", async () => {
+    await DELETE(req("DELETE"), ctx);
+    expect(requireUserMock).toHaveBeenCalledWith("departmentHead.write", {
+      departmentHead: ID,
+    });
+  });
+
+  it("lets the dean of the department's college update and delete", async () => {
+    mockAuth({ roles: { deanOfColleges: [chain.collegeId] }, scope: chain });
+
+    expect((await PATCH(req("PATCH", { active: false }), ctx)).status).toBe(
+      200,
+    );
+    expect((await DELETE(req("DELETE"), ctx)).status).toBe(204);
+  });
+
+  it("returns 403 for a dean of another college and changes nothing", async () => {
+    mockAuth({ roles: { deanOfColleges: ["othercollegeoth"] }, scope: chain });
+
+    expect((await DELETE(req("DELETE"), ctx)).status).toBe(403);
+    expect(mocks.delete).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for the department's own head", async () => {
+    mockAuth({ roles: { headOfDepartments: [DEPARTMENT_ID] }, scope: chain });
+
+    expect((await PATCH(req("PATCH", { active: false }), ctx)).status).toBe(
+      403,
+    );
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 });

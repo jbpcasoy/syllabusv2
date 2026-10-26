@@ -14,6 +14,6 @@ export interface Program extends RecordModel {
 export interface ProgramInput {
   name: string;
   code: string;
-  /** Department record ID. Use "" to clear the relation. */
-  department?: string;
+  /** Department record ID. Required. */
+  department: string;
 }

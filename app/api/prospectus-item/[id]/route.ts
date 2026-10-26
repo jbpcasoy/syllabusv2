@@ -1,8 +1,7 @@
 import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
+import { can } from "@/lib/capabilities";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import {
-  canManageProspectusItems,
   PROSPECTUS_ITEM_EXPAND,
   toProspectusItemResponse,
 } from "@/lib/prospectus-item";
@@ -26,7 +25,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
     if (
       !record.expand?.prospectus?.published &&
-      !canManageProspectusItems(auth.user)
+      !(await can(auth.user, "prospectusItem.write"))
     ) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
@@ -39,7 +38,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
 // PATCH /api/prospectus-item/:id  { "semester"?, "year_level"?, "subject_code"?, "title"? }
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.prospectusItem.write);
+  const auth = await requireUser("prospectusItem.write");
   if (!auth.ok) return auth.response;
 
   try {
@@ -103,7 +102,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
 // DELETE /api/prospectus-item/:id
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.prospectusItem.write);
+  const auth = await requireUser("prospectusItem.write");
   if (!auth.ok) return auth.response;
 
   try {

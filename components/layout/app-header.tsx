@@ -1,10 +1,14 @@
 import { getCurrentUser, toSessionUser } from "@/lib/auth";
 import { APP_NAME } from "@/lib/constants";
+import { getUserRoles } from "@/lib/roles";
 import Link from "next/link";
 import { HeaderAuth } from "./header-auth";
 
 export async function AppHeader() {
   const user = await getCurrentUser();
+  const sessionUser = user
+    ? toSessionUser(user, await getUserRoles(user.id))
+    : null;
 
   return (
     <header className="border-b border-gray-200 bg-white">
@@ -16,7 +20,7 @@ export async function AppHeader() {
           {APP_NAME}
         </Link>
 
-        <HeaderAuth user={user ? toSessionUser(user) : null} />
+        <HeaderAuth user={sessionUser} />
       </div>
     </header>
   );

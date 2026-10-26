@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -6,6 +6,11 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   delete: vi.fn(),
   parseCollegeInput: vi.fn(),
+  describeChildren: vi.fn(),
+}));
+
+vi.mock("@/lib/org-children", () => ({
+  describeChildren: mocks.describeChildren,
 }));
 
 vi.mock("@/lib/pocketbase", async () => {
@@ -16,7 +21,6 @@ vi.mock("@/lib/pocketbase", async () => {
     delete: mocks.delete,
   });
   return {
-    createPb: vi.fn(() => ({ collection })),
     createAdminPb: vi.fn(async () => ({ collection })),
     handlePbError: vi.fn((error: unknown) => {
       const status =
@@ -32,16 +36,13 @@ vi.mock("@/lib/validators/college", () => ({
   parseCollegeInput: mocks.parseCollegeInput,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "u1", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
 
 import { DELETE, GET, PATCH } from "@/app/api/college/[id]/route";
-import { requireUser } from "@/lib/auth";
-import { createAdminPb, createPb } from "@/lib/pocketbase";
+import { createAdminPb } from "@/lib/pocketbase";
+import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const ID = "abc123abc123abc";
 const ctx = { params: Promise.resolve({ id: ID }) };
@@ -58,6 +59,8 @@ function req(method: string, body?: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAuth({ isAdmin: true });
+  mocks.describeChildren.mockResolvedValue(null);
 });
 
 describe("GET /api/college/:id", () => {
@@ -69,7 +72,7 @@ describe("GET /api/college/:id", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(college);
-    expect(createPb).toHaveBeenCalledOnce();
+    expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.getOne).toHaveBeenCalledWith(ID, { expand: "campus" });
   });
 
@@ -136,10 +139,7 @@ describe("PATCH /api/college/:id", () => {
   });
 
   it("returns 403 when the caller lacks permission and never touches PocketBase", async () => {
-    vi.mocked(requireUser).mockResolvedValueOnce({
-      ok: false,
-      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-    });
+    mockAuth(); // signed in, no roles
 
     const res = await PATCH(req("PATCH", { name: "X" }), ctx);
 
@@ -160,6 +160,7 @@ describe("DELETE /api/college/:id", () => {
     expect(await res.text()).toBe("");
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.delete).toHaveBeenCalledWith(ID);
+    expect(requireUserMock).toHaveBeenCalledWith("college.write");
   });
 
   it("propagates a 404 from PocketBase", async () => {
@@ -169,15 +170,45 @@ describe("DELETE /api/college/:id", () => {
   });
 
   it("returns 403 when the caller lacks permission and never touches PocketBase", async () => {
-    vi.mocked(requireUser).mockResolvedValueOnce({
-      ok: false,
-      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-    });
+    mockAuth(); // signed in, no roles
 
     const res = await DELETE(req("DELETE"), ctx);
 
     expect(res.status).toBe(403);
     expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.delete).not.toHaveBeenCalled();
+  });
+
+  it("checks for children before deleting", async () => {
+    mocks.delete.mockResolvedValue(true);
+
+    await DELETE(req("DELETE"), ctx);
+
+    expect(mocks.describeChildren).toHaveBeenCalledWith("college", ID);
+  });
+
+  it("returns 409 with the reason and deletes nothing when children exist", async () => {
+    mocks.describeChildren.mockResolvedValue(
+      "This college still has 3 departments. Remove or reassign them first.",
+    );
+
+    const res = await DELETE(req("DELETE"), ctx);
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error:
+        "This college still has 3 departments. Remove or reassign them first.",
+    });
+    expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.delete).not.toHaveBeenCalled();
+  });
+
+  it("delegates a failing children check to handlePbError", async () => {
+    mocks.describeChildren.mockRejectedValue({ status: 500 });
+
+    const res = await DELETE(req("DELETE"), ctx);
+
+    expect(res.status).toBe(500);
     expect(mocks.delete).not.toHaveBeenCalled();
   });
 });

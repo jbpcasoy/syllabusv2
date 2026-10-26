@@ -1,17 +1,6 @@
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
-import type { AppUser, UserRole } from "@/types/user";
 import type { Vpaa, VpaaResponse } from "@/types/vpaa";
 import "server-only";
-
-/** Admins, plus any role listed in PERMISSIONS.vpaa.write. */
-export function canManageVpaas(user: AppUser): boolean {
-  if (user.role === "admin") return true;
-  return (
-    !!user.role &&
-    (PERMISSIONS.vpaa.write as readonly UserRole[]).includes(user.role)
-  );
-}
 
 export function toVpaaResponse(record: Vpaa): VpaaResponse {
   const user = record.expand?.user;

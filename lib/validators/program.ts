@@ -39,15 +39,12 @@ export function parseProgramInput(
   }
 
   if (department !== undefined) {
-    // "" or null clears the relation; otherwise it must look like a PB id.
-    if (department === null || department === "") {
-      data.department = "";
-    } else if (typeof department === "string" && PB_ID.test(department)) {
-      data.department = department;
-    } else {
+    if (typeof department !== "string" || !PB_ID.test(department)) {
       return { ok: false, error: "`department` must be a valid department id" };
     }
+    data.department = department;
+  } else if (!partial) {
+    return { ok: false, error: "`department` is required" };
   }
-
   return { ok: true, data };
 }

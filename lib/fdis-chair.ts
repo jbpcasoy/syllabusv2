@@ -1,17 +1,6 @@
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
 import type { FdisChair, FdisChairResponse } from "@/types/fdis-chair";
-import type { AppUser, UserRole } from "@/types/user";
 import "server-only";
-
-/** Admins, plus any role listed in PERMISSIONS.fdisChair.write. */
-export function canManageFdisChairs(user: AppUser): boolean {
-  if (user.role === "admin") return true;
-  return (
-    !!user.role &&
-    (PERMISSIONS.fdisChair.write as readonly UserRole[]).includes(user.role)
-  );
-}
 
 export function toFdisChairResponse(record: FdisChair): FdisChairResponse {
   const user = record.expand?.user;

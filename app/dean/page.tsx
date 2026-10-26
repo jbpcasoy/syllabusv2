@@ -1,6 +1,6 @@
 import { DeanManager } from "@/components/dean/dean-manager";
 import { getCurrentUser } from "@/lib/auth";
-import { canManageDeans } from "@/lib/dean";
+import { canSomewhere } from "@/lib/capabilities";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Deans" };
@@ -11,7 +11,7 @@ export default async function DeanPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-      <DeanManager canManage={canManageDeans(user)} />
+      <DeanManager canManage={await canSomewhere(user, "dean.write")} />
     </main>
   );
 }

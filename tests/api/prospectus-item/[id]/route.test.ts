@@ -2,19 +2,19 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  requireUser: vi.fn(),
   getOne: vi.fn(),
   getList: vi.fn(),
   update: vi.fn(),
   del: vi.fn(),
   filter: vi.fn((expr: string) => expr),
-  canManage: vi.fn(),
 }));
 
-vi.mock("@/lib/auth", () => ({ requireUser: mocks.requireUser }));
-vi.mock("@/lib/permissions", () => ({
-  PERMISSIONS: { prospectusItem: { read: [], write: ["dean"] } },
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
+vi.mock("@/lib/capabilities", async () =>
+  (await import("@/tests/helpers/mock-auth")).capabilitiesModuleMock(),
+);
 vi.mock("@/lib/pocketbase", () => ({
   createAdminPb: async () => ({
     filter: mocks.filter,
@@ -30,11 +30,11 @@ vi.mock("@/lib/pocketbase", () => ({
 }));
 vi.mock("@/lib/prospectus-item", () => ({
   PROSPECTUS_ITEM_EXPAND: "prospectus.program",
-  canManageProspectusItems: mocks.canManage,
   toProspectusItemResponse: (r: unknown) => r,
 }));
 
 import { DELETE, GET, PATCH } from "@/app/api/prospectus-item/[id]/route";
+import { canMock, mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const ctx = { params: Promise.resolve({ id: "item1" }) };
 const url = "http://localhost/api/prospectus-item/item1";
@@ -45,32 +45,46 @@ function patch(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.requireUser.mockResolvedValue({ ok: true, user: { role: "dean" } });
-  mocks.canManage.mockReturnValue(true);
+  mockAuth({ isAdmin: true });
 });
 
 describe("GET /api/prospectus-item/:id", () => {
-  it("hides items of unpublished prospectuses from non-managers", async () => {
-    mocks.canManage.mockReturnValue(false);
-    mocks.getOne.mockResolvedValue({
-      id: "item1",
-      expand: { prospectus: { published: false } },
-    });
+  const unpublished = {
+    id: "item1",
+    expand: { prospectus: { published: false } },
+  };
+
+  it("hides items of unpublished prospectuses from non-admins", async () => {
+    mockAuth({ roles: { deanOfColleges: ["colgacolgacolga"] } });
+    mocks.getOne.mockResolvedValue(unpublished);
     const res = await GET(new NextRequest(url), ctx);
     expect(res.status).toBe(404);
+    expect(canMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "prospectusItem.write",
+    );
   });
 
-  it("returns the item for managers", async () => {
-    mocks.getOne.mockResolvedValue({
-      id: "item1",
-      expand: { prospectus: { published: false } },
-    });
+  it("returns the item to an admin", async () => {
+    mocks.getOne.mockResolvedValue(unpublished);
     const res = await GET(new NextRequest(url), ctx);
     expect(res.status).toBe(200);
+  });
+
+  it("returns 401 when not signed in", async () => {
+    mockAuth({ signedIn: false });
+    const res = await GET(new NextRequest(url), ctx);
+    expect(res.status).toBe(401);
+    expect(mocks.getOne).not.toHaveBeenCalled();
   });
 });
 
 describe("PATCH /api/prospectus-item/:id", () => {
+  it("requires prospectusItem.write", async () => {
+    await PATCH(patch({}), ctx);
+    expect(requireUserMock).toHaveBeenCalledWith("prospectusItem.write");
+  });
+
   it("returns 400 when no field is provided", async () => {
     const res = await PATCH(patch({}), ctx);
     expect(res.status).toBe(400);
@@ -108,6 +122,14 @@ describe("PATCH /api/prospectus-item/:id", () => {
       { expand: "prospectus.program" },
     );
   });
+
+  it("returns 403 for a non-admin and changes nothing", async () => {
+    mockAuth({ roles: { chairOfPrograms: ["progaprogaproga"] } });
+    const res = await PATCH(patch({ title: "New" }), ctx);
+    expect(res.status).toBe(403);
+    expect(mocks.getOne).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
 });
 
 describe("DELETE /api/prospectus-item/:id", () => {
@@ -118,11 +140,8 @@ describe("DELETE /api/prospectus-item/:id", () => {
     expect(mocks.del).toHaveBeenCalledWith("item1");
   });
 
-  it("returns the auth response when forbidden", async () => {
-    mocks.requireUser.mockResolvedValue({
-      ok: false,
-      response: new Response(null, { status: 403 }),
-    });
+  it("returns 403 for a non-admin and deletes nothing", async () => {
+    mockAuth({ roles: { isVpaa: true } });
     const res = await DELETE(new NextRequest(url, { method: "DELETE" }), ctx);
     expect(res.status).toBe(403);
     expect(mocks.del).not.toHaveBeenCalled();

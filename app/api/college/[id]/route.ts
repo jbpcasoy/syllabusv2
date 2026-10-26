@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
+import { describeChildren } from "@/lib/org-children";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { parseCollegeInput } from "@/lib/validators/college";
 import type { College } from "@/types/college";
@@ -23,7 +23,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
 // PATCH /api/college/:id  { "name"?: string, "code"?: string, "campus"?: string }
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.college.write);
+  const auth = await requireUser("college.write");
   if (!auth.ok) return auth.response;
 
   try {
@@ -44,13 +44,19 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 }
 
-// DELETE /api/college/:id
+// DELETE /api/college/:id  (409 while it still has departments or deans)
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.college.write);
+  const auth = await requireUser("college.write");
   if (!auth.ok) return auth.response;
 
   try {
     const { id } = await params;
+
+    const blocked = await describeChildren("college", id);
+    if (blocked) {
+      return NextResponse.json({ error: blocked }, { status: 409 });
+    }
+
     const pb = await createAdminPb();
     await pb.collection("colleges").delete(id);
     return new NextResponse(null, { status: 204 });

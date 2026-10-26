@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest"
+    "test": "vitest",
+    "audit:phase-a": "node --env-file=.env scripts/audit-phase-a.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.10",

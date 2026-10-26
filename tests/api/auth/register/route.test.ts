@@ -37,6 +37,7 @@ vi.mock("@/lib/auth", () => ({
 
 import { POST } from "@/app/api/auth/register/route";
 import { createAdminPb } from "@/lib/pocketbase";
+import { NO_ROLES } from "@/types/roles";
 
 const valid = {
   name: " Juan ",
@@ -58,7 +59,7 @@ beforeEach(() => {
 });
 
 describe("POST /api/auth/register", () => {
-  it("creates a faculty user, signs them in and returns 201", async () => {
+  it("creates an unassigned user, signs them in and returns 201", async () => {
     mocks.create.mockResolvedValue({ id: "abc123abc123abc" });
     mocks.authWithPassword.mockResolvedValue({
       token: "jwt",
@@ -78,9 +79,13 @@ describe("POST /api/auth/register", () => {
       email: "juan@example.com",
       password: "supersecret",
       passwordConfirm: "supersecret",
-      role: "faculty",
       emailVisibility: false,
     });
+    // A brand-new account has no admin flag and no assignments.
+    expect(mocks.toSessionUser).toHaveBeenCalledWith(
+      expect.anything(),
+      NO_ROLES,
+    );
     expect(mocks.authWithPassword).toHaveBeenCalledWith(
       "juan@example.com",
       "supersecret",
@@ -88,14 +93,15 @@ describe("POST /api/auth/register", () => {
     expect(mocks.setSessionCookie).toHaveBeenCalledWith("jwt");
   });
 
-  it("ignores a role supplied by the client", async () => {
+  it("ignores isAdmin or a role supplied by the client", async () => {
     mocks.create.mockResolvedValue({});
     mocks.authWithPassword.mockResolvedValue({ token: "jwt", record: {} });
 
-    await POST(post({ ...valid, role: "admin" }));
+    await POST(post({ ...valid, isAdmin: true, role: "admin" }));
 
-    const payload = mocks.create.mock.calls[0][0] as { role: string };
-    expect(payload.role).toBe("faculty");
+    const payload = mocks.create.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty("isAdmin");
+    expect(payload).not.toHaveProperty("role");
   });
 
   it.each([

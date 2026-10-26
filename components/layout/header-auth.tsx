@@ -1,7 +1,7 @@
 "use client";
 
 import { logout } from "@/lib/auth-client";
-import { ROLE_LABELS, type SessionUser } from "@/types/user";
+import type { SessionUser } from "@/types/user";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -76,7 +76,9 @@ export function HeaderAuth({ user }: HeaderAuthProps) {
           </p>
           <p className="truncate text-xs text-gray-500">{user.email}</p>
           <p className="mt-1 text-xs text-gray-500">
-            {user.role ? ROLE_LABELS[user.role] : "No role assigned"}
+            {user.roleLabels.length > 0
+              ? user.roleLabels.join(", ")
+              : "Unassigned"}
           </p>
         </div>
 

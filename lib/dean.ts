@@ -1,18 +1,7 @@
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
 import type { College } from "@/types/college";
 import type { Dean, DeanResponse } from "@/types/dean";
-import type { AppUser, UserRole } from "@/types/user";
 import "server-only";
-
-/** Admins, plus any role listed in PERMISSIONS.dean.write. */
-export function canManageDeans(user: AppUser): boolean {
-  if (user.role === "admin") return true;
-  return (
-    !!user.role &&
-    (PERMISSIONS.dean.write as readonly UserRole[]).includes(user.role)
-  );
-}
 
 export function toDeanResponse(record: Dean): DeanResponse {
   const user = record.expand?.user;

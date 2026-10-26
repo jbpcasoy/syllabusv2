@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -41,17 +41,13 @@ vi.mock("@/lib/dean", () => ({
   toDeanResponse: mocks.toDeanResponse,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "u1", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
 
 import { DELETE, PATCH } from "@/app/api/dean/[id]/route";
-import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
+import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const ID = "abc123abc123abc";
 const COLLEGE_ID = "colg1colg1colg1";
@@ -68,21 +64,17 @@ function req(method: string, body?: unknown) {
 }
 
 function unauthorized() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-  });
+  mockAuth({ signedIn: false });
 }
 
+/** Signed in, but with no roles. */
 function forbidden() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-  });
+  mockAuth();
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAuth({ isAdmin: true });
   mocks.collegeHasActiveDean.mockResolvedValue(false);
 });
 
@@ -99,7 +91,7 @@ describe("PATCH /api/dean/:id", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ...updated, mapped: true });
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.dean.write);
+    expect(requireUserMock).toHaveBeenCalledWith("dean.write");
     expect(mocks.getOne).not.toHaveBeenCalled();
     expect(mocks.collegeHasActiveDean).not.toHaveBeenCalled();
     expect(mocks.update).toHaveBeenCalledWith(
@@ -227,7 +219,7 @@ describe("DELETE /api/dean/:id", () => {
 
     expect(res.status).toBe(204);
     expect(await res.text()).toBe("");
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.dean.write);
+    expect(requireUserMock).toHaveBeenCalledWith("dean.write");
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.delete).toHaveBeenCalledWith(ID);
   });

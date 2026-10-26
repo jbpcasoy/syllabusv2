@@ -1,5 +1,6 @@
 import { UserManager } from "@/components/user/user-manager";
 import { getCurrentUser } from "@/lib/auth";
+import { can } from "@/lib/capabilities";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Users" };
@@ -8,7 +9,7 @@ export default async function UserPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/user");
 
-  if (user.role !== "admin") {
+  if (!(await can(user, "user.read"))) {
     return (
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-2xl font-semibold text-gray-900">Users</h1>

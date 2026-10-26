@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
       `${expr}|${JSON.stringify(params)}`,
   ),
   parseCitlDirectorInput: vi.fn(),
-  canManageCitlDirectors: vi.fn(),
   hasActiveCitlDirector: vi.fn(),
   toCitlDirectorResponse: vi.fn((record: Record<string, unknown>) => ({
     ...record,
@@ -41,22 +40,23 @@ vi.mock("@/lib/validators/citl-director", () => ({
 
 // Mocked wholesale so the real module (and "server-only") is never loaded.
 vi.mock("@/lib/citl-director", () => ({
-  canManageCitlDirectors: mocks.canManageCitlDirectors,
   hasActiveCitlDirector: mocks.hasActiveCitlDirector,
   toCitlDirectorResponse: mocks.toCitlDirectorResponse,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "adminadminadmin", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
+vi.mock("@/lib/roles", async () =>
+  (await import("@/tests/helpers/mock-auth")).rolesModuleMock(),
+);
 
 import { GET, POST } from "@/app/api/citl-director/route";
-import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
+import {
+  mockAuth,
+  requireUserMock,
+} from "@/tests/helpers/mock-auth";
 
 const ADMIN_ID = "adminadminadmin";
 const USER_ID = "user1user1user1";
@@ -88,30 +88,18 @@ function post(body: unknown, raw = false) {
   });
 }
 
-function signedInAs(id: string, role: string) {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: true,
-    user: { id, role } as never,
-  });
-}
-
 function unauthorized() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-  });
+  mockAuth({ signedIn: false });
 }
 
+/** Signed in, but with no roles. */
 function forbidden() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-  });
+  mockAuth({ id: USER_ID });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.canManageCitlDirectors.mockReturnValue(true);
+  mockAuth({ id: ADMIN_ID, isAdmin: true });
   mocks.hasActiveCitlDirector.mockResolvedValue(false);
 });
 
@@ -133,9 +121,9 @@ describe("GET /api/citl-director", () => {
     expect(mocks.getList).toHaveBeenCalledWith(1, 30, base);
   });
 
-  it("requires sign-in but no specific role", async () => {
+  it("requires sign-in but no specific capability", async () => {
     await GET(get());
-    expect(requireUser).toHaveBeenCalledWith();
+    expect(requireUserMock).toHaveBeenCalledWith();
   });
 
   it("uses the superuser client so expand can see other users", async () => {
@@ -203,13 +191,22 @@ describe("GET /api/citl-director", () => {
     expect(mocks.getList).toHaveBeenCalledWith(1, 30, base);
   });
 
-  describe("user scoping", () => {
-    it("lets a manager list everyone when no user param is given", async () => {
-      await GET(get());
+  describe("scope", () => {
+
+    it("adds no scope filter for university-wide roles", async () => {
+      for (const options of [
+        { isAdmin: true },
+        { roles: { isVpaa: true } },
+        { roles: { isFdisChair: true } },
+        { roles: { isCitlDirector: true } },
+      ]) {
+        mockAuth(options);
+        await GET(get());
+      }
       expect(mocks.filter).not.toHaveBeenCalled();
     });
 
-    it("lets a manager filter by an explicit user id", async () => {
+    it("lets the caller filter by an explicit user id", async () => {
       await GET(get(`?user=${USER_ID}`));
 
       expect(mocks.filter).toHaveBeenCalledWith("user = {:userId}", {
@@ -217,7 +214,7 @@ describe("GET /api/citl-director", () => {
       });
     });
 
-    it("resolves user=me to the manager's own id", async () => {
+    it("resolves user=me to the caller's own id", async () => {
       await GET(get("?user=me"));
 
       expect(mocks.filter).toHaveBeenCalledWith("user = {:userId}", {
@@ -225,38 +222,25 @@ describe("GET /api/citl-director", () => {
       });
     });
 
-    it("scopes a non-manager to their own records", async () => {
-      signedInAs(USER_ID, "faculty");
-      mocks.canManageCitlDirectors.mockReturnValueOnce(false);
+    it("limits a user with no scope to their own records", async () => {
+      mockAuth({ id: USER_ID });
 
       await GET(get());
 
-      expect(mocks.filter).toHaveBeenCalledWith("user = {:userId}", {
-        userId: USER_ID,
+      expect(mocks.filter).toHaveBeenCalledOnce();
+      expect(mocks.filter).toHaveBeenCalledWith("user = {:self}", {
+        self: USER_ID,
       });
     });
 
-    it("ignores a non-manager's attempt to view another user", async () => {
-      signedInAs(USER_ID, "faculty");
-      mocks.canManageCitlDirectors.mockReturnValueOnce(false);
+    it("keeps that limit when another user is requested", async () => {
+      mockAuth({ id: USER_ID });
 
       await GET(get("?user=other1other1oth"));
 
-      expect(mocks.filter).toHaveBeenCalledOnce();
-      expect(mocks.filter).toHaveBeenCalledWith("user = {:userId}", {
-        userId: USER_ID,
-      });
-    });
-
-    it("does not let a non-manager resolve user=me to anyone else", async () => {
-      signedInAs(USER_ID, "faculty");
-      mocks.canManageCitlDirectors.mockReturnValueOnce(false);
-
-      await GET(get("?user=me"));
-
-      expect(mocks.filter).toHaveBeenCalledWith("user = {:userId}", {
-        userId: USER_ID,
-      });
+      const options = mocks.getList.mock.calls[0][2] as { filter: string };
+      expect(options.filter.split(" && ")).toHaveLength(2);
+      expect(options.filter).toContain("user = {:self}");
     });
   });
 
@@ -296,7 +280,7 @@ describe("POST /api/citl-director", () => {
 
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ ...created, mapped: true });
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.citlDirector.write);
+    expect(requireUserMock).toHaveBeenCalledWith("citlDirector.write");
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.collectionSpy).toHaveBeenCalledWith("citl_directors");
     expect(mocks.create).toHaveBeenCalledWith(data, { expand: "user" });

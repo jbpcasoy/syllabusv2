@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -41,17 +41,13 @@ vi.mock("@/lib/vpaa", () => ({
   toVpaaResponse: mocks.toVpaaResponse,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "u1", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
 
 import { DELETE, PATCH } from "@/app/api/vpaa/[id]/route";
-import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
+import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const ID = "abc123abc123abc";
 const ctx = { params: Promise.resolve({ id: ID }) };
@@ -67,21 +63,17 @@ function req(method: string, body?: unknown) {
 }
 
 function unauthorized() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-  });
+  mockAuth({ signedIn: false });
 }
 
+/** Signed in, but with no roles. */
 function forbidden() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-  });
+  mockAuth();
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAuth({ isAdmin: true });
   mocks.hasActiveVpaa.mockResolvedValue(false);
 });
 
@@ -98,7 +90,7 @@ describe("PATCH /api/vpaa/:id", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ...updated, mapped: true });
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.vpaa.write);
+    expect(requireUserMock).toHaveBeenCalledWith("vpaa.write");
     expect(mocks.hasActiveVpaa).not.toHaveBeenCalled();
     expect(mocks.collectionSpy).toHaveBeenCalledWith("vpaas");
     expect(mocks.update).toHaveBeenCalledWith(
@@ -213,7 +205,7 @@ describe("DELETE /api/vpaa/:id", () => {
 
     expect(res.status).toBe(204);
     expect(await res.text()).toBe("");
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.vpaa.write);
+    expect(requireUserMock).toHaveBeenCalledWith("vpaa.write");
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.collectionSpy).toHaveBeenCalledWith("vpaas");
     expect(mocks.delete).toHaveBeenCalledWith(ID);

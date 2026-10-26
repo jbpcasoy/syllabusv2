@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -18,8 +18,7 @@ vi.mock("@/lib/pocketbase", async () => {
     create: mocks.create,
   });
   return {
-    createPb: vi.fn(() => ({ collection, filter: mocks.filter })),
-    createAdminPb: vi.fn(async () => ({ collection })),
+    createAdminPb: vi.fn(async () => ({ collection, filter: mocks.filter })),
     handlePbError: vi.fn((error: unknown) =>
       NextResponse.json(
         { error: error instanceof Error ? error.message : "unknown" },
@@ -33,16 +32,13 @@ vi.mock("@/lib/validators/college", () => ({
   parseCollegeInput: mocks.parseCollegeInput,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "u1", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
 
 import { GET, POST } from "@/app/api/college/route";
-import { requireUser } from "@/lib/auth";
-import { createAdminPb, createPb } from "@/lib/pocketbase";
+import { createAdminPb } from "@/lib/pocketbase";
+import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const listResult = {
   page: 1,
@@ -68,6 +64,7 @@ function post(body: unknown, raw = false) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAuth({ isAdmin: true });
 });
 
 describe("GET /api/college", () => {
@@ -80,7 +77,7 @@ describe("GET /api/college", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(listResult);
-    expect(createPb).toHaveBeenCalledOnce();
+    expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.getList).toHaveBeenCalledWith(1, 30, base);
   });
 
@@ -184,15 +181,37 @@ describe("POST /api/college", () => {
   });
 
   it("returns 403 when the caller lacks permission and never touches PocketBase", async () => {
-    vi.mocked(requireUser).mockResolvedValueOnce({
-      ok: false,
-      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-    });
+    mockAuth(); // signed in, no roles
 
     const res = await POST(post({ name: "X" }));
 
     expect(res.status).toBe(403);
     expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/college capability", () => {
+  const data = { name: "Science", code: "COS", campus: "campacampacampa" };
+
+  beforeEach(() => {
+    mocks.parseCollegeInput.mockReturnValue({ ok: true, data });
+    mocks.create.mockResolvedValue({ id: "abc123abc123abc", ...data });
+  });
+
+  it("requires college.write", async () => {
+    await POST(post(data));
+    expect(requireUserMock).toHaveBeenCalledWith("college.write");
+  });
+
+  it("lets the VPAA create a college", async () => {
+    mockAuth({ roles: { isVpaa: true } });
+    expect((await POST(post(data))).status).toBe(201);
+  });
+
+  it("returns 403 for a dean and creates nothing", async () => {
+    mockAuth({ roles: { deanOfColleges: ["colgacolgacolga"] } });
+    expect((await POST(post(data))).status).toBe(403);
     expect(mocks.create).not.toHaveBeenCalled();
   });
 });

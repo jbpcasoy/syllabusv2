@@ -1,13 +1,13 @@
-import type { UserInput, UserResponse, UserRole } from "@/types/user";
+import type { UserInput, UserKind, UserResponse } from "@/types/user";
 import type { ListResult } from "pocketbase";
 
-export type { UserInput, UserResponse };
+export type { UserInput, UserKind, UserResponse };
 
 export type UserListParams = {
   page: number;
   perPage: number;
   search?: string;
-  role?: UserRole | "";
+  kind?: UserKind | "";
 };
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -38,7 +38,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function listUsers(
-  { page, perPage, search, role }: UserListParams,
+  { page, perPage, search, kind }: UserListParams,
   signal?: AbortSignal,
 ) {
   const qs = new URLSearchParams({
@@ -46,7 +46,7 @@ export function listUsers(
     perPage: String(perPage),
   });
   if (search) qs.set("search", search);
-  if (role) qs.set("role", role);
+  if (kind) qs.set("kind", kind);
 
   return request<ListResult<UserResponse>>(`/api/user?${qs}`, { signal });
 }

@@ -67,6 +67,7 @@ export function ProgramModal({
     const trimmedCode = code.trim();
     if (!trimmedName) return setError("Name is required.");
     if (!trimmedCode) return setError("Code is required.");
+    if (!departmentId) return setError("Select a department.");
 
     setSaving(true);
     setError(null);
@@ -74,7 +75,7 @@ export function ProgramModal({
       const input = {
         name: trimmedName,
         code: trimmedCode,
-        department: departmentId, // "" clears the relation
+        department: departmentId,
       };
       if (mode === "edit" && program) {
         await updateProgram(program.id, input);
@@ -180,7 +181,7 @@ export function ProgramModal({
                   disabled={saving}
                   className={inputClass}
                 >
-                  <option value="">No department</option>
+                  <option value="">Select a department…</option>
                   {!hasCurrentInList && currentDepartment && (
                     <option value={currentDepartment.id}>
                       {currentDepartment.name || currentDepartment.id}

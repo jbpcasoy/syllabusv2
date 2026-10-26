@@ -1,17 +1,17 @@
 import { requireUser } from "@/lib/auth";
 import {
-  canManageCitlDirectors,
   hasActiveCitlDirector,
   toCitlDirectorResponse,
 } from "@/lib/citl-director";
-import { PERMISSIONS } from "@/lib/permissions";
+import { assignmentScopeFilter } from "@/lib/org-visibility";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
+import { getUserRoles } from "@/lib/roles";
 import { parseCitlDirectorInput } from "@/lib/validators/citl-director";
 import type { CitlDirector } from "@/types/citl-director";
 import { NextResponse, type NextRequest } from "next/server";
 
 // GET /api/citl-director?page=1&perPage=30&search=foo&user=<id|me>&active=true|false
-// Non-managers are always scoped to their own records.
+// University-wide roles see all; everyone else only their own records.
 export async function GET(request: NextRequest) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
@@ -27,11 +27,8 @@ export async function GET(request: NextRequest) {
     const userParam = searchParams.get("user")?.trim();
     const activeParam = searchParams.get("active")?.trim();
 
-    const userId = canManageCitlDirectors(auth.user)
-      ? userParam === "me"
-        ? auth.user.id
-        : userParam
-      : auth.user.id;
+    const userId = userParam === "me" ? auth.user.id : userParam;
+    const roles = await getUserRoles(auth.user.id);
 
     // Superuser client: the users collection's rules hide other users from `expand`.
     const pb = await createAdminPb();
@@ -53,6 +50,13 @@ export async function GET(request: NextRequest) {
         pb.filter("active = {:active}", { active: activeParam === "true" }),
       );
     }
+    const scope = assignmentScopeFilter(
+      (expr, params) => pb.filter(expr, params),
+      roles,
+      auth.user.id,
+      {},
+    );
+    if (scope) filters.push(scope);
 
     const result = await pb
       .collection("citl_directors")
@@ -73,7 +77,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/citl-director { "user": "<userId>", "active"?: boolean }
 export async function POST(request: NextRequest) {
-  const auth = await requireUser(PERMISSIONS.citlDirector.write);
+  const auth = await requireUser("citlDirector.write");
   if (!auth.ok) return auth.response;
 
   try {

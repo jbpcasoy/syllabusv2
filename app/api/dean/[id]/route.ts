@@ -1,6 +1,5 @@
 import { requireUser } from "@/lib/auth";
 import { collegeHasActiveDean, toDeanResponse } from "@/lib/dean";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { parseDeanUpdate } from "@/lib/validators/dean";
 import type { Dean } from "@/types/dean";
@@ -10,7 +9,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 // PATCH /api/dean/:id { "active": boolean }
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.dean.write);
+  const auth = await requireUser("dean.write");
   if (!auth.ok) return auth.response;
 
   try {
@@ -48,7 +47,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
 // DELETE /api/dean/:id
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.dean.write);
+  const auth = await requireUser("dean.write");
   if (!auth.ok) return auth.response;
 
   try {

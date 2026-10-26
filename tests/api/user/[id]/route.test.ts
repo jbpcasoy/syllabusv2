@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   delete: vi.fn(),
   parseUserInput: vi.fn(),
+  hasOtherAdmin: vi.fn(),
   toUserResponse: vi.fn((user: Record<string, unknown>) => ({
     ...user,
     mapped: true,
@@ -37,18 +38,16 @@ vi.mock("@/lib/validators/user", () => ({
 
 vi.mock("@/lib/users", () => ({
   toUserResponse: mocks.toUserResponse,
+  hasOtherAdmin: mocks.hasOtherAdmin,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "admin1admin1adm", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
 
 import { DELETE, GET, PATCH } from "@/app/api/user/[id]/route";
-import { requireUser } from "@/lib/auth";
 import { createAdminPb } from "@/lib/pocketbase";
+import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const ADMIN_ID = "admin1admin1adm";
 const ID = "abc123abc123abc";
@@ -64,29 +63,10 @@ function req(method: string, body?: unknown, id = ID) {
   });
 }
 
-function signedInAs(id: string, role: string) {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: true,
-    user: { id, role } as never,
-  });
-}
-
-function unauthorized() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-  });
-}
-
-function forbidden() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-  });
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAuth({ id: ADMIN_ID, isAdmin: true });
+  mocks.hasOtherAdmin.mockResolvedValue(true);
 });
 
 describe("GET /api/user/:id", () => {
@@ -104,16 +84,16 @@ describe("GET /api/user/:id", () => {
     expect(mocks.toUserResponse).toHaveBeenCalledWith(user);
   });
 
-  it("requires sign-in but no specific role", async () => {
+  it("requires sign-in but no specific capability", async () => {
     mocks.getOne.mockResolvedValue(user);
 
     await GET(req("GET"), ctx());
 
-    expect(requireUser).toHaveBeenCalledWith();
+    expect(requireUserMock).toHaveBeenCalledWith();
   });
 
   it("lets a non-admin read their own record", async () => {
-    signedInAs(ID, "dean");
+    mockAuth({ id: ID, roles: { isVpaa: true } });
     mocks.getOne.mockResolvedValue(user);
 
     const res = await GET(req("GET"), ctx());
@@ -123,7 +103,7 @@ describe("GET /api/user/:id", () => {
   });
 
   it("returns 403 when a non-admin reads someone else", async () => {
-    signedInAs("other1other1oth", "dean");
+    mockAuth({ id: "other1other1oth", roles: { isVpaa: true } });
 
     const res = await GET(req("GET"), ctx());
 
@@ -134,7 +114,7 @@ describe("GET /api/user/:id", () => {
   });
 
   it("returns 401 when not signed in", async () => {
-    unauthorized();
+    mockAuth({ signedIn: false });
 
     const res = await GET(req("GET"), ctx());
 
@@ -165,13 +145,14 @@ describe("PATCH /api/user/:id", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ...updated, mapped: true });
-    expect(requireUser).toHaveBeenCalledWith([]);
+    expect(requireUserMock).toHaveBeenCalledWith("user.write");
     expect(mocks.parseUserInput).toHaveBeenCalledWith(
       { name: "Renamed" },
       { partial: true },
     );
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.update).toHaveBeenCalledWith(ID, { name: "Renamed" });
+    expect(mocks.hasOtherAdmin).not.toHaveBeenCalled();
   });
 
   it("adds passwordConfirm when a password is being changed", async () => {
@@ -190,83 +171,98 @@ describe("PATCH /api/user/:id", () => {
   });
 
   it("does not add passwordConfirm when no password is sent", async () => {
-    mocks.parseUserInput.mockReturnValue({
-      ok: true,
-      data: { role: "dean" },
-    });
+    mocks.parseUserInput.mockReturnValue({ ok: true, data: { name: "New" } });
     mocks.update.mockResolvedValue({ id: ID });
 
-    await PATCH(req("PATCH", { role: "dean" }), ctx());
+    await PATCH(req("PATCH", { name: "New" }), ctx());
 
     const payload = mocks.update.mock.calls[0][1] as Record<string, unknown>;
     expect(payload).not.toHaveProperty("passwordConfirm");
   });
 
-  it("allows changing another user's role", async () => {
+  it("lets an admin grant admin access to another user", async () => {
     mocks.parseUserInput.mockReturnValue({
       ok: true,
-      data: { role: "faculty" },
+      data: { isAdmin: true },
     });
     mocks.update.mockResolvedValue({ id: ID });
 
-    const res = await PATCH(req("PATCH", { role: "faculty" }), ctx());
+    const res = await PATCH(req("PATCH", { isAdmin: true }), ctx());
 
     expect(res.status).toBe(200);
-    expect(mocks.update).toHaveBeenCalledWith(ID, { role: "faculty" });
+    expect(mocks.hasOtherAdmin).not.toHaveBeenCalled();
+    expect(mocks.update).toHaveBeenCalledWith(ID, { isAdmin: true });
   });
 
-  it("blocks an admin from removing their own admin role", async () => {
+  it("lets an admin revoke another user's admin access when one remains", async () => {
     mocks.parseUserInput.mockReturnValue({
       ok: true,
-      data: { role: "dean" },
+      data: { isAdmin: false },
     });
+    mocks.update.mockResolvedValue({ id: ID });
 
-    const res = await PATCH(
-      req("PATCH", { role: "dean" }, ADMIN_ID),
-      ctx(ADMIN_ID),
-    );
+    const res = await PATCH(req("PATCH", { isAdmin: false }), ctx());
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+    expect(mocks.hasOtherAdmin).toHaveBeenCalledWith(ID);
+    expect(mocks.update).toHaveBeenCalledWith(ID, { isAdmin: false });
+  });
+
+  it("returns 409 when revoking would leave no administrator", async () => {
+    mocks.parseUserInput.mockReturnValue({
+      ok: true,
+      data: { isAdmin: false },
+    });
+    mocks.hasOtherAdmin.mockResolvedValue(false);
+
+    const res = await PATCH(req("PATCH", { isAdmin: false }), ctx());
+
+    expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
-      error: "You can't remove your own admin role",
+      error: "At least one administrator must remain",
     });
     expect(createAdminPb).not.toHaveBeenCalled();
     expect(mocks.update).not.toHaveBeenCalled();
   });
 
-  it("blocks an admin from clearing their own role", async () => {
-    mocks.parseUserInput.mockReturnValue({ ok: true, data: { role: "" } });
+  it("blocks an admin from removing their own admin access", async () => {
+    mocks.parseUserInput.mockReturnValue({
+      ok: true,
+      data: { isAdmin: false },
+    });
 
     const res = await PATCH(
-      req("PATCH", { role: "" }, ADMIN_ID),
+      req("PATCH", { isAdmin: false }, ADMIN_ID),
       ctx(ADMIN_ID),
     );
 
     expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "You can't remove your own admin access",
+    });
+    expect(mocks.hasOtherAdmin).not.toHaveBeenCalled();
+    expect(createAdminPb).not.toHaveBeenCalled();
     expect(mocks.update).not.toHaveBeenCalled();
   });
 
-  it("lets an admin re-save their own admin role", async () => {
+  it("lets an admin re-save their own admin flag as true", async () => {
     mocks.parseUserInput.mockReturnValue({
       ok: true,
-      data: { role: "admin" },
+      data: { isAdmin: true },
     });
     mocks.update.mockResolvedValue({ id: ADMIN_ID });
 
     const res = await PATCH(
-      req("PATCH", { role: "admin" }, ADMIN_ID),
+      req("PATCH", { isAdmin: true }, ADMIN_ID),
       ctx(ADMIN_ID),
     );
 
     expect(res.status).toBe(200);
-    expect(mocks.update).toHaveBeenCalledOnce();
+    expect(mocks.update).toHaveBeenCalledWith(ADMIN_ID, { isAdmin: true });
   });
 
-  it("lets an admin edit their own non-role fields", async () => {
-    mocks.parseUserInput.mockReturnValue({
-      ok: true,
-      data: { name: "Me" },
-    });
+  it("lets an admin edit their own non-admin fields", async () => {
+    mocks.parseUserInput.mockReturnValue({ ok: true, data: { name: "Me" } });
     mocks.update.mockResolvedValue({ id: ADMIN_ID });
 
     const res = await PATCH(
@@ -310,7 +306,7 @@ describe("PATCH /api/user/:id", () => {
   });
 
   it("returns 401 when not signed in", async () => {
-    unauthorized();
+    mockAuth({ signedIn: false });
 
     const res = await PATCH(req("PATCH", { name: "X" }), ctx());
 
@@ -319,8 +315,8 @@ describe("PATCH /api/user/:id", () => {
     expect(mocks.update).not.toHaveBeenCalled();
   });
 
-  it("returns 403 when the caller lacks permission and never touches PocketBase", async () => {
-    forbidden();
+  it("returns 403 for a non-admin and never touches PocketBase", async () => {
+    mockAuth({ roles: { isVpaa: true } });
 
     const res = await PATCH(req("PATCH", { name: "X" }), ctx());
 
@@ -339,7 +335,8 @@ describe("DELETE /api/user/:id", () => {
 
     expect(res.status).toBe(204);
     expect(await res.text()).toBe("");
-    expect(requireUser).toHaveBeenCalledWith([]);
+    expect(requireUserMock).toHaveBeenCalledWith("user.write");
+    expect(mocks.hasOtherAdmin).toHaveBeenCalledWith(ID);
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.delete).toHaveBeenCalledWith(ID);
   });
@@ -355,6 +352,19 @@ describe("DELETE /api/user/:id", () => {
     expect(mocks.delete).not.toHaveBeenCalled();
   });
 
+  it("returns 409 when deleting would leave no administrator", async () => {
+    mocks.hasOtherAdmin.mockResolvedValue(false);
+
+    const res = await DELETE(req("DELETE"), ctx());
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "At least one administrator must remain",
+    });
+    expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.delete).not.toHaveBeenCalled();
+  });
+
   it("propagates a 404 from PocketBase", async () => {
     mocks.delete.mockRejectedValue({ status: 404 });
 
@@ -364,7 +374,7 @@ describe("DELETE /api/user/:id", () => {
   });
 
   it("returns 401 when not signed in", async () => {
-    unauthorized();
+    mockAuth({ signedIn: false });
 
     const res = await DELETE(req("DELETE"), ctx());
 
@@ -372,8 +382,8 @@ describe("DELETE /api/user/:id", () => {
     expect(mocks.delete).not.toHaveBeenCalled();
   });
 
-  it("returns 403 when the caller lacks permission and never touches PocketBase", async () => {
-    forbidden();
+  it("returns 403 for a non-admin and never touches PocketBase", async () => {
+    mockAuth({ roles: { isVpaa: true } });
 
     const res = await DELETE(req("DELETE"), ctx());
 

@@ -1,23 +1,10 @@
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
 import type { Department } from "@/types/department";
 import type {
   DepartmentHead,
   DepartmentHeadResponse,
 } from "@/types/department-head";
-import type { AppUser, UserRole } from "@/types/user";
 import "server-only";
-
-/** Admins, plus any role listed in PERMISSIONS.departmentHead.write. */
-export function canManageDepartmentHeads(user: AppUser): boolean {
-  if (user.role === "admin") return true;
-  return (
-    !!user.role &&
-    (PERMISSIONS.departmentHead.write as readonly UserRole[]).includes(
-      user.role,
-    )
-  );
-}
 
 export function toDepartmentHeadResponse(
   record: DepartmentHead,

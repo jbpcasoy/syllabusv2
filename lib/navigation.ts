@@ -1,10 +1,11 @@
-import type { UserRole } from "@/types/user";
+import { canAnywhere, type Capability } from "@/lib/capability-rules";
+import type { UserRoles } from "@/types/roles";
 
 export type NavItem = {
   label: string;
   href: string;
   /** Omit for "any signed-in user". Admin always passes. */
-  roles?: readonly UserRole[];
+  capability?: Capability;
 };
 
 export const NAV_ITEMS: readonly NavItem[] = [
@@ -21,13 +22,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "FDIS Chair", href: "/fdis-chair" },
   { label: "CITL Director", href: "/citl-director" },
   { label: "Faculty", href: "/faculty" },
-  { label: "Users", href: "/user", roles: [] }, // empty = admin only
+  { label: "Users", href: "/user", capability: "user.read" },
 ];
 
-export function getNavItemsForRole(role: UserRole | null): NavItem[] {
-  return NAV_ITEMS.filter((item) => {
-    if (!item.roles) return true;
-    if (role === "admin") return true;
-    return role !== null && item.roles.includes(role);
-  });
+export function getNavItems(roles: UserRoles): NavItem[] {
+  return NAV_ITEMS.filter(
+    (item) => !item.capability || canAnywhere(roles, item.capability),
+  );
 }

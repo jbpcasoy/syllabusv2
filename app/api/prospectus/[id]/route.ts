@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
+import { can } from "@/lib/capabilities";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
-import { canManageProspectuses, toProspectusResponse } from "@/lib/prospectus";
+import { toProspectusResponse } from "@/lib/prospectus";
 import { parseProspectusUpdate } from "@/lib/validators/prospectus";
 import { Prospectus } from "@/types/prospectus";
 import { NextResponse, type NextRequest } from "next/server";
@@ -20,7 +20,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       .collection("prospectuses")
       .getOne<Prospectus>(id, { expand: "program" });
 
-    if (!record.published && !canManageProspectuses(auth.user)) {
+    if (!record.published && !(await can(auth.user, "prospectus.write"))) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
@@ -32,7 +32,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
 // PATCH /api/prospectus/:id  { "school_year"?: string, "published"?: boolean }
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.prospectus.write);
+  const auth = await requireUser("prospectus.write");
   if (!auth.ok) return auth.response;
 
   try {
@@ -88,7 +88,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
 // DELETE /api/prospectus/:id
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.prospectus.write);
+  const auth = await requireUser("prospectus.write");
   if (!auth.ok) return auth.response;
 
   try {

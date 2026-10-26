@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -16,7 +16,6 @@ vi.mock("@/lib/pocketbase", async () => {
     delete: mocks.delete,
   });
   return {
-    createPb: vi.fn(() => ({ collection })),
     createAdminPb: vi.fn(async () => ({ collection })),
     handlePbError: vi.fn((error: unknown) => {
       const status =
@@ -32,16 +31,13 @@ vi.mock("@/lib/validators/campus", () => ({
   parseCampusInput: mocks.parseCampusInput,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "u1", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
 
 import { DELETE, GET, PATCH } from "@/app/api/campus/[id]/route";
-import { requireUser } from "@/lib/auth";
-import { createAdminPb, createPb } from "@/lib/pocketbase";
+import { createAdminPb } from "@/lib/pocketbase";
+import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const ID = "abc123abc123abc";
 const ctx = { params: Promise.resolve({ id: ID }) };
@@ -58,6 +54,7 @@ function req(method: string, body?: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAuth({ isAdmin: true });
 });
 
 describe("GET /api/campus/:id", () => {
@@ -69,7 +66,7 @@ describe("GET /api/campus/:id", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(campus);
-    expect(createPb).toHaveBeenCalledOnce();
+    expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.getOne).toHaveBeenCalledWith(ID);
   });
 
@@ -137,10 +134,7 @@ describe("PATCH /api/campus/:id", () => {
   });
 
   it("returns 403 when the caller lacks permission and never touches PocketBase", async () => {
-    vi.mocked(requireUser).mockResolvedValueOnce({
-      ok: false,
-      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-    });
+    mockAuth(); // signed in, no roles
 
     const res = await PATCH(req("PATCH", { name: "X" }), ctx);
 
@@ -161,6 +155,7 @@ describe("DELETE /api/campus/:id", () => {
     expect(await res.text()).toBe("");
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.delete).toHaveBeenCalledWith(ID);
+    expect(requireUserMock).toHaveBeenCalledWith("campus.write");
   });
 
   it("propagates a 404 from PocketBase", async () => {
@@ -172,10 +167,7 @@ describe("DELETE /api/campus/:id", () => {
   });
 
   it("returns 403 when the caller lacks permission and never touches PocketBase", async () => {
-    vi.mocked(requireUser).mockResolvedValueOnce({
-      ok: false,
-      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-    });
+    mockAuth(); // signed in, no roles
 
     const res = await DELETE(req("DELETE"), ctx);
 

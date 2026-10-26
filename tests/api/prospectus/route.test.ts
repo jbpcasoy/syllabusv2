@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
       `${expr}|${JSON.stringify(params)}`,
   ),
   parseProspectusInput: vi.fn(),
-  canManageProspectuses: vi.fn(),
   toProspectusResponse: vi.fn((record: Record<string, unknown>) => ({
     ...record,
     mapped: true,
@@ -40,21 +39,19 @@ vi.mock("@/lib/validators/prospectus", () => ({
 
 // Mocked wholesale so the real module (and "server-only") is never loaded.
 vi.mock("@/lib/prospectus", () => ({
-  canManageProspectuses: mocks.canManageProspectuses,
   toProspectusResponse: mocks.toProspectusResponse,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "adminadminadmin", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
+vi.mock("@/lib/capabilities", async () =>
+  (await import("@/tests/helpers/mock-auth")).capabilitiesModuleMock(),
+);
 
 import { GET, POST } from "@/app/api/prospectus/route";
-import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
+import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const PROGRAM_ID = "prog1prog1prog1";
 
@@ -90,22 +87,17 @@ function post(body: unknown, raw = false) {
 }
 
 function unauthorized() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-  });
+  mockAuth({ signedIn: false });
 }
 
+/** Signed in as a dean: prospectus writes are admin-only. */
 function forbidden() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-  });
+  mockAuth({ roles: { deanOfColleges: ["colgacolgacolga"] } });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.canManageProspectuses.mockReturnValue(true);
+  mockAuth({ isAdmin: true });
 });
 
 describe("GET /api/prospectus", () => {
@@ -126,9 +118,9 @@ describe("GET /api/prospectus", () => {
     expect(mocks.getList).toHaveBeenCalledWith(1, 30, base);
   });
 
-  it("requires sign-in but no specific role", async () => {
+  it("requires sign-in but no specific capability", async () => {
     await GET(get());
-    expect(requireUser).toHaveBeenCalledWith();
+    expect(requireUserMock).toHaveBeenCalledWith();
   });
 
   it("uses the superuser client because the collection rules are null", async () => {
@@ -198,7 +190,7 @@ describe("GET /api/prospectus", () => {
   });
 
   it("forces published = true for a non-manager", async () => {
-    mocks.canManageProspectuses.mockReturnValueOnce(false);
+    forbidden(); // not an admin
 
     await GET(get());
 
@@ -210,7 +202,7 @@ describe("GET /api/prospectus", () => {
   });
 
   it("ignores a non-manager's published=false filter", async () => {
-    mocks.canManageProspectuses.mockReturnValueOnce(false);
+    forbidden(); // not an admin
 
     await GET(get("?published=false"));
 
@@ -262,7 +254,7 @@ describe("POST /api/prospectus", () => {
 
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ ...created, mapped: true });
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.prospectus.write);
+    expect(requireUserMock).toHaveBeenCalledWith("prospectus.write");
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.collectionSpy).toHaveBeenCalledWith("prospectuses");
     expect(mocks.create).toHaveBeenCalledWith(data, { expand: "program" });

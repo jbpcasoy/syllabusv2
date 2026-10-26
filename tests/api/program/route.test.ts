@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -13,13 +13,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/pocketbase", async () => {
   const { NextResponse } = await import("next/server");
-  const collection = () => ({
-    getList: mocks.getList,
-    create: mocks.create,
-  });
+  const collection = () => ({ getList: mocks.getList, create: mocks.create });
   return {
-    createPb: vi.fn(() => ({ collection, filter: mocks.filter })),
-    createAdminPb: vi.fn(async () => ({ collection })),
+    createAdminPb: vi.fn(async () => ({ collection, filter: mocks.filter })),
     handlePbError: vi.fn((error: unknown) =>
       NextResponse.json(
         { error: error instanceof Error ? error.message : "unknown" },
@@ -33,17 +29,23 @@ vi.mock("@/lib/validators/program", () => ({
   parseProgramInput: mocks.parseProgramInput,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "u1", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
+vi.mock("@/lib/roles", async () =>
+  (await import("@/tests/helpers/mock-auth")).rolesModuleMock(),
+);
 
 import { GET, POST } from "@/app/api/program/route";
-import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
-import { createAdminPb, createPb } from "@/lib/pocketbase";
+import { createAdminPb } from "@/lib/pocketbase";
+import {
+  authorizeMock,
+  mockAuth,
+  requireUserMock,
+} from "@/tests/helpers/mock-auth";
+
+const DEPT_ID = "deptAdeptAdeptA";
+const COLLEGE_ID = "colgAcolgAcolgA";
 
 const listResult = {
   page: 1,
@@ -69,6 +71,7 @@ function post(body: unknown, raw = false) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAuth({ isAdmin: true });
 });
 
 describe("GET /api/program", () => {
@@ -81,8 +84,13 @@ describe("GET /api/program", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(listResult);
-    expect(createPb).toHaveBeenCalledOnce();
+    expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.getList).toHaveBeenCalledWith(1, 30, base);
+  });
+
+  it("requires sign-in but no specific capability", async () => {
+    await GET(get());
+    expect(requireUserMock).toHaveBeenCalledWith();
   });
 
   it("respects page and perPage", async () => {
@@ -105,25 +113,20 @@ describe("GET /api/program", () => {
 
     expect(mocks.filter).toHaveBeenCalledWith(
       "(name ~ {:search} || code ~ {:search})",
-      { search: "bscs" }, // trimmed
-    );
-    expect(mocks.getList).toHaveBeenCalledWith(
-      1,
-      30,
-      expect.objectContaining({ filter: expect.any(String) }),
+      { search: "bscs" },
     );
   });
 
   it("filters by department", async () => {
-    await GET(get("?department=abc123abc123abc"));
+    await GET(get(`?department=${DEPT_ID}`));
 
     expect(mocks.filter).toHaveBeenCalledWith("department = {:department}", {
-      department: "abc123abc123abc",
+      department: DEPT_ID,
     });
   });
 
   it("combines search and department filters with &&", async () => {
-    await GET(get("?search=cs&department=abc123abc123abc"));
+    await GET(get(`?search=cs&department=${DEPT_ID}`));
 
     const options = mocks.getList.mock.calls[0][2] as { filter: string };
     expect(options.filter).toContain(" && ");
@@ -136,9 +139,58 @@ describe("GET /api/program", () => {
     expect(mocks.getList).toHaveBeenCalledWith(1, 30, base);
   });
 
-  it("does not require authentication", async () => {
-    await GET(get());
-    expect(requireUser).not.toHaveBeenCalled();
+  describe("scope", () => {
+    it("adds no scope filter for admin, VPAA, chairs or unassigned users", async () => {
+      for (const options of [
+        { isAdmin: true },
+        { roles: { isVpaa: true } },
+        { roles: { chairOfPrograms: ["p"] } },
+        {},
+      ]) {
+        mockAuth(options);
+        await GET(get());
+      }
+      expect(mocks.filter).not.toHaveBeenCalled();
+    });
+
+    it("limits a dean to programs of their college", async () => {
+      mockAuth({ roles: { deanOfColleges: [COLLEGE_ID] } });
+
+      await GET(get());
+
+      expect(mocks.filter).toHaveBeenCalledWith("department.college = {:c0}", {
+        c0: COLLEGE_ID,
+      });
+    });
+
+    it("limits a department head to programs of their department", async () => {
+      mockAuth({ roles: { headOfDepartments: [DEPT_ID] } });
+
+      await GET(get());
+
+      expect(mocks.filter).toHaveBeenCalledWith("department = {:d0}", {
+        d0: DEPT_ID,
+      });
+    });
+
+    it("combines the scope with the other filters using &&", async () => {
+      mockAuth({ roles: { deanOfColleges: [COLLEGE_ID] } });
+
+      await GET(get("?search=cs"));
+
+      const options = mocks.getList.mock.calls[0][2] as { filter: string };
+      expect(options.filter.split(" && ")).toHaveLength(2);
+    });
+  });
+
+  it("returns 401 when not signed in", async () => {
+    mockAuth({ signedIn: false });
+
+    const res = await GET(get());
+
+    expect(res.status).toBe(401);
+    expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.getList).not.toHaveBeenCalled();
   });
 
   it("delegates errors to handlePbError", async () => {
@@ -152,28 +204,70 @@ describe("GET /api/program", () => {
 });
 
 describe("POST /api/program", () => {
-  const data = { name: "BS Computer Science", code: "BSCS" };
+  const data = {
+    name: "BS Computer Science",
+    code: "BSCS",
+    department: DEPT_ID,
+  };
+
+  beforeEach(() => {
+    mocks.parseProgramInput.mockReturnValue({ ok: true, data });
+  });
 
   it("creates a program and returns 201", async () => {
     const created = { id: "abc123abc123abc", ...data };
-    mocks.parseProgramInput.mockReturnValue({ ok: true, data });
     mocks.create.mockResolvedValue(created);
 
     const res = await POST(post(data));
 
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual(created);
-    expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.create).toHaveBeenCalledWith(data, { expand: "department" });
   });
 
-  it("checks permissions with the program write rule", async () => {
-    mocks.parseProgramInput.mockReturnValue({ ok: true, data });
+  it("authorizes program.create against the department in the body", async () => {
     mocks.create.mockResolvedValue({ id: "x" });
 
     await POST(post(data));
 
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.program.write);
+    expect(authorizeMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "program.create",
+      { department: DEPT_ID },
+    );
+  });
+
+  it("lets a dean create inside their college", async () => {
+    mockAuth({
+      roles: { deanOfColleges: [COLLEGE_ID] },
+      scope: { collegeId: COLLEGE_ID, departmentId: DEPT_ID },
+    });
+    mocks.create.mockResolvedValue({ id: "x" });
+
+    expect((await POST(post(data))).status).toBe(201);
+  });
+
+  it("returns 403 for a dean outside their college and creates nothing", async () => {
+    mockAuth({
+      roles: { deanOfColleges: ["colgBcolgBcolgB"] },
+      scope: { collegeId: COLLEGE_ID, departmentId: DEPT_ID },
+    });
+
+    const res = await POST(post(data));
+
+    expect(res.status).toBe(403);
+    expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for a department head (cannot create)", async () => {
+    mockAuth({
+      roles: { headOfDepartments: [DEPT_ID] },
+      scope: { collegeId: COLLEGE_ID, departmentId: DEPT_ID },
+    });
+
+    expect((await POST(post(data))).status).toBe(403);
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it("returns 400 on validation failure and never touches PocketBase", async () => {
@@ -200,7 +294,6 @@ describe("POST /api/program", () => {
   });
 
   it("delegates PocketBase errors to handlePbError", async () => {
-    mocks.parseProgramInput.mockReturnValue({ ok: true, data });
     mocks.create.mockRejectedValue(new Error("pb down"));
 
     const res = await POST(post(data));
@@ -210,10 +303,7 @@ describe("POST /api/program", () => {
   });
 
   it("returns 401 when not signed in", async () => {
-    vi.mocked(requireUser).mockResolvedValueOnce({
-      ok: false,
-      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    });
+    mockAuth({ signedIn: false });
 
     const res = await POST(post(data));
 
@@ -222,17 +312,10 @@ describe("POST /api/program", () => {
     expect(createAdminPb).not.toHaveBeenCalled();
   });
 
-  it("returns 403 when the caller lacks permission and never touches PocketBase", async () => {
-    vi.mocked(requireUser).mockResolvedValueOnce({
-      ok: false,
-      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-    });
+  it("returns 403 for a user with no roles and creates nothing", async () => {
+    mockAuth();
 
-    const res = await POST(post(data));
-
-    expect(res.status).toBe(403);
-    expect(mocks.parseProgramInput).not.toHaveBeenCalled();
-    expect(createAdminPb).not.toHaveBeenCalled();
+    expect((await POST(post(data))).status).toBe(403);
     expect(mocks.create).not.toHaveBeenCalled();
   });
 });

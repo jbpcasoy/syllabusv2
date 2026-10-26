@@ -1,17 +1,17 @@
-import { requireUser } from "@/lib/auth";
+import { authorize, requireUser } from "@/lib/auth";
 import {
-  canManageDepartmentHeads,
   departmentHasActiveHead,
   toDepartmentHeadResponse,
 } from "@/lib/department-head";
-import { PERMISSIONS } from "@/lib/permissions";
+import { assignmentScopeFilter } from "@/lib/org-visibility";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
+import { getUserRoles } from "@/lib/roles";
 import { parseDepartmentHeadInput } from "@/lib/validators/department-head";
 import type { DepartmentHead } from "@/types/department-head";
 import { NextResponse, type NextRequest } from "next/server";
 
 // GET /api/department-head?page=1&perPage=30&search=foo&department=<id>&user=<id|me>&active=true|false
-// Non-managers are always scoped to their own assignments.
+// Scoped: deans see their college, everyone else only their own records.
 export async function GET(request: NextRequest) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
@@ -28,11 +28,8 @@ export async function GET(request: NextRequest) {
     const userParam = searchParams.get("user")?.trim();
     const activeParam = searchParams.get("active")?.trim();
 
-    const userId = canManageDepartmentHeads(auth.user)
-      ? userParam === "me"
-        ? auth.user.id
-        : userParam
-      : auth.user.id;
+    const userId = userParam === "me" ? auth.user.id : userParam;
+    const roles = await getUserRoles(auth.user.id);
 
     // Superuser client: the users collection's rules hide other users from `expand`.
     const pb = await createAdminPb();
@@ -57,6 +54,13 @@ export async function GET(request: NextRequest) {
         pb.filter("active = {:active}", { active: activeParam === "true" }),
       );
     }
+    const scope = assignmentScopeFilter(
+      (expr, params) => pb.filter(expr, params),
+      roles,
+      auth.user.id,
+      { college: "department.college" },
+    );
+    if (scope) filters.push(scope);
 
     const result = await pb
       .collection("department_heads")
@@ -77,7 +81,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/department-head { "user": "<userId>", "department": "<departmentId>", "active"?: boolean }
 export async function POST(request: NextRequest) {
-  const auth = await requireUser(PERMISSIONS.departmentHead.write);
+  const auth = await requireUser();
   if (!auth.ok) return auth.response;
 
   try {
@@ -86,6 +90,11 @@ export async function POST(request: NextRequest) {
     if (!parsed.ok) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
+
+    const denied = await authorize(auth.user, "departmentHead.write", {
+      department: parsed.data.department,
+    });
+    if (denied) return denied;
 
     const pb = await createAdminPb();
 

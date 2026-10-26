@@ -1,13 +1,15 @@
-import { requireUser } from "@/lib/auth";
-import { canManageFaculty, toFacultyResponse } from "@/lib/faculty";
-import { PERMISSIONS } from "@/lib/permissions";
+import { authorize, requireUser } from "@/lib/auth";
+import { toFacultyResponse } from "@/lib/faculty";
+import { assignmentScopeFilter } from "@/lib/org-visibility";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
+import { getUserRoles } from "@/lib/roles";
 import { parseFacultyInput } from "@/lib/validators/faculty";
 import type { Faculty } from "@/types/faculty";
 import { NextResponse, type NextRequest } from "next/server";
 
 // GET /api/faculty?page=1&perPage=30&search=foo&program=<id>&user=<id|me>&active=true|false
-// Non-managers are always scoped to their own memberships.
+// Scoped: deans see their college, department heads their department,
+// program chairs their program, everyone else only their own memberships.
 export async function GET(request: NextRequest) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
@@ -24,11 +26,8 @@ export async function GET(request: NextRequest) {
     const userParam = searchParams.get("user")?.trim();
     const activeParam = searchParams.get("active")?.trim();
 
-    const userId = canManageFaculty(auth.user)
-      ? userParam === "me"
-        ? auth.user.id
-        : userParam
-      : auth.user.id;
+    const userId = userParam === "me" ? auth.user.id : userParam;
+    const roles = await getUserRoles(auth.user.id);
 
     // Superuser client: the users collection's rules hide other users from `expand`.
     const pb = await createAdminPb();
@@ -53,6 +52,17 @@ export async function GET(request: NextRequest) {
         pb.filter("active = {:active}", { active: activeParam === "true" }),
       );
     }
+    const scope = assignmentScopeFilter(
+      (expr, params) => pb.filter(expr, params),
+      roles,
+      auth.user.id,
+      {
+        college: "program.department.college",
+        department: "program.department",
+        program: "program",
+      },
+    );
+    if (scope) filters.push(scope);
 
     const result = await pb
       .collection("faculties")
@@ -73,7 +83,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/faculty  { "user": "<userId>", "program": "<programId>", "active"?: boolean }
 export async function POST(request: NextRequest) {
-  const auth = await requireUser(PERMISSIONS.faculty.write);
+  const auth = await requireUser();
   if (!auth.ok) return auth.response;
 
   try {
@@ -82,6 +92,11 @@ export async function POST(request: NextRequest) {
     if (!parsed.ok) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
+
+    const denied = await authorize(auth.user, "faculty.write", {
+      program: parsed.data.program,
+    });
+    if (denied) return denied;
 
     const pb = await createAdminPb();
 

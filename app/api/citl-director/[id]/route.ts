@@ -3,7 +3,6 @@ import {
   hasActiveCitlDirector,
   toCitlDirectorResponse,
 } from "@/lib/citl-director";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { parseCitlDirectorUpdate } from "@/lib/validators/citl-director";
 import type { CitlDirector } from "@/types/citl-director";
@@ -13,7 +12,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 // PATCH /api/citl-director/:id { "active": boolean }
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.citlDirector.write);
+  const auth = await requireUser("citlDirector.write");
   if (!auth.ok) return auth.response;
 
   try {
@@ -47,7 +46,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
 // DELETE /api/citl-director/:id
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.citlDirector.write);
+  const auth = await requireUser("citlDirector.write");
   if (!auth.ok) return auth.response;
 
   try {

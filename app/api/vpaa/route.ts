@@ -1,13 +1,14 @@
 import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
+import { assignmentScopeFilter } from "@/lib/org-visibility";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
+import { getUserRoles } from "@/lib/roles";
 import { parseVpaaInput } from "@/lib/validators/vpaa";
-import { canManageVpaas, hasActiveVpaa, toVpaaResponse } from "@/lib/vpaa";
+import { hasActiveVpaa, toVpaaResponse } from "@/lib/vpaa";
 import type { Vpaa } from "@/types/vpaa";
 import { NextResponse, type NextRequest } from "next/server";
 
 // GET /api/vpaa?page=1&perPage=30&search=foo&user=<id|me>&active=true|false
-// Non-managers are always scoped to their own records.
+// University-wide roles see all; everyone else only their own records.
 export async function GET(request: NextRequest) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
@@ -23,11 +24,8 @@ export async function GET(request: NextRequest) {
     const userParam = searchParams.get("user")?.trim();
     const activeParam = searchParams.get("active")?.trim();
 
-    const userId = canManageVpaas(auth.user)
-      ? userParam === "me"
-        ? auth.user.id
-        : userParam
-      : auth.user.id;
+    const userId = userParam === "me" ? auth.user.id : userParam;
+    const roles = await getUserRoles(auth.user.id);
 
     // Superuser client: the users collection's rules hide other users from `expand`.
     const pb = await createAdminPb();
@@ -49,6 +47,13 @@ export async function GET(request: NextRequest) {
         pb.filter("active = {:active}", { active: activeParam === "true" }),
       );
     }
+    const scope = assignmentScopeFilter(
+      (expr, params) => pb.filter(expr, params),
+      roles,
+      auth.user.id,
+      {},
+    );
+    if (scope) filters.push(scope);
 
     const result = await pb.collection("vpaas").getList<Vpaa>(page, perPage, {
       sort: "-created",
@@ -67,7 +72,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/vpaa { "user": "<userId>", "active"?: boolean }
 export async function POST(request: NextRequest) {
-  const auth = await requireUser(PERMISSIONS.vpaa.write);
+  const auth = await requireUser("vpaa.write");
   if (!auth.ok) return auth.response;
 
   try {

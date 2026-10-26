@@ -1,6 +1,5 @@
 import { requireUser } from "@/lib/auth";
 import { hasActiveFdisChair, toFdisChairResponse } from "@/lib/fdis-chair";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { parseFdisChairUpdate } from "@/lib/validators/fdis-chair";
 import type { FdisChair } from "@/types/fdis-chair";
@@ -10,7 +9,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 // PATCH /api/fdis-chair/:id { "active": boolean }
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.fdisChair.write);
+  const auth = await requireUser("fdisChair.write");
   if (!auth.ok) return auth.response;
 
   try {
@@ -44,7 +43,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
 // DELETE /api/fdis-chair/:id
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.fdisChair.write);
+  const auth = await requireUser("fdisChair.write");
   if (!auth.ok) return auth.response;
 
   try {

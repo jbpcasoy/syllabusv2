@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./pb_data/**)",
+      "Read(./node_modules/**)",
+      "Read(./.next/**)",
+      "Read(./secrets/**)",
+      "Read(./pb_data/**)",
+      "Read(./public/**)",
+      "Read(./package-lock.json)",
+      "Read(./pocketbase.exe)",
+      "Read(./Syllabus Development and Review Guide.pdf)"
+    ]
+  }
+}

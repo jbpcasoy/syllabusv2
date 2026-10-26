@@ -1,8 +1,7 @@
 import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
+import { can } from "@/lib/capabilities";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import {
-  canManageProspectusItems,
   PROSPECTUS_ITEM_EXPAND,
   toProspectusItemResponse,
 } from "@/lib/prospectus-item";
@@ -32,7 +31,7 @@ export async function GET(request: NextRequest) {
     const semester = searchParams.get("semester")?.trim();
     const yearLevel = searchParams.get("year_level")?.trim();
 
-    const canManage = canManageProspectusItems(auth.user);
+    const canManage = await can(auth.user, "prospectusItem.write");
 
     // Collection rules are null, so reads go through the superuser client.
     const pb = await createAdminPb();
@@ -79,7 +78,7 @@ export async function GET(request: NextRequest) {
 // POST /api/prospectus-item
 // { "prospectus": "<id>", "semester": "First Semester", "year_level": "First Year", "subject_code": "CS101", "title": "Intro to Computing" }
 export async function POST(request: NextRequest) {
-  const auth = await requireUser(PERMISSIONS.prospectusItem.write);
+  const auth = await requireUser("prospectusItem.write");
   if (!auth.ok) return auth.response;
 
   try {

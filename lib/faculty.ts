@@ -1,18 +1,7 @@
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
 import type { Faculty, FacultyResponse } from "@/types/faculty";
 import type { Program } from "@/types/program";
-import type { AppUser, UserRole } from "@/types/user";
 import "server-only";
-
-/** Admins, plus any role listed in PERMISSIONS.faculty.write. */
-export function canManageFaculty(user: AppUser): boolean {
-  if (user.role === "admin") return true;
-  return (
-    !!user.role &&
-    (PERMISSIONS.faculty.write as readonly UserRole[]).includes(user.role)
-  );
-}
 
 export function toFacultyResponse(record: Faculty): FacultyResponse {
   const user = record.expand?.user;

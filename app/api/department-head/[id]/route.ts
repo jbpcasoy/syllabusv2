@@ -3,7 +3,6 @@ import {
   departmentHasActiveHead,
   toDepartmentHeadResponse,
 } from "@/lib/department-head";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { parseDepartmentHeadUpdate } from "@/lib/validators/department-head";
 import type { DepartmentHead } from "@/types/department-head";
@@ -12,12 +11,15 @@ import { NextResponse, type NextRequest } from "next/server";
 type RouteContext = { params: Promise<{ id: string }> };
 
 // PATCH /api/department-head/:id { "active": boolean }
+// Scoped by the record's department.
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.departmentHead.write);
+  const { id } = await params;
+  const auth = await requireUser("departmentHead.write", {
+    departmentHead: id,
+  });
   if (!auth.ok) return auth.response;
 
   try {
-    const { id } = await params;
     const body: unknown = await request.json().catch(() => null);
     const parsed = parseDepartmentHeadUpdate(body);
     if (!parsed.ok) {
@@ -53,11 +55,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
 // DELETE /api/department-head/:id
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const auth = await requireUser(PERMISSIONS.departmentHead.write);
+  const { id } = await params;
+  const auth = await requireUser("departmentHead.write", {
+    departmentHead: id,
+  });
   if (!auth.ok) return auth.response;
 
   try {
-    const { id } = await params;
     const pb = await createAdminPb();
     await pb.collection("department_heads").delete(id);
     return new NextResponse(null, { status: 204 });

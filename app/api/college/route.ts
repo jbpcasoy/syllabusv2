@@ -1,5 +1,4 @@
 import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { parseCollegeInput } from "@/lib/validators/college";
 import type { College } from "@/types/college";
@@ -46,7 +45,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/college  { "name": "College of Science", "code": "COS", "campus": "<campusId>" }
 export async function POST(request: NextRequest) {
-  const auth = await requireUser(PERMISSIONS.college.write);
+  const auth = await requireUser("college.write");
   if (!auth.ok) return auth.response;
 
   try {

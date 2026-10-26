@@ -1,7 +1,7 @@
 import { setSessionCookie, toSessionUser } from "@/lib/auth";
-import { DEFAULT_REGISTRATION_ROLE } from "@/lib/constants";
 import { createAdminPb, createPb, handlePbError } from "@/lib/pocketbase";
 import { parseRegisterInput } from "@/lib/validators/auth";
+import { NO_ROLES } from "@/types/roles";
 import type { AppUser } from "@/types/user";
 import { NextResponse, type NextRequest } from "next/server";
 import { ClientResponseError } from "pocketbase";
@@ -26,13 +26,13 @@ export async function POST(request: NextRequest) {
     const { name, email, password } = parsed.data;
 
     // The users collection's createRule should be null, so creation needs the superuser.
+    // New accounts get no admin flag and no assignments: they start "unassigned".
     const adminPb = await createAdminPb();
     await adminPb.collection("users").create<AppUser>({
       name,
       email,
       password,
       passwordConfirm: password, // required by PocketBase auth collections
-      role: DEFAULT_REGISTRATION_ROLE,
       emailVisibility: false,
     });
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       .authWithPassword(email, password);
 
     await setSessionCookie(token);
-    return NextResponse.json(toSessionUser(record as AppUser), {
+    return NextResponse.json(toSessionUser(record as AppUser, NO_ROLES), {
       status: 201,
     });
   } catch (error) {

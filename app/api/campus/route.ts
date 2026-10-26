@@ -1,5 +1,4 @@
 import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { parseCampusInput } from "@/lib/validators/campus";
 import { Campus } from "@/types/campus";
@@ -33,7 +32,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/campuses  { "name": "Main Campus" }
 export async function POST(request: NextRequest) {
-  const auth = await requireUser(PERMISSIONS.campus.write);
+  const auth = await requireUser("campus.write");
   if (!auth.ok) return auth.response;
 
   try {

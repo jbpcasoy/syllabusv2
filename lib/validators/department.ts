@@ -25,14 +25,12 @@ export function parseDepartmentInput(
   }
 
   if (college !== undefined) {
-    // "" or null clears the relation; otherwise it must look like a PB id.
-    if (college === null || college === "") {
-      data.college = "";
-    } else if (typeof college === "string" && PB_ID.test(college)) {
-      data.college = college;
-    } else {
+    if (typeof college !== "string" || !PB_ID.test(college)) {
       return { ok: false, error: "`college` must be a valid college id" };
     }
+    data.college = college;
+  } else if (!partial) {
+    return { ok: false, error: "`college` is required" };
   }
 
   return { ok: true, data };

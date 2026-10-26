@@ -1,21 +1,8 @@
-import { PERMISSIONS } from "@/lib/permissions";
 import type {
   ProspectusItem,
   ProspectusItemResponse,
 } from "@/types/prospectus-item";
-import type { AppUser, UserRole } from "@/types/user";
 import "server-only";
-
-/** Admins, plus any role listed in PERMISSIONS.prospectusItem.write. */
-export function canManageProspectusItems(user: AppUser): boolean {
-  if (user.role === "admin") return true;
-  return (
-    !!user.role &&
-    (PERMISSIONS.prospectusItem.write as readonly UserRole[]).includes(
-      user.role,
-    )
-  );
-}
 
 /** Expand string used everywhere so the response can show program and school year. */
 export const PROSPECTUS_ITEM_EXPAND = "prospectus.program";

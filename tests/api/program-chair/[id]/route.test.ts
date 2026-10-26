@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -41,17 +41,13 @@ vi.mock("@/lib/program-chair", () => ({
   toProgramChairResponse: mocks.toProgramChairResponse,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: vi.fn(async () => ({
-    ok: true,
-    user: { id: "u1", role: "admin" },
-  })),
-}));
+vi.mock("@/lib/auth", async () =>
+  (await import("@/tests/helpers/mock-auth")).authModuleMock(),
+);
 
 import { DELETE, PATCH } from "@/app/api/program-chair/[id]/route";
-import { requireUser } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/permissions";
 import { createAdminPb } from "@/lib/pocketbase";
+import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const ID = "abc123abc123abc";
 const PROGRAM_ID = "prog1prog1prog1";
@@ -68,21 +64,17 @@ function req(method: string, body?: unknown) {
 }
 
 function unauthorized() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-  });
+  mockAuth({ signedIn: false });
 }
 
+/** Signed in, but with no roles. */
 function forbidden() {
-  vi.mocked(requireUser).mockResolvedValueOnce({
-    ok: false,
-    response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-  });
+  mockAuth();
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAuth({ isAdmin: true });
   mocks.programHasActiveChair.mockResolvedValue(false);
 });
 
@@ -99,7 +91,7 @@ describe("PATCH /api/program-chair/:id", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ...updated, mapped: true });
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.programChair.write);
+    expect(requireUserMock).toHaveBeenCalledWith("programChair.write", { programChair: ID });
     expect(mocks.getOne).not.toHaveBeenCalled();
     expect(mocks.programHasActiveChair).not.toHaveBeenCalled();
     expect(mocks.update).toHaveBeenCalledWith(
@@ -229,7 +221,7 @@ describe("DELETE /api/program-chair/:id", () => {
 
     expect(res.status).toBe(204);
     expect(await res.text()).toBe("");
-    expect(requireUser).toHaveBeenCalledWith(PERMISSIONS.programChair.write);
+    expect(requireUserMock).toHaveBeenCalledWith("programChair.write", { programChair: ID });
     expect(createAdminPb).toHaveBeenCalledOnce();
     expect(mocks.delete).toHaveBeenCalledWith(ID);
   });
@@ -259,5 +251,56 @@ describe("DELETE /api/program-chair/:id", () => {
     expect(res.status).toBe(403);
     expect(createAdminPb).not.toHaveBeenCalled();
     expect(mocks.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe("scope (programChair.write on the record's program)", () => {
+  const chain = {
+    programId: PROGRAM_ID,
+    departmentId: "deptAdeptAdeptA",
+    collegeId: "colgacolgacolga",
+  };
+
+  beforeEach(() => {
+    mocks.parseProgramChairUpdate.mockReturnValue({
+      ok: true,
+      data: { active: false },
+    });
+    mocks.update.mockResolvedValue({ id: ID });
+    mocks.delete.mockResolvedValue(true);
+  });
+
+  it("lets the dean of the program's college update and delete", async () => {
+    mockAuth({ roles: { deanOfColleges: [chain.collegeId] }, scope: chain });
+
+    expect((await PATCH(req("PATCH", { active: false }), ctx)).status).toBe(
+      200,
+    );
+    expect((await DELETE(req("DELETE"), ctx)).status).toBe(204);
+  });
+
+  it("lets the head of the program's department update", async () => {
+    mockAuth({ roles: { headOfDepartments: [chain.departmentId] }, scope: chain });
+
+    expect((await PATCH(req("PATCH", { active: false }), ctx)).status).toBe(
+      200,
+    );
+  });
+
+  it("returns 403 for a dean of another college and changes nothing", async () => {
+    mockAuth({ roles: { deanOfColleges: ["othercollegeoth"] }, scope: chain });
+
+    expect((await PATCH(req("PATCH", { active: false }), ctx)).status).toBe(
+      403,
+    );
+    expect((await DELETE(req("DELETE"), ctx)).status).toBe(403);
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.delete).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for the program's own chair (chairs cannot appoint chairs)", async () => {
+    mockAuth({ roles: { chairOfPrograms: [PROGRAM_ID] }, scope: chain });
+
+    expect((await DELETE(req("DELETE"), ctx)).status).toBe(403);
   });
 });

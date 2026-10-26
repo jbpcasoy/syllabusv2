@@ -1,5 +1,6 @@
 import { setSessionCookie, toSessionUser } from "@/lib/auth";
 import { createPb, handlePbError } from "@/lib/pocketbase";
+import { getUserRoles } from "@/lib/roles";
 import type { AppUser } from "@/types/user";
 import { NextResponse, type NextRequest } from "next/server";
 import { ClientResponseError } from "pocketbase";
@@ -30,7 +31,9 @@ export async function POST(request: NextRequest) {
       .authWithPassword(body.email.trim(), body.password);
 
     await setSessionCookie(token);
-    return NextResponse.json(toSessionUser(record as AppUser));
+    return NextResponse.json(
+      toSessionUser(record as AppUser, await getUserRoles(record.id)),
+    );
   } catch (error) {
     if (error instanceof ClientResponseError && error.status === 400) {
       return NextResponse.json(
