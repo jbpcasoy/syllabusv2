@@ -14,7 +14,7 @@ Guidance for AI coding agents working in this repo. `CLAUDE.md` imports this fil
 
 ## Project
 
-Syllabus review system for Bukidnon State University. Faculty upload syllabi as PDFs. Each syllabus is reviewed through a fixed six-stage chain using the university's forms, then wet-signed, scanned and filed.
+Syllabus review system for Bukidnon State University. Faculty upload syllabi as PDFs. Each syllabus is reviewed through a fixed five-stage chain using the university's forms, then wet-signed, scanned and filed.
 
 **Stack:** Next.js (App Router, `app/` directory), React, TypeScript, Tailwind CSS, Headless UI, PocketBase (database and S3 file storage), Vitest.
 
@@ -57,7 +57,7 @@ Build features in these layers, one module per resource. Copy an existing module
 Templates:
 
 - single active record: `fdis-chair`, `citl-director`, `vpaa`
-- scoped assignment: `program-chair`, `dean`, `department-head`
+- scoped assignment: `program-chair`, `program-reviewer`, `dean`, `department-head`
 - record with a published flag: `prospectus`
 - plain CRUD: `campus`, `college`
 
@@ -89,10 +89,10 @@ Vitest, one test file per route file, mirroring the `app/api` path under `tests/
 
 ## Authorization
 
-- `users.isAdmin` is the only stored role. Every other role is derived from active assignment records (`program_chairs`, `department_heads`, `deans`, `faculties`, `fdis_chairs`, `citl_directors`, `vpaas`).
+- `users.isAdmin` is the only stored role. Every other role is derived from active assignment records (`program_chairs`, `program_reviewers`, `department_heads`, `deans`, `faculties`, `fdis_chairs`, `citl_directors`, `vpaas`).
 - `getUserRoles(userId)` queries those collections in parallel, cached per request with `cache()`.
 - `can(user, capability, target?)` in `lib/capabilities.ts`, rules in `lib/capability-rules.ts`. `requireUser(capability?, target?)` with no argument means any signed-in user. Admin always passes. Use `authorize()` when the target comes from the request body, and `canSomewhere()` in pages to decide whether to show management controls.
-- Targets (`lib/scope.ts`): `{ program }`, `{ department }`, `{ college }`, or an assignment record id (`{ programChair }`, `{ departmentHead }`, `{ faculty }`, `{ programJoinRequest }`, `{ syllabusReference }`, the last resolving through the referencing program).
+- Targets (`lib/scope.ts`): `{ program }`, `{ department }`, `{ college }`, or an assignment record id (`{ programChair }`, `{ programReviewer }`, `{ departmentHead }`, `{ faculty }`, `{ programJoinRequest }`, `{ syllabusReference }`, the last resolving through the referencing program).
 - Lists are scoped (`lib/org-visibility.ts`): admin, VPAA, FDIS chair and CITL director see everything; deans, department heads and program chairs see their scope; everyone else sees their own assignment records. Org lists stay fully visible so unassigned users can find a program to join.
 - Scope is derived through program, then department, then college. A dean manages only their college, a department head only their department, a program chair only their program.
 - A user can hold several roles at once. Never assume a single role.
@@ -104,8 +104,12 @@ Vitest, one test file per route file, mirroring the `app/api` path under `tests/
 | department, program (write)                               | VPAA; Dean in their college; Department Head edits own department  | Scoped |
 | department head (write)                                   | VPAA; Dean for their college                                       | Scoped |
 | program chair (write)                                     | VPAA; Dean for their college; Department Head for their department | Scoped |
+| program reviewer (write)                                  | VPAA; Dean for their college; Department Head for their department | Scoped |
 | faculty (write)                                           | Program Chair of that program                                      | Scoped |
 | syllabus reference (request, withdraw)                    | Program Chair of the referencing program                           | Scoped |
+| signed copy (return as invalid)                           | Program Reviewer; Dean of its college; FDIS Chair; CITL Director; VPAA | Scoped |
+| syllabus lead (transfer)                                  | Program Chair of the syllabus's program                            | Scoped |
+| justification (return for revision)                      | Program Reviewer; Dean of its college; FDIS Chair; CITL Director; VPAA | Scoped |
 
 Syllabus access (lead, co-author, admin) is a relationship to one record, not a role, so it is checked by `getSyllabusAccess()` in `lib/syllabus.ts`, not by a capability. The same goes for the source lead (or admin) deciding or revoking a reference.
 
@@ -120,23 +124,24 @@ Add every new check as a capability in `lib/capability-rules.ts`. Never branch o
 - Self-registration accepts only `ALLOWED_EMAIL_DOMAINS` (comma-separated, default `buksu.edu.ph`). Sign-in requires a verified email; `getCurrentUser()` treats unverified accounts as signed out. Admin-created users start verified.
 - A signed-in user asks to join a program (GE included) with an optional note. The program's chair or an admin approves (creating or reactivating the `faculties` record in one batch) or rejects with a reason. Nobody decides their own request. The requester may withdraw while pending. One pending request per user and program.
 
-**Review chain (no skipping):** Faculty submits, then 1 Program Chair, 2 Department Head, 3 Dean, 4 FDIS Chair, 5 CITL Director, 6 VPAA.
+**Review chain (no skipping):** Faculty submits, then 1 Program Reviewer, 2 Dean, 3 FDIS Chair, 4 CITL Director, 5 VPAA. The Program Reviewer is its own assignment (`program_reviewers`, one active per program), separate from the program chair and department head, who take no part in review but keep their other duties. `CHAIN_ROLES` in `lib/syllabus-workflow.ts` is the single list of stages.
 
 - Outcomes are Approve or Return for revision only. There is no reject.
 - A return requires at least one Form 18-1 review point. After the faculty lead uploads a new version and responds to every open point, the syllabus resumes at the stage that returned it.
 - All transitions go through one pure state machine (`lib/syllabus-workflow.ts`). Routes never set status or stage directly.
-- Submission fails unless an active chair, department head, dean, FDIS chair, CITL director and VPAA exist for the syllabus's program chain.
+- Submission fails unless every stage of the syllabus's program chain has an active holder (`lib/syllabus-chain.ts`).
 - Nobody reviews a syllabus they lead or co-author.
-- If the program chair leads or co-authors a syllabus, the chair designates a proxy (an active faculty member of that program, not the lead or a co-author), stored on the syllabus. For stages 2 to 6, admin assigns a stand-in.
+- A conflicted stage is covered by a per-syllabus stand-in (`syllabus_stand_ins`); the stage-1 stand-in is the proxy. An admin or any active holder of a later stage designates it (the program reviewer also names their own proxy). A proxy must be active faculty of the program; no stand-in may lead or co-author. Submit is blocked while the program reviewer is conflicted and no proxy is set. Admin never reviews.
+- Phase 3 spec: `docs/specs/phase-3-review-engine.md`.
 
 **Forms:**
 
 - Form 17 (OVPAA-F-INS-017): one shared Yes/No checklist per syllabus version. Every criterion answered, a "No" needs remarks and blocks Approve. Later reviewers' edits are logged.
-- Form 18-1 (CITL-F-018): review points with Action Taken, Page Number and Remarks. Part A covers Program Chair, Department Head and Dean. Part B covers FDIS Chair, CITL Director and VPAA, using the code legend A.1 to F.3.
-- Justification Form: flag plus text on a syllabus whose lead signature is missing. It informs reviewers and never blocks routing. The letter is generated per program and term and addressed to the active CITL director.
+- Form 18-1 (CITL-F-018): review points with Action Taken, Page Number and Remarks. Part A covers the Program Reviewer and the Dean. Part B covers FDIS Chair, CITL Director and VPAA, using the code legend A.1 to F.3.
+- Justification Form: whenever an approved or filed syllabus exists for the same course, program and semester in the previous school year, its authors are acknowledged as authors of the current one, even if it was rewritten from scratch. `syllabi.based_on` holds it, set automatically on create (re-checked when the justification is opened), never by hand. One entry (author plus reason) per previous author who can't sign and isn't a current author. The lead creates it once the syllabus is approved, generates the letter (course code and title plus entries, addressed to the active CITL director) and uploads the signed scan, which locks the entries. The program reviewer or any higher role in the chain, or admin, may return the scan for revision. Informational only, never blocks. Only the lead, co-authors, reviewers and admins see it; referencers never do.
 - Form definitions live in code, versioned by form code and revision. Stored answers record the revision they used.
 
-**Signatures:** wet-signed on paper. Each approval creates a reference code (for example `SYL-<term>-<seq>-S<stage>`) printed on exported forms. A scan of the signed syllabus is uploaded after VPAA approval, is write-once, and moves the syllabus to "filed".
+**Signatures:** wet-signed on paper. Each approval creates a reference code (for example `SYL-<term>-<seq>-S<stage>`) printed on exported forms. The lead uploads a scan of the signed syllabus after VPAA approval, which moves it to "filed". The program reviewer, dean, FDIS chair, CITL director, VPAA or an admin may return the scan as invalid with a reason, moving the syllabus back to "approved" for a new upload. Returned scans are kept.
 
 **Syllabi:**
 
@@ -155,7 +160,9 @@ Add every new check as a capability in `lib/capability-rules.ts`. Never branch o
 
 **Storage:** set `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET` and `S3_FORCE_PATH_STYLE` in PocketBase's environment before migrating to store files in S3. Unset means local disk.
 
-**Planned collections:** `syllabus_reviews`, `form17_answers`, `form18_points`, `syllabus_signed_copies`, `audit_log`.
+**Phase 3:** `syllabi` gains statuses `returned`, `approved`, `filed` and fields `ref_seq`, `returned_at` (a returned syllabus keeps `stage` at the returning stage); `syllabus_stand_ins`; `syllabus_reviews` (one per version and stage); `program_reviewers` (user, program, active; unique (user, program) and one active per program); stage fields max 5; `form17_answers` (unique (version, criterion)), `form17_changes` (append-only), `syllabus_versions.form17_suggestions`; `form18_points` (open → responded → resolved | unresolved; a return re-opens unresolved); `syllabus_signed_copies` (protected PDF; one valid per syllabus; returned copies kept); `syllabi.based_on`; `syllabus_justifications` (one per syllabus; draft → submitted → returned). Form definitions: `lib/forms/`.
+
+**Planned collections:** `audit_log`.
 
 ## Roadmap and status
 
@@ -167,19 +174,19 @@ Work in this order and do not start a phase before the previous one is done unle
 | 1     | School years, terms, courses, prospectus and items, duplicate prospectus (admin only)                       | Done        |
 | 1b    | Program membership requests, institutional-domain registration, email verification                         | Done        |
 | 2     | Syllabus submission, PDF versions, co-authors, protected file route, syllabus references                    | Done        |
-| 3     | Review engine, Form 17, Form 18-1, proxy, approval references, signed scan                                  | Not started |
+| 3     | Review engine, Form 17, Form 18-1, proxy, approval references, signed scan                                  | Done        |
 | 4     | Reviewer queues, PDF viewer, timeline, faculty return view                                                  | Not started |
 | 5     | Notifications, deadlines, dashboards                                                                        | Not started |
 | 6     | Audit trail, overrides, rate limits, end-to-end tests, accessibility                                        | Not started |
 
 Update the status column when a phase finishes.
 
-Carried into Phase 3 from Phase 2: start a new term's syllabus from the previous approved one, lead transfer (Program Chair or admin), reviewer access in `getSyllabusAccess`, and a concurrency guard on workflow transitions (two simultaneous submits both pass today; harmless for submit, not for approve and return).
+Carried into Phase 3 from Phase 2: start a new term's syllabus from the previous approved one (done: `based_on` plus `POST /version/from-previous`), lead transfer (done: `PUT /api/syllabus/[id]/lead`), reviewer access in `resolveSyllabusAccess` (done), and a concurrency guard on workflow transitions (done for approve and return: one batch plus `UNIQUE (version, stage)`; two simultaneous submits or resubmits can still both pass, which is harmless).
 
 ## Open questions (ask before assuming)
 
-1. Who may set the justification flag, and may it ever block routing?
-2. Who uploads the signed scan (proposed: CITL director or admin)?
+1. ~~Who may set the justification flag, and may it ever block routing?~~ Answered by the review committee: the new lead, informational only (see Forms).
+2. ~~Who uploads the signed scan?~~ Answered: the lead; listed reviewers or admin may return it as invalid (see Signatures).
 3. ~~Are GE instructors co-authors on the single syllabus per course and term?~~ Answered: no single GE syllabus. Each target program has its own variant, or references another program's (see Syllabi).
 4. ~~Do scoped managers see only their scope in lists?~~ Answered: yes, scoped (see Authorization).
 

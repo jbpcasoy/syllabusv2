@@ -6,6 +6,8 @@ export interface UserRoles {
   isAdmin: boolean;
   /** Program ids the user currently chairs. */
   chairOfPrograms: string[];
+  /** Program ids whose syllabi the user reviews at stage 1. */
+  reviewerOfPrograms: string[];
   /** Department ids the user currently heads. */
   headOfDepartments: string[];
   /** College ids the user is currently dean of. */
@@ -20,6 +22,7 @@ export interface UserRoles {
 export const NO_ROLES: UserRoles = {
   isAdmin: false,
   chairOfPrograms: [],
+  reviewerOfPrograms: [],
   headOfDepartments: [],
   deanOfColleges: [],
   facultyOfPrograms: [],
@@ -38,6 +41,7 @@ export function roleLabels(roles: UserRoles): string[] {
   if (roles.deanOfColleges.length > 0) labels.push("Dean");
   if (roles.headOfDepartments.length > 0) labels.push("Department Head");
   if (roles.chairOfPrograms.length > 0) labels.push("Program Chair");
+  if (roles.reviewerOfPrograms.length > 0) labels.push("Program Reviewer");
   if (roles.facultyOfPrograms.length > 0) labels.push("Faculty");
   return labels;
 }
@@ -47,6 +51,7 @@ export function hasAnyRole(roles: UserRoles): boolean {
   return (
     roles.isAdmin ||
     roles.chairOfPrograms.length > 0 ||
+    roles.reviewerOfPrograms.length > 0 ||
     roles.headOfDepartments.length > 0 ||
     roles.deanOfColleges.length > 0 ||
     roles.facultyOfPrograms.length > 0 ||

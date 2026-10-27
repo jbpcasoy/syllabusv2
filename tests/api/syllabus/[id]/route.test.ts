@@ -52,11 +52,19 @@ vi.mock("@/lib/syllabus-reference", () => ({
   hasLiveReferenceTo: mocks.hasLiveReferenceTo,
 }));
 
+vi.mock("@/lib/syllabus-chain", () => ({
+  loadChainHolders: vi.fn(async () => [["revwrevwrevwrev"], ["d"], ["f"], ["c"], ["v"]]),
+  loadStandIns: vi.fn(async () => []),
+}));
+
 vi.mock("@/lib/auth", async () =>
   (await import("@/tests/helpers/mock-auth")).authModuleMock(),
 );
 vi.mock("@/lib/roles", async () =>
   (await import("@/tests/helpers/mock-auth")).rolesModuleMock(),
+);
+vi.mock("@/lib/capabilities", async () =>
+  (await import("@/tests/helpers/mock-auth")).capabilitiesModuleMock(),
 );
 
 import { DELETE, GET, PATCH } from "@/app/api/syllabus/[id]/route";
@@ -106,12 +114,65 @@ describe("GET /api/syllabus/:id", () => {
       const res = await GET(req("GET"), ctx);
 
       expect(res.status).toBe(200);
-      expect(await res.json()).toEqual({ ...draft, access, mapped: true });
+      expect(await res.json()).toEqual({
+        ...draft,
+        access,
+        mapped: true,
+        can_return_signed_copy: false,
+        can_transfer_lead: false,
+        review: { actorStage: null, actingAs: null, designatableStages: [] },
+      });
       expect(mocks.getOne).toHaveBeenCalledWith(ID, {
         expand: "course,term.school_year,program,lead,co_authors",
       });
     },
   );
+
+  it("tells the program reviewer they may decide stage 1", async () => {
+    mockAuth({ id: "revwrevwrevwrev" });
+    mocks.getSyllabusAccess.mockReturnValue("reviewer");
+    mocks.getOne.mockResolvedValue({ ...draft, status: "submitted", stage: 1 });
+
+    const res = await GET(req("GET"), ctx);
+    expect((await res.json()).review).toEqual({
+      actorStage: 1,
+      actingAs: "holder",
+      designatableStages: [1],
+    });
+  });
+
+  it("tells a signedCopy.return holder in scope they may return the scan", async () => {
+    mockAuth({
+      id: ME,
+      roles: { reviewerOfPrograms: [PROGRAM] },
+      scope: { programId: PROGRAM },
+    });
+    mocks.getSyllabusAccess.mockReturnValue("reviewer");
+
+    const res = await GET(req("GET"), ctx);
+    expect((await res.json()).can_return_signed_copy).toBe(true);
+  });
+
+  it("refuses a program reviewer of another program", async () => {
+    mockAuth({ id: ME, roles: { reviewerOfPrograms: ["otherotherother"] } });
+    mocks.getSyllabusAccess.mockReturnValue("reviewer");
+
+    const res = await GET(req("GET"), ctx);
+    expect((await res.json()).can_return_signed_copy).toBe(false);
+  });
+
+  it("lets an admin see which stand-ins they may set", async () => {
+    mockAuth({ id: ME, isAdmin: true });
+    mocks.getSyllabusAccess.mockReturnValue("admin");
+    mocks.getOne.mockResolvedValue({ ...draft, status: "submitted", stage: 2 });
+
+    const res = await GET(req("GET"), ctx);
+    expect((await res.json()).review).toEqual({
+      actorStage: null,
+      actingAs: null,
+      designatableStages: [2, 3, 4, 5],
+    });
+  });
 
   it("answers 404 when the caller has no access", async () => {
     mocks.getSyllabusAccess.mockReturnValue(null);

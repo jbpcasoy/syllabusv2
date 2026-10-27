@@ -54,6 +54,12 @@ const CHILDREN: Record<OrgParent, Child[]> = {
       plural: "program chair records",
     },
     {
+      collection: "program_reviewers",
+      field: "program",
+      singular: "program reviewer record",
+      plural: "program reviewer records",
+    },
+    {
       collection: "prospectuses",
       field: "program",
       singular: "prospectus",

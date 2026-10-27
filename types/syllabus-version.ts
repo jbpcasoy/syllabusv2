@@ -19,6 +19,8 @@ export interface SyllabusVersion extends RecordModel {
   uploaded_by: string;
   /** "" when empty. */
   notes: string;
+  /** Form 17 "Suggestions for Improvement"; "" when empty. */
+  form17_suggestions?: string;
   expand?: {
     syllabus?: Syllabus;
     uploaded_by?: AppUser;

@@ -7,7 +7,10 @@ const mocks = vi.hoisted(() => ({
   termsGetOne: vi.fn(),
   activeFacultyAmong: vi.fn(),
   getSyllabusAccess: vi.fn(),
-  findMissingChainRoles: vi.fn(),
+  loadChainHolders: vi.fn(),
+  loadStandIns: vi.fn(),
+  missingChainRoles: vi.fn(),
+  ensureRefSeq: vi.fn(),
   latestVersionNo: vi.fn(),
   transition: vi.fn(),
   toSyllabusResponse: vi.fn((record: Record<string, unknown>, access?: string) => ({
@@ -44,8 +47,11 @@ vi.mock("@/lib/syllabus", () => ({
   toSyllabusResponse: mocks.toSyllabusResponse,
 }));
 vi.mock("@/lib/syllabus-chain", () => ({
-  findMissingChainRoles: mocks.findMissingChainRoles,
+  loadChainHolders: mocks.loadChainHolders,
+  loadStandIns: mocks.loadStandIns,
+  missingChainRoles: mocks.missingChainRoles,
 }));
+vi.mock("@/lib/syllabus-decision", () => ({ ensureRefSeq: mocks.ensureRefSeq }));
 vi.mock("@/lib/syllabus-version", () => ({
   latestVersionNo: mocks.latestVersionNo,
 }));
@@ -66,6 +72,8 @@ const ID = "sylsylsylsylsyl";
 const ME = "me1me1me1me1me1";
 const PROGRAM = "prg123prg123prg";
 const TERM = "trm123trm123trm";
+const REVIEWER = "revwrevwrevwrev";
+const HOLDERS = [[REVIEWER], ["dean"], ["fdis"], ["citl"], ["vpaa"]];
 const ctx = { params: Promise.resolve({ id: ID }) };
 
 const draft = {
@@ -93,7 +101,10 @@ beforeEach(() => {
   mocks.getSyllabusAccess.mockReturnValue("lead");
   mocks.termsGetOne.mockResolvedValue({ id: TERM, open: true });
   mocks.latestVersionNo.mockResolvedValue(2);
-  mocks.findMissingChainRoles.mockResolvedValue([]);
+  mocks.loadChainHolders.mockResolvedValue(HOLDERS);
+  mocks.loadStandIns.mockResolvedValue([]);
+  mocks.missingChainRoles.mockReturnValue([]);
+  mocks.ensureRefSeq.mockResolvedValue(7);
   mocks.activeFacultyAmong.mockResolvedValue(new Set([ME]));
   mocks.transition.mockReturnValue({
     ok: true,
@@ -115,6 +126,7 @@ describe("POST /api/syllabus/:id/submit", () => {
       hasVersion: true,
       termOpen: true,
       missingRoles: [],
+      proxyNeeded: false,
     });
     expect(mocks.syllabiUpdate).toHaveBeenCalledWith(
       ID,
@@ -131,16 +143,62 @@ describe("POST /api/syllabus/:id/submit", () => {
       access: "lead",
       mapped: true,
     });
-    expect(mocks.findMissingChainRoles).toHaveBeenCalledWith(
+    expect(mocks.loadChainHolders).toHaveBeenCalledWith(
       expect.anything(),
       PROGRAM,
+    );
+    expect(mocks.loadStandIns).toHaveBeenCalledWith(expect.anything(), ID);
+    expect(mocks.missingChainRoles).toHaveBeenCalledWith(HOLDERS);
+  });
+
+  it("assigns the approval-code sequence before storing the new state", async () => {
+    await POST(post(), ctx);
+
+    expect(mocks.ensureRefSeq).toHaveBeenCalledWith(expect.anything(), draft);
+    expect(mocks.ensureRefSeq.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.syllabiUpdate.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("doesn't assign a sequence when the workflow refuses", async () => {
+    mocks.transition.mockReturnValue({ ok: false, error: "nope" });
+    await POST(post(), ctx);
+    expect(mocks.ensureRefSeq).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["leads", { lead: REVIEWER }],
+    ["co-authors", { co_authors: [REVIEWER] }],
+  ])("needs a proxy when the program reviewer %s", async (_label, authors) => {
+    mockAuth({ id: REVIEWER, roles: { facultyOfPrograms: [PROGRAM] } });
+    const own = { ...draft, ...authors };
+    mocks.syllabiGetOne.mockResolvedValue(own);
+    mocks.activeFacultyAmong.mockResolvedValue(new Set([REVIEWER]));
+
+    await POST(post(), ctx);
+
+    expect(mocks.transition).toHaveBeenCalledWith(
+      own,
+      expect.objectContaining({ proxyNeeded: true }),
+    );
+  });
+
+  it("needs no proxy once one is designated", async () => {
+    mocks.syllabiGetOne.mockResolvedValue({ ...draft, co_authors: [REVIEWER] });
+    mocks.loadStandIns.mockResolvedValue([{ stage: 1, user: "proxyproxyproxy" }]);
+
+    await POST(post(), ctx);
+
+    expect(mocks.transition).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ proxyNeeded: false }),
     );
   });
 
   it("passes the gathered facts to the workflow", async () => {
     mocks.termsGetOne.mockResolvedValue({ id: TERM, open: false });
     mocks.latestVersionNo.mockResolvedValue(0);
-    mocks.findMissingChainRoles.mockResolvedValue(["dean", "vpaa"]);
+    mocks.missingChainRoles.mockReturnValue(["dean", "vpaa"]);
     mocks.transition.mockReturnValue({ ok: false, error: "nope" });
 
     await POST(post(), ctx);
@@ -150,6 +208,7 @@ describe("POST /api/syllabus/:id/submit", () => {
       hasVersion: false,
       termOpen: false,
       missingRoles: ["dean", "vpaa"],
+      proxyNeeded: false,
     });
   });
 
@@ -158,6 +217,7 @@ describe("POST /api/syllabus/:id/submit", () => {
     "This term is closed for submissions.",
     "Upload a PDF version before submitting.",
     "The review chain is incomplete. No active Dean, VPAA.",
+    "The program reviewer is an author of this syllabus. A proxy must be designated first.",
   ])("returns 409 with the workflow's message: %s", async (error) => {
     mocks.transition.mockReturnValue({ ok: false, error });
 

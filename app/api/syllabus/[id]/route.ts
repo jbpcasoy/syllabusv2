@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth";
+import { can } from "@/lib/capabilities";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
 import {
@@ -8,7 +9,9 @@ import {
   SYLLABUS_EXPAND,
   toSyllabusResponse,
 } from "@/lib/syllabus";
+import { loadChainHolders, loadStandIns } from "@/lib/syllabus-chain";
 import { hasLiveReferenceTo } from "@/lib/syllabus-reference";
+import { reviewContext } from "@/lib/syllabus-review";
 import { parseSyllabusUpdateInput } from "@/lib/validators/syllabus";
 import type { Syllabus } from "@/types/syllabus";
 import { NextResponse, type NextRequest } from "next/server";
@@ -35,7 +38,8 @@ function notDraft() {
 }
 
 // GET /api/syllabus/:id
-// Lead, co-authors, admin, and faculty of programs referencing it.
+// Lead, co-authors, admin, reviewers, and faculty of programs referencing
+// it. `review` says what the caller may do in review right now.
 export async function GET(_request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
@@ -55,7 +59,26 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     );
     if (!access) return notFound();
 
-    return NextResponse.json(toSyllabusResponse(syllabus, access));
+    const target = { program: syllabus.program };
+    const [holders, standIns, canReturnSignedCopy, canTransferLead] =
+      await Promise.all([
+        loadChainHolders(pb, syllabus.program),
+        loadStandIns(pb, syllabus.id),
+        can(auth.user, "signedCopy.return", target),
+        can(auth.user, "syllabus.transferLead", target),
+      ]);
+    return NextResponse.json({
+      ...toSyllabusResponse(syllabus, access),
+      can_return_signed_copy: canReturnSignedCopy,
+      can_transfer_lead: canTransferLead,
+      review: reviewContext(
+        auth.user.id,
+        roles.isAdmin,
+        syllabus,
+        holders,
+        standIns,
+      ),
+    });
   } catch (error) {
     return handlePbError(error);
   }

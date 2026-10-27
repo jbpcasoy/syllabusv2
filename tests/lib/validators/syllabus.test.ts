@@ -109,9 +109,13 @@ describe("parseSyllabusVersionInput", () => {
 });
 
 describe("isSyllabusStatus", () => {
-  it("knows the Phase 2 statuses", () => {
-    expect(["draft", "submitted"].every(isSyllabusStatus)).toBe(true);
-    expect(isSyllabusStatus("approved")).toBe(false);
+  it("knows the Phase 3 statuses", () => {
+    expect(
+      ["draft", "submitted", "returned", "approved", "filed"].every(
+        isSyllabusStatus,
+      ),
+    ).toBe(true);
+    expect(isSyllabusStatus("rejected")).toBe(false);
     expect(isSyllabusStatus(undefined)).toBe(false);
   });
 });

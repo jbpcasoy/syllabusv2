@@ -46,7 +46,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     const [syllabus, roles] = await Promise.all([
       pb
         .collection("syllabi")
-        .getOne<Syllabus>(id, { fields: "id,lead,co_authors" }),
+        .getOne<Syllabus>(id, { fields: "id,lead,co_authors,status,program" }),
       getUserRoles(auth.user.id),
     ]);
     if (!(await resolveSyllabusAccess(pb, auth.user.id, roles, syllabus))) {
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 }
 
 // POST /api/syllabus/:id/version  multipart: file=<PDF, max 20 MB>, notes?=<text>
-// Lead only, while a draft, in an open term, and still active faculty of
+// Lead only, while a draft or returned, in an open term, and still active faculty of
 // the target program. Numbers the version max + 1.
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
@@ -109,9 +109,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         { status: 403 },
       );
     }
-    if (syllabus.status !== "draft") {
+    // A returned syllabus takes its revision here before resubmitting.
+    if (syllabus.status !== "draft" && syllabus.status !== "returned") {
       return NextResponse.json(
-        { error: "A submitted syllabus can't be changed." },
+        { error: "Versions can only be uploaded while drafting or after a return." },
         { status: 409 },
       );
     }

@@ -11,6 +11,8 @@ import {
   SYLLABUS_EXPAND,
   toSyllabusResponse,
 } from "@/lib/syllabus";
+import { findPreviousSyllabus } from "@/lib/syllabus-previous";
+import { listAwaitingReviewIds } from "@/lib/syllabus-queue";
 import { findLiveReference } from "@/lib/syllabus-reference";
 import { INITIAL_STATE } from "@/lib/syllabus-workflow";
 import { isSyllabusStatus, parseSyllabusInput } from "@/lib/validators/syllabus";
@@ -18,9 +20,10 @@ import type { Syllabus } from "@/types/syllabus";
 import type { Term } from "@/types/term";
 import { NextResponse, type NextRequest } from "next/server";
 
-// GET /api/syllabus?page=1&perPage=30&search=foo&term=<id>&program=<id>&status=draft|submitted
+// GET /api/syllabus?page=1&perPage=30&search=foo&term=<id>&program=<id>&status=<status>&scope=review
 // Syllabi the caller leads, co-authors, or their programs reference
-// (approved). Admin sees all.
+// (approved). Admin sees all. scope=review: only syllabi waiting on the
+// caller's decision now, admin included.
 export async function GET(request: NextRequest) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
@@ -36,17 +39,22 @@ export async function GET(request: NextRequest) {
     const term = searchParams.get("term")?.trim();
     const program = searchParams.get("program")?.trim();
     const status = searchParams.get("status")?.trim();
+    const awaiting = searchParams.get("scope")?.trim() === "review";
 
     const me = auth.user.id;
     const roles = await getUserRoles(me);
     const pb = await createAdminPb();
-    const referenced = roles.isAdmin
-      ? []
-      : await listReferencedSyllabusIds(pb, roles.facultyOfPrograms);
+    const referenced =
+      roles.isAdmin || awaiting
+        ? []
+        : await listReferencedSyllabusIds(pb, roles.facultyOfPrograms);
 
     // pb.filter() safely binds params to prevent filter injection
     const filters: string[] = [];
-    if (!roles.isAdmin) {
+    if (awaiting) {
+      const ids = await listAwaitingReviewIds(pb, me, roles);
+      filters.push(anyOf(pb, "id", ids, "w"));
+    } else if (!roles.isAdmin) {
       const own = pb.filter("lead = {:me} || co_authors ?= {:me}", { me });
       filters.push(
         referenced.length > 0
@@ -82,7 +90,11 @@ export async function GET(request: NextRequest) {
         toSyllabusResponse(
           record,
           getSyllabusAccess(me, roles, record) ??
-            (referenced.includes(record.id) ? "referencer" : undefined),
+            (awaiting
+              ? "reviewer"
+              : referenced.includes(record.id)
+                ? "referencer"
+                : undefined),
         ),
       ),
     });
@@ -94,6 +106,7 @@ export async function GET(request: NextRequest) {
 // POST /api/syllabus  { "course": "<id>", "term": "<id>", "program": "<target program id>" }
 // The caller becomes the lead. They must be active faculty of the target
 // program, whose published prospectus lists the course for the open term.
+// based_on is set to last school year's syllabus for the slot, if any.
 export async function POST(request: NextRequest) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
@@ -111,7 +124,7 @@ export async function POST(request: NextRequest) {
 
     // 404 if any of them doesn't exist.
     const [term] = await Promise.all([
-      pb.collection("terms").getOne<Term>(termId),
+      pb.collection("terms").getOne<Term>(termId, { expand: "school_year" }),
       pb.collection("courses").getOne(course, { fields: "id" }),
       pb.collection("programs").getOne(program, { fields: "id" }),
     ]);
@@ -123,7 +136,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const [faculty, listed, existing, reference] = await Promise.all([
+    const [faculty, listed, existing, reference, previous] = await Promise.all([
       activeFacultyAmong(pb, program, [me]),
       isListedForProgram(pb, course, term, program),
       pb.collection("syllabi").getList<Syllabus>(1, 1, {
@@ -135,6 +148,12 @@ export async function POST(request: NextRequest) {
         ),
       }),
       findLiveReference(pb, { program, course, term: termId }),
+      findPreviousSyllabus(pb, {
+        course,
+        program,
+        semester: term.semester,
+        schoolYearLabel: term.expand?.school_year?.label ?? "",
+      }),
     ]);
 
     // Applies to admins too: only faculty of the program can lead its syllabus.
@@ -183,6 +202,7 @@ export async function POST(request: NextRequest) {
           program,
           lead: me,
           co_authors: [],
+          based_on: previous?.id ?? "",
           ...INITIAL_STATE,
         },
         { expand: SYLLABUS_EXPAND },

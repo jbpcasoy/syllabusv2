@@ -1,3 +1,5 @@
+import { loadChainHolders, loadStandIns } from "@/lib/syllabus-chain";
+import { isReviewer } from "@/lib/syllabus-review";
 import type { ProspectusItem } from "@/types/prospectus-item";
 import type { UserRoles } from "@/types/roles";
 import type {
@@ -36,6 +38,8 @@ export function toSyllabusResponse(
     status: record.status,
     stage: record.stage,
     submitted_at: record.submitted_at,
+    returned_at: record.returned_at ?? "",
+    based_on: record.based_on ?? "",
     created: record.created,
     updated: record.updated,
     ...(access && { access }),
@@ -92,19 +96,41 @@ export function getSyllabusAccess(
   return null;
 }
 
+/** True if the user holds any review-chain role, wherever its scope. */
+function holdsChainRole(roles: UserRoles): boolean {
+  return (
+    roles.reviewerOfPrograms.length > 0 ||
+    roles.deanOfColleges.length > 0 ||
+    roles.isFdisChair ||
+    roles.isCitlDirector ||
+    roles.isVpaa
+  );
+}
+
 /**
- * getSyllabusAccess plus the `referencer` fallback: active faculty of a
- * program holding an approved reference to the syllabus may view it. The
- * extra query only runs for callers with no other access.
+ * getSyllabusAccess plus two fallbacks for callers with no direct access:
+ * `reviewer` (lib/syllabus-review.ts isReviewer, once out of draft), then
+ * `referencer` (active faculty of a program holding an approved reference).
+ * Each query only runs when it could match.
  */
 export async function resolveSyllabusAccess(
   pb: PocketBase,
   userId: string,
-  roles: Pick<UserRoles, "isAdmin" | "facultyOfPrograms">,
-  syllabus: Pick<Syllabus, "id" | "lead" | "co_authors">,
+  roles: UserRoles,
+  syllabus: Pick<Syllabus, "id" | "lead" | "co_authors" | "status" | "program">,
 ): Promise<SyllabusAccess | null> {
   const direct = getSyllabusAccess(userId, roles, syllabus);
-  if (direct || roles.facultyOfPrograms.length === 0) return direct;
+  if (direct) return direct;
+
+  if (syllabus.status !== "draft") {
+    const [holders, standIns] = await Promise.all([
+      holdsChainRole(roles) ? loadChainHolders(pb, syllabus.program) : [],
+      loadStandIns(pb, syllabus.id),
+    ]);
+    if (isReviewer(userId, syllabus, holders, standIns)) return "reviewer";
+  }
+
+  if (roles.facultyOfPrograms.length === 0) return null;
 
   const result = await pb.collection("syllabus_references").getList(1, 1, {
     skipTotal: true,

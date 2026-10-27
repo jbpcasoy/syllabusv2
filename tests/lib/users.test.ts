@@ -42,8 +42,9 @@ describe("userKindFilter", () => {
   it("matches any active record in any assignment collection", () => {
     const filter = userKindFilter("assigned");
     expect(filter).toContain("program_chairs_via_user.active ?= true");
+    expect(filter).toContain("program_reviewers_via_user.active ?= true");
     expect(filter).toContain("vpaas_via_user.active ?= true");
-    expect(filter.split(" || ")).toHaveLength(7);
+    expect(filter.split(" || ")).toHaveLength(8);
   });
 
   it("requires no admin flag and no active record anywhere for unassigned", () => {
@@ -51,7 +52,7 @@ describe("userKindFilter", () => {
     expect(filter.startsWith("isAdmin = false && ")).toBe(true);
     // No `?`: the condition must hold for every related record.
     expect(filter).toContain("faculties_via_user.active != true");
-    expect(filter.split(" && ")).toHaveLength(8);
+    expect(filter.split(" && ")).toHaveLength(9);
   });
 });
 
@@ -66,7 +67,7 @@ describe("listActiveAssignments", () => {
 
     expect(mocks.filter).toHaveBeenCalledWith("user = {:u0}", { u0: A });
     expect(mocks.filter).toHaveBeenCalledWith("user = {:u1}", { u1: B });
-    expect(mocks.getFullList).toHaveBeenCalledTimes(7);
+    expect(mocks.getFullList).toHaveBeenCalledTimes(8);
     const [, options] = mocks.getFullList.mock.calls[0] as [
       string,
       { filter: string },

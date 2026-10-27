@@ -26,7 +26,8 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     const pb = await createAdminPb();
     const [syllabus, roles] = await Promise.all([
       pb.collection("syllabi").getOne<Syllabus>(id, {
-        fields: "id,lead,co_authors,expand.course.code,expand.program.code",
+        fields:
+          "id,lead,co_authors,status,program,expand.course.code,expand.program.code",
         expand: "course,program",
       }),
       getUserRoles(auth.user.id),

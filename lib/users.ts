@@ -54,6 +54,11 @@ const ASSIGNMENTS: {
     scopeField: "department",
   },
   { collection: "program_chairs", title: "Program Chair", scopeField: "program" },
+  {
+    collection: "program_reviewers",
+    title: "Program Reviewer",
+    scopeField: "program",
+  },
   { collection: "faculties", title: "Faculty", scopeField: "program" },
 ];
 

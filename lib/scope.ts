@@ -11,6 +11,7 @@ export type ScopeTarget =
   | { department: string }
   | { college: string }
   | { programChair: string }
+  | { programReviewer: string }
   | { departmentHead: string }
   | { faculty: string }
   | { programJoinRequest: string }
@@ -55,12 +56,14 @@ export async function resolveScope(target: ScopeTarget): Promise<ScopeChain> {
   const [collection, id] =
     "programChair" in target
       ? ["program_chairs", target.programChair]
-      : "faculty" in target
-        ? ["faculties", target.faculty]
-        : "programJoinRequest" in target
-          ? ["program_join_requests", target.programJoinRequest]
-          : // The referencing program, not the source syllabus's program.
-            ["syllabus_references", target.syllabusReference];
+      : "programReviewer" in target
+        ? ["program_reviewers", target.programReviewer]
+        : "faculty" in target
+          ? ["faculties", target.faculty]
+          : "programJoinRequest" in target
+            ? ["program_join_requests", target.programJoinRequest]
+            : // The referencing program, not the source syllabus's program.
+              ["syllabus_references", target.syllabusReference];
   const record = await pb
     .collection(collection)
     .getOne<{ program: string }>(id, { fields: "program" });

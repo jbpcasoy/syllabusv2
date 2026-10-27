@@ -19,6 +19,7 @@ const records: Record<string, Record<string, unknown>> = {
   "departments/deptAdeptAdeptA": { college: "colgAcolgAcolgA" },
   "departments/nocolgnocolgnoc": { college: "" },
   "program_chairs/chairAchairAcha": { program: "progAprogAprogA" },
+  "program_reviewers/revwArevwArevwA": { program: "progAprogAprogA" },
   "faculties/factyAfactyAfact": { program: "progAprogAprogA" },
   "program_join_requests/jreqAjreqAjreqA": { program: "progAprogAprogA" },
   "syllabus_references/srefAsrefAsrefA": { program: "progAprogAprogA" },
@@ -80,6 +81,17 @@ describe("resolveScope", () => {
     expect(mocks.getOne).toHaveBeenCalledWith(
       "program_chairs",
       "chairAchairAcha",
+      { fields: "program" },
+    );
+  });
+
+  it("resolves a program reviewer record through its program", async () => {
+    expect(await resolveScope({ programReviewer: "revwArevwArevwA" })).toEqual(
+      fullChain,
+    );
+    expect(mocks.getOne).toHaveBeenCalledWith(
+      "program_reviewers",
+      "revwArevwArevwA",
       { fields: "program" },
     );
   });

@@ -187,6 +187,80 @@ describe("programChair.write", () => {
   });
 });
 
+describe("programReviewer.write", () => {
+  it("VPAA passes anywhere", () => {
+    expect(can(vpaa, "programReviewer.write")).toBe(true);
+  });
+
+  it("a dean passes only inside their college", () => {
+    expect(can(dean, "programReviewer.write", SCOPE)).toBe(true);
+    expect(
+      can(dean, "programReviewer.write", { ...SCOPE, collegeId: OTHER.college }),
+    ).toBe(false);
+  });
+
+  it("a department head passes only for programs of their department", () => {
+    expect(can(head, "programReviewer.write", SCOPE)).toBe(true);
+    expect(
+      can(head, "programReviewer.write", {
+        ...SCOPE,
+        departmentId: OTHER.department,
+      }),
+    ).toBe(false);
+  });
+
+  it("chairs and program reviewers cannot appoint reviewers", () => {
+    expect(can(chair, "programReviewer.write", SCOPE)).toBe(false);
+    const reviewer = roles({ reviewerOfPrograms: [SCOPE.programId!] });
+    expect(can(reviewer, "programReviewer.write", SCOPE)).toBe(false);
+  });
+});
+
+describe("syllabus.transferLead", () => {
+  it("passes for the program's chair and admin", () => {
+    expect(can(chair, "syllabus.transferLead", SCOPE)).toBe(true);
+    expect(can(roles({ isAdmin: true }), "syllabus.transferLead", SCOPE)).toBe(true);
+  });
+
+  it("refuses everyone else, and a chair of another program", () => {
+    for (const who of [vpaa, dean, head, facultyOnly]) {
+      expect(can(who, "syllabus.transferLead", SCOPE)).toBe(false);
+    }
+    expect(
+      can(chair, "syllabus.transferLead", { ...SCOPE, programId: OTHER.program }),
+    ).toBe(false);
+  });
+});
+
+describe.each(["signedCopy.return", "justification.return"] as const)("%s", (capability) => {
+  it.each([
+    ["the program's reviewer", roles({ reviewerOfPrograms: [SCOPE.programId!] })],
+    ["the dean of its college", dean],
+    ["the FDIS chair", roles({ isFdisChair: true })],
+    ["the CITL director", roles({ isCitlDirector: true })],
+    ["the VPAA", vpaa],
+    ["an admin", roles({ isAdmin: true })],
+  ])("passes for %s", (_label, who) => {
+    expect(can(who, capability, SCOPE)).toBe(true);
+  });
+
+  it.each([
+    ["the department head", head],
+    ["the program chair", chair],
+    ["faculty", roles({ facultyOfPrograms: [SCOPE.programId!] })],
+  ])("refuses %s", (_label, who) => {
+    expect(can(who, capability, SCOPE)).toBe(false);
+  });
+
+  it("limits the program reviewer and dean to their scope", () => {
+    const reviewer = roles({ reviewerOfPrograms: [SCOPE.programId!] });
+    expect(
+      can(reviewer, capability, { ...SCOPE, programId: OTHER.program }),
+    ).toBe(false);
+    expect(can(dean, capability, { ...SCOPE, collegeId: OTHER.college })).toBe(false);
+  });
+});
+
 describe("faculty.write", () => {
   it("a chair passes only for their own program", () => {
     expect(can(chair, "faculty.write", SCOPE)).toBe(true);

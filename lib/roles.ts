@@ -26,6 +26,7 @@ export const getUserRoles = cache(
     const [
       user,
       chairs,
+      reviewers,
       heads,
       deans,
       faculties,
@@ -37,6 +38,10 @@ export const getUserRoles = cache(
         .collection("users")
         .getOne<{ isAdmin?: boolean }>(userId, { fields: "isAdmin" }),
       pb.collection("program_chairs").getFullList<ProgramRef>({
+        fields: "program",
+        filter: activeFor(),
+      }),
+      pb.collection("program_reviewers").getFullList<ProgramRef>({
         fields: "program",
         filter: activeFor(),
       }),
@@ -69,6 +74,7 @@ export const getUserRoles = cache(
     return {
       isAdmin: user.isAdmin === true,
       chairOfPrograms: unique(chairs.map((r) => r.program)),
+      reviewerOfPrograms: unique(reviewers.map((r) => r.program)),
       headOfDepartments: unique(heads.map((r) => r.department)),
       deanOfColleges: unique(deans.map((r) => r.college)),
       facultyOfPrograms: unique(faculties.map((r) => r.program)),

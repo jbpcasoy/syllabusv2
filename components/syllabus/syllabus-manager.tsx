@@ -6,6 +6,7 @@ import {
   type SyllabusListParams,
   type SyllabusResponse,
 } from "@/lib/syllabus-client";
+import { SYLLABUS_STATUSES } from "@/lib/syllabus-workflow";
 import { listTerms, type TermResponse } from "@/lib/term-client";
 import { Select } from "@headlessui/react";
 import Link from "next/link";
@@ -15,6 +16,7 @@ import { useEffect, useState } from "react";
 import { SyllabusModal, type ProgramOption } from "./syllabus-modal";
 import {
   ACCESS_LABELS,
+  STATUS_LABELS,
   SyllabusStatusBadge,
   termLabel,
 } from "./syllabus-status";
@@ -33,6 +35,8 @@ export function SyllabusManager({ programs }: SyllabusManagerProps) {
   const [termFilter, setTermFilter] = useState("");
   const [statusFilter, setStatusFilter] =
     useState<NonNullable<SyllabusListParams["status"]>>("");
+  const [scope, setScope] =
+    useState<NonNullable<SyllabusListParams["scope"]>>("");
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -80,6 +84,7 @@ export function SyllabusManager({ programs }: SyllabusManagerProps) {
         search,
         term: termFilter,
         status: statusFilter,
+        scope,
       },
       controller.signal,
     )
@@ -94,7 +99,7 @@ export function SyllabusManager({ programs }: SyllabusManagerProps) {
       });
 
     return () => controller.abort();
-  }, [page, search, termFilter, statusFilter, reloadKey]);
+  }, [page, search, termFilter, statusFilter, scope, reloadKey]);
 
   const items = data?.items ?? [];
   const totalItems = data?.totalItems ?? 0;
@@ -140,6 +145,23 @@ export function SyllabusManager({ programs }: SyllabusManagerProps) {
       )}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <div className="sm:w-48">
+          <label htmlFor="scope-filter" className="sr-only">
+            Show
+          </label>
+          <Select
+            id="scope-filter"
+            value={scope}
+            onChange={(e) => {
+              setScope(e.target.value as typeof scope);
+              setPage(1);
+            }}
+            className="block w-full rounded-md border-0 px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+          >
+            <option value="">My syllabi</option>
+            <option value="review">Waiting on me</option>
+          </Select>
+        </div>
         <div className="sm:w-full sm:max-w-sm">
           <label htmlFor="search" className="sr-only">
             Search syllabi
@@ -191,8 +213,11 @@ export function SyllabusManager({ programs }: SyllabusManagerProps) {
             className="block w-full rounded-md border-0 px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
           >
             <option value="">All statuses</option>
-            <option value="draft">Draft</option>
-            <option value="submitted">Submitted</option>
+            {SYLLABUS_STATUSES.map((value) => (
+              <option key={value} value={value}>
+                {STATUS_LABELS[value]}
+              </option>
+            ))}
           </Select>
         </div>
       </div>
@@ -297,9 +322,11 @@ export function SyllabusManager({ programs }: SyllabusManagerProps) {
                   colSpan={6}
                   className="px-4 py-10 text-center text-sm text-gray-500"
                 >
-                  {search || termFilter || statusFilter
-                    ? "No syllabi match your filters."
-                    : "No syllabi yet."}
+                  {scope === "review" && !search && !termFilter && !statusFilter
+                    ? "Nothing is waiting on your review."
+                    : search || termFilter || statusFilter
+                      ? "No syllabi match your filters."
+                      : "No syllabi yet."}
                 </td>
               </tr>
             )}

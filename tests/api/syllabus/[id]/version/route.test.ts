@@ -279,11 +279,21 @@ describe("POST /api/syllabus/:id/version", () => {
     expect(mocks.versionsCreate).not.toHaveBeenCalled();
   });
 
-  it("returns 409 once submitted", async () => {
-    mocks.syllabiGetOne.mockResolvedValue({ ...draft, status: "submitted" });
+  it.each(["submitted", "approved", "filed"])("returns 409 while %s", async (status) => {
+    mocks.syllabiGetOne.mockResolvedValue({ ...draft, status, stage: 2 });
     const res = await POST(upload(), ctx);
     expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "Versions can only be uploaded while drafting or after a return.",
+    });
     expect(mocks.versionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("accepts a revision once returned", async () => {
+    mocks.syllabiGetOne.mockResolvedValue({ ...draft, status: "returned", stage: 2 });
+    const res = await POST(upload(), ctx);
+    expect(res.status).toBe(201);
+    expect(mocks.versionsCreate).toHaveBeenCalled();
   });
 
   it("returns 409 when the term is closed", async () => {

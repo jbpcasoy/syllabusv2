@@ -69,6 +69,7 @@ describe("getUserRoles", () => {
         "faculties",
         "fdis_chairs",
         "program_chairs",
+        "program_reviewers",
         "users",
         "vpaas",
       ].sort(),
@@ -83,8 +84,8 @@ describe("getUserRoles", () => {
       "user = {:userId} && active = true",
       { userId: USER_ID },
     );
-    // 7 assignment collections, each with a filter
-    expect(mocks.filter).toHaveBeenCalledTimes(7);
+    // 8 assignment collections, each with a filter
+    expect(mocks.filter).toHaveBeenCalledTimes(8);
     for (const call of mocks.getFullList.mock.calls) {
       expect((call[1] as { filter: string }).filter).toContain("active = true");
     }
@@ -93,6 +94,7 @@ describe("getUserRoles", () => {
   it("maps scoped assignments to their target ids", async () => {
     seed({
       program_chairs: [{ program: "prog1prog1prog1" }],
+      program_reviewers: [{ program: "prog2prog2prog2" }],
       department_heads: [{ department: "dept1dept1dept1" }],
       deans: [{ college: "colg1colg1colg1" }],
       faculties: [
@@ -104,6 +106,7 @@ describe("getUserRoles", () => {
     const roles = await getUserRoles(USER_ID);
 
     expect(roles.chairOfPrograms).toEqual(["prog1prog1prog1"]);
+    expect(roles.reviewerOfPrograms).toEqual(["prog2prog2prog2"]);
     expect(roles.headOfDepartments).toEqual(["dept1dept1dept1"]);
     expect(roles.deanOfColleges).toEqual(["colg1colg1colg1"]);
     expect(roles.facultyOfPrograms).toEqual([

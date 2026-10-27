@@ -51,6 +51,22 @@ export function versionFileName(
   return `${clean(courseCode)}-${clean(programCode)}-v${versionNo}.pdf`;
 }
 
+/** The newest version (id, number, upload time), or null when there is none. */
+export async function latestVersion(
+  pb: PocketBase,
+  syllabusId: string,
+): Promise<Pick<SyllabusVersion, "id" | "version_no" | "created"> | null> {
+  const result = await pb
+    .collection("syllabus_versions")
+    .getList<Pick<SyllabusVersion, "id" | "version_no" | "created">>(1, 1, {
+      skipTotal: true,
+      fields: "id,version_no,created",
+      sort: "-version_no",
+      filter: pb.filter("syllabus = {:syllabusId}", { syllabusId }),
+    });
+  return result.items[0] ?? null;
+}
+
 /** Highest version number of the syllabus, or 0 when it has none. */
 export async function latestVersionNo(
   pb: PocketBase,

@@ -1,7 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
+const chain = vi.hoisted(() => ({
+  loadChainHolders: vi.fn(),
+  loadStandIns: vi.fn(),
+}));
+vi.mock("@/lib/syllabus-chain", () => chain);
+
+import { NO_ROLES } from "@/types/roles";
 import {
   activeFacultyAmong,
   getSyllabusAccess,
@@ -50,6 +57,9 @@ const record = {
   status: "draft",
   stage: 0,
   submitted_at: "",
+  ref_seq: 0,
+  returned_at: "",
+  based_on: "",
   created: "2026-10-26 08:00:00.000Z",
   updated: "2026-10-26 08:00:00.000Z",
 } as Syllabus;
@@ -136,33 +146,99 @@ describe("getSyllabusAccess", () => {
 });
 
 describe("resolveSyllabusAccess", () => {
-  const syllabus = { id: "sylsylsylsylsyl", lead: LEAD, co_authors: [CO] };
+  const syllabus = {
+    id: "sylsylsylsylsyl",
+    lead: LEAD,
+    co_authors: [CO],
+    status: "submitted" as const,
+    program: "prg123prg123prg",
+  };
+  const faculty = { ...NO_ROLES, facultyOfPrograms: ["prgAprgAprgAprg"] };
+  const HOLDERS = [[OTHER], [], [], [], []];
 
-  it("returns direct access without querying references", async () => {
+  beforeEach(() => {
+    chain.loadChainHolders.mockReset().mockResolvedValue([[], [], [], [], []]);
+    chain.loadStandIns.mockReset().mockResolvedValue([]);
+  });
+
+  it("returns direct access without any query", async () => {
     const getList = vi.fn();
     const pb = fakePb({ syllabus_references: { getList } });
-    expect(
-      await resolveSyllabusAccess(
-        pb,
-        CO,
-        { isAdmin: false, facultyOfPrograms: ["prgAprgAprgAprg"] },
-        syllabus,
-      ),
-    ).toBe("coAuthor");
+    expect(await resolveSyllabusAccess(pb, CO, faculty, syllabus)).toBe(
+      "coAuthor",
+    );
+    expect(getList).not.toHaveBeenCalled();
+    expect(chain.loadStandIns).not.toHaveBeenCalled();
+    expect(chain.loadChainHolders).not.toHaveBeenCalled();
+  });
+
+  it("skips the reference query for a user with no faculty programs", async () => {
+    const getList = vi.fn();
+    const pb = fakePb({ syllabus_references: { getList } });
+    expect(await resolveSyllabusAccess(pb, OTHER, NO_ROLES, syllabus)).toBeNull();
     expect(getList).not.toHaveBeenCalled();
   });
 
-  it("skips the query for a user with no faculty programs", async () => {
-    const getList = vi.fn();
-    const pb = fakePb({ syllabus_references: { getList } });
+  it("grants reviewer to a chain holder once out of draft", async () => {
+    chain.loadChainHolders.mockResolvedValue(HOLDERS);
+    const pb = fakePb({});
+    const reviewer = { ...NO_ROLES, reviewerOfPrograms: ["prg123prg123prg"] };
+
+    expect(await resolveSyllabusAccess(pb, OTHER, reviewer, syllabus)).toBe(
+      "reviewer",
+    );
+    expect(chain.loadChainHolders).toHaveBeenCalledWith(pb, "prg123prg123prg");
+    expect(chain.loadStandIns).toHaveBeenCalledWith(pb, "sylsylsylsylsyl");
+  });
+
+  it("grants reviewer to a stand-in with no chain role", async () => {
+    chain.loadStandIns.mockResolvedValue([{ stage: 1, user: OTHER }]);
+    const pb = fakePb({});
+
+    expect(await resolveSyllabusAccess(pb, OTHER, NO_ROLES, syllabus)).toBe(
+      "reviewer",
+    );
+    expect(chain.loadChainHolders).not.toHaveBeenCalled();
+  });
+
+  it("checks nothing reviewer-related while a draft", async () => {
+    chain.loadChainHolders.mockResolvedValue(HOLDERS);
+    const pb = fakePb({});
+    const vpaa = { ...NO_ROLES, isVpaa: true };
+
     expect(
-      await resolveSyllabusAccess(
-        pb,
-        OTHER,
-        { isAdmin: false, facultyOfPrograms: [] },
-        syllabus,
-      ),
+      await resolveSyllabusAccess(pb, OTHER, vpaa, {
+        ...syllabus,
+        status: "draft",
+      }),
     ).toBeNull();
+    expect(chain.loadChainHolders).not.toHaveBeenCalled();
+    expect(chain.loadStandIns).not.toHaveBeenCalled();
+  });
+
+  it("skips the chain query for a program chair or department head", async () => {
+    const pb = fakePb({});
+    const chairAndHead = {
+      ...NO_ROLES,
+      chairOfPrograms: ["prg123prg123prg"],
+      headOfDepartments: ["dep123dep123dep"],
+    };
+
+    expect(
+      await resolveSyllabusAccess(pb, OTHER, chairAndHead, syllabus),
+    ).toBeNull();
+    expect(chain.loadChainHolders).not.toHaveBeenCalled();
+  });
+
+  it("prefers reviewer over referencer", async () => {
+    chain.loadChainHolders.mockResolvedValue(HOLDERS);
+    const getList = vi.fn(async () => ({ items: [{ id: "x" }] }));
+    const pb = fakePb({ syllabus_references: { getList } });
+    const both = { ...faculty, isFdisChair: true };
+
+    expect(await resolveSyllabusAccess(pb, OTHER, both, syllabus)).toBe(
+      "reviewer",
+    );
     expect(getList).not.toHaveBeenCalled();
   });
 
@@ -175,14 +251,9 @@ describe("resolveSyllabusAccess", () => {
       const getList = vi.fn(async () => ({ items }));
       const pb = fakePb({ syllabus_references: { getList } });
 
-      expect(
-        await resolveSyllabusAccess(
-          pb,
-          OTHER,
-          { isAdmin: false, facultyOfPrograms: ["prgAprgAprgAprg"] },
-          syllabus,
-        ),
-      ).toBe(expected);
+      expect(await resolveSyllabusAccess(pb, OTHER, faculty, syllabus)).toBe(
+        expected,
+      );
       expect(getList).toHaveBeenCalledWith(1, 1, {
         skipTotal: true,
         fields: "id",

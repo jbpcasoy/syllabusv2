@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   isNotUniqueError: vi.fn(),
   listReferencedSyllabusIds: vi.fn(),
   findLiveReference: vi.fn(),
+  listAwaitingReviewIds: vi.fn(),
+  findPreviousSyllabus: vi.fn(),
   getSyllabusAccess: vi.fn(),
   toSyllabusResponse: vi.fn((record: Record<string, unknown>, access?: string) => ({
     ...record,
@@ -67,6 +69,14 @@ vi.mock("@/lib/syllabus", () => ({
 
 vi.mock("@/lib/syllabus-reference", () => ({
   findLiveReference: mocks.findLiveReference,
+}));
+
+vi.mock("@/lib/syllabus-previous", () => ({
+  findPreviousSyllabus: mocks.findPreviousSyllabus,
+}));
+
+vi.mock("@/lib/syllabus-queue", () => ({
+  listAwaitingReviewIds: mocks.listAwaitingReviewIds,
 }));
 
 vi.mock("@/lib/auth", async () =>
@@ -166,6 +176,44 @@ describe("GET /api/syllabus", () => {
     ]);
   });
 
+  describe("scope=review", () => {
+    it("lists only syllabi waiting on the caller, marked reviewer", async () => {
+      mocks.listAwaitingReviewIds.mockResolvedValue(["sylsylsylsylsyl"]);
+      mocks.getSyllabusAccess.mockReturnValue(null);
+
+      const res = await GET(get("?scope=review"));
+
+      expect(mocks.listAwaitingReviewIds).toHaveBeenCalledWith(
+        expect.anything(),
+        ME,
+        expect.objectContaining({ facultyOfPrograms: [PROGRAM] }),
+      );
+      expect(mocks.syllabiGetList.mock.calls[0][2].filter).toBe(
+        '(id = "sylsylsylsylsyl")',
+      );
+      expect(mocks.listReferencedSyllabusIds).not.toHaveBeenCalled();
+      expect((await res.json()).items[0].access).toBe("reviewer");
+    });
+
+    it("limits an admin to their own queue too", async () => {
+      mockAuth({ id: ME, isAdmin: true });
+      mocks.listAwaitingReviewIds.mockResolvedValue(["sylsylsylsylsyl"]);
+
+      await GET(get("?scope=review"));
+      expect(mocks.syllabiGetList.mock.calls[0][2].filter).toBe(
+        '(id = "sylsylsylsylsyl")',
+      );
+    });
+
+    it("still applies the other filters", async () => {
+      mocks.listAwaitingReviewIds.mockResolvedValue(["sylsylsylsylsyl"]);
+      await GET(get(`?scope=review&term=${TERM}`));
+      expect(mocks.syllabiGetList.mock.calls[0][2].filter).toBe(
+        `(id = "sylsylsylsylsyl") && term = "${TERM}"`,
+      );
+    });
+  });
+
   it("lets an admin see all syllabi", async () => {
     mockAuth({ id: ME, isAdmin: true });
     mocks.getSyllabusAccess.mockReturnValue("admin");
@@ -230,6 +278,7 @@ describe("POST /api/syllabus", () => {
     mocks.isListedForProgram.mockResolvedValue(true);
     mocks.syllabiGetList.mockResolvedValue({ items: [] });
     mocks.findLiveReference.mockResolvedValue(null);
+    mocks.findPreviousSyllabus.mockResolvedValue(null);
     mocks.syllabiCreate.mockImplementation(async (data: object) => ({
       id: "newnewnewnewnew",
       ...data,
@@ -247,6 +296,7 @@ describe("POST /api/syllabus", () => {
         program: PROGRAM,
         lead: ME,
         co_authors: [],
+        based_on: "",
         status: "draft",
         stage: 0,
       },
@@ -296,6 +346,28 @@ describe("POST /api/syllabus", () => {
     const res = await POST(post(input));
     expect(res.status).toBe(404);
     expect(mocks.syllabiCreate).not.toHaveBeenCalled();
+  });
+
+  it("links last school year's syllabus as based_on", async () => {
+    mocks.termsGetOne.mockResolvedValue({
+      ...openTerm,
+      expand: { school_year: { label: "2026-2027" } },
+    });
+    mocks.findPreviousSyllabus.mockResolvedValue({ id: "oldoldoldoldold" });
+
+    await POST(post(input));
+
+    expect(mocks.termsGetOne).toHaveBeenCalledWith(TERM, { expand: "school_year" });
+    expect(mocks.findPreviousSyllabus).toHaveBeenCalledWith(expect.anything(), {
+      course: COURSE,
+      program: PROGRAM,
+      semester: "First Semester",
+      schoolYearLabel: "2026-2027",
+    });
+    expect(mocks.syllabiCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ based_on: "oldoldoldoldold" }),
+      expect.anything(),
+    );
   });
 
   it("returns 409 when the term is closed", async () => {

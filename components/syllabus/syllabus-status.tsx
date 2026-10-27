@@ -3,17 +3,24 @@ import type { SyllabusAccess, SyllabusStatus } from "@/lib/syllabus-client";
 const STATUS_STYLES: Record<SyllabusStatus, string> = {
   draft: "bg-gray-100 text-gray-700",
   submitted: "bg-blue-50 text-blue-700",
+  returned: "bg-amber-50 text-amber-800",
+  approved: "bg-green-50 text-green-700",
+  filed: "bg-emerald-100 text-emerald-800",
 };
 
 export const STATUS_LABELS: Record<SyllabusStatus, string> = {
   draft: "Draft",
-  submitted: "Submitted",
+  submitted: "In review",
+  returned: "Returned",
+  approved: "Approved",
+  filed: "Filed",
 };
 
 export const ACCESS_LABELS: Record<SyllabusAccess, string> = {
   lead: "Lead",
   coAuthor: "Co-author",
   admin: "Admin",
+  reviewer: "Reviewer",
   referencer: "Referencing program",
 };
 

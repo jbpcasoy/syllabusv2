@@ -1,3 +1,4 @@
+import type { ReviewContext } from "@/lib/syllabus-review";
 import type { SyllabusStatus } from "@/lib/syllabus-workflow";
 import type { RecordModel } from "pocketbase";
 import type { Course } from "./course";
@@ -12,9 +13,15 @@ export const MAX_CO_AUTHORS = 50;
 
 /**
  * How the caller relates to a syllabus. Callers with none get a 404.
+ * `reviewer`: a chain holder or stand-in, once the syllabus leaves draft.
  * `referencer`: active faculty of a program with an approved reference to it.
  */
-export type SyllabusAccess = "lead" | "coAuthor" | "admin" | "referencer";
+export type SyllabusAccess =
+  | "lead"
+  | "coAuthor"
+  | "admin"
+  | "reviewer"
+  | "referencer";
 
 export interface Syllabus extends RecordModel {
   /** ID of the course. */
@@ -33,6 +40,12 @@ export interface Syllabus extends RecordModel {
   stage: number;
   /** PocketBase datetime, or "" while a draft. */
   submitted_at: string;
+  /** Prefix of every approval code; 0 until first submit. */
+  ref_seq: number;
+  /** PocketBase datetime of the latest return, or "". */
+  returned_at: string;
+  /** Last school year's syllabus for the slot, set on create; "" if none. */
+  based_on: string;
   expand?: {
     course?: Course;
     term?: Term;
@@ -47,6 +60,13 @@ export interface SyllabusInput {
   course: string;
   term: string;
   program: string;
+}
+
+/** Body of PUT /api/syllabus/:id/lead. */
+export interface LeadTransferInput {
+  lead: string;
+  /** Keep the previous lead as a co-author. Defaults to true. */
+  keep_previous: boolean;
 }
 
 /** Body of PATCH /api/syllabus/:id. Replaces the whole co-author list. */
@@ -104,10 +124,20 @@ export interface SyllabusResponse {
   status: SyllabusStatus;
   stage: number;
   submitted_at: string;
+  /** Latest return, or "". */
+  returned_at: string;
+  /** Last school year's syllabus for the slot, or "". */
+  based_on: string;
   created: string;
   updated: string;
   /** The caller's relation, set by routes that know the caller. */
   access?: SyllabusAccess;
+  /** What the caller may do in review, set by GET /api/syllabus/:id. */
+  review?: ReviewContext;
+  /** signedCopy.return in this program; set by GET /api/syllabus/:id. */
+  can_return_signed_copy?: boolean;
+  /** syllabus.transferLead in this program; set by GET /api/syllabus/:id. */
+  can_transfer_lead?: boolean;
   expand?: {
     course?: { id: string; code: string; title: string };
     term?: { id: string; semester: string; school_year_label: string };

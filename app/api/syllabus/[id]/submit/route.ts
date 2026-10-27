@@ -7,7 +7,13 @@ import {
   SYLLABUS_EXPAND,
   toSyllabusResponse,
 } from "@/lib/syllabus";
-import { findMissingChainRoles } from "@/lib/syllabus-chain";
+import {
+  loadChainHolders,
+  loadStandIns,
+  missingChainRoles,
+} from "@/lib/syllabus-chain";
+import { ensureRefSeq } from "@/lib/syllabus-decision";
+import { needsStandIn } from "@/lib/syllabus-review";
 import { latestVersionNo } from "@/lib/syllabus-version";
 import { transition } from "@/lib/syllabus-workflow";
 import type { Syllabus } from "@/types/syllabus";
@@ -18,7 +24,8 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 // POST /api/syllabus/:id/submit  (no body)
 // Lead only. The workflow decides: draft, open term, at least one version,
-// and an active holder for every role in the target program's chain.
+// an active holder for every stage of the target program's chain, and a
+// proxy when the program reviewer is an author.
 export async function POST(_request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
@@ -42,10 +49,11 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
       );
     }
 
-    const [term, latest, missingRoles, faculty] = await Promise.all([
+    const [term, latest, holders, standIns, faculty] = await Promise.all([
       pb.collection("terms").getOne<Term>(syllabus.term, { fields: "id,open" }),
       latestVersionNo(pb, id),
-      findMissingChainRoles(pb, syllabus.program),
+      loadChainHolders(pb, syllabus.program),
+      loadStandIns(pb, id),
       activeFacultyAmong(pb, syllabus.program, [me]),
     ]);
     if (!faculty.has(me)) {
@@ -59,11 +67,15 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
       type: "submit",
       hasVersion: latest > 0,
       termOpen: term.open,
-      missingRoles,
+      missingRoles: missingChainRoles(holders),
+      proxyNeeded: needsStandIn(1, syllabus, holders, standIns),
     });
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 409 });
     }
+
+    // Prefix of every approval code this syllabus will get.
+    await ensureRefSeq(pb, syllabus);
 
     const updated = await pb.collection("syllabi").update<Syllabus>(
       id,

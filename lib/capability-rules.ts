@@ -25,9 +25,13 @@ export type Capability =
   | "program.delete"
   | "departmentHead.write"
   | "programChair.write"
+  | "programReviewer.write"
   | "faculty.write"
   | "programJoinRequest.review"
-  | "syllabusReference.request";
+  | "syllabusReference.request"
+  | "syllabus.transferLead"
+  | "signedCopy.return"
+  | "justification.return";
 
 /** The org chain a target sits in, resolved program → department → college. */
 export type ScopeChain = {
@@ -46,6 +50,10 @@ const head: Rule = (r, s) =>
   !!s?.departmentId && r.headOfDepartments.includes(s.departmentId);
 const chair: Rule = (r, s) =>
   !!s?.programId && r.chairOfPrograms.includes(s.programId);
+const programReviewer: Rule = (r, s) =>
+  !!s?.programId && r.reviewerOfPrograms.includes(s.programId);
+const fdisChair: Rule = (r) => r.isFdisChair;
+const citlDirector: Rule = (r) => r.isCitlDirector;
 const anyOf =
   (...rules: Rule[]): Rule =>
   (r, s) =>
@@ -78,12 +86,21 @@ const RULES: Record<Capability, Rule> = {
 
   "departmentHead.write": anyOf(vpaa, dean),
   "programChair.write": anyOf(vpaa, dean, head),
+  // Stage 1 of syllabus review; assigned by the same people as chairs.
+  "programReviewer.write": anyOf(vpaa, dean, head),
   "faculty.write": chair,
   // Approving creates a faculty record, so it mirrors faculty.write.
   "programJoinRequest.review": chair,
   // Request or withdraw a reference to another program's syllabus. The
   // source lead's decision is a relationship check, not a capability.
   "syllabusReference.request": chair,
+  // Hand a syllabus of the program to another of its faculty.
+  "syllabus.transferLead": chair,
+  // Return a signed scan as invalid. Not the department head (by decision).
+  "signedCopy.return": anyOf(programReviewer, dean, fdisChair, citlDirector, vpaa),
+  // Return a justification scan for revision: the program reviewer or any
+  // higher role in the chain.
+  "justification.return": anyOf(programReviewer, dean, fdisChair, citlDirector, vpaa),
 };
 
 export const CAPABILITIES = Object.keys(RULES) as Capability[];
