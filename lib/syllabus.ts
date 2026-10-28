@@ -40,6 +40,7 @@ export function toSyllabusResponse(
     submitted_at: record.submitted_at,
     returned_at: record.returned_at ?? "",
     based_on: record.based_on ?? "",
+    status_changed_at: record.status_changed_at ?? "",
     created: record.created,
     updated: record.updated,
     ...(access && { access }),

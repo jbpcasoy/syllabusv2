@@ -38,6 +38,7 @@ export interface Form18Point extends RecordModel {
     raised_by?: AppUser;
     responded_by?: AppUser;
     judged_by?: AppUser;
+    version?: { version_no: number };
   };
 }
 
@@ -59,6 +60,8 @@ export type PointUpdateInput =
 export interface Form18PointResponse {
   id: string;
   version: string;
+  /** Number of the version it was raised on; 0 if that didn't load. */
+  version_no: number;
   part: "A" | "B";
   stage: number;
   code: string;

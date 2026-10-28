@@ -3,6 +3,7 @@ import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
 import { SIGNED_COPY_EXPAND, toSignedCopyResponse } from "@/lib/signed-copy";
 import { resolveSyllabusAccess } from "@/lib/syllabus";
+import { addSyllabusEvent } from "@/lib/syllabus-events";
 import { transition } from "@/lib/syllabus-workflow";
 import { parseSignedCopyReturn } from "@/lib/validators/signed-copy";
 import type { SignedCopy } from "@/types/signed-copy";
@@ -56,14 +57,22 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: result.error }, { status: 409 });
     }
 
+    const now = new Date().toISOString();
     const batch = pb.createBatch();
     batch.collection("syllabus_signed_copies").update(copyId, {
       status: "returned",
       reason: parsed.data.reason,
       returned_by: auth.user.id,
-      returned_at: new Date().toISOString(),
+      returned_at: now,
     });
-    batch.collection("syllabi").update(id, result.next);
+    batch
+      .collection("syllabi")
+      .update(id, { ...result.next, status_changed_at: now });
+    addSyllabusEvent(batch, id, {
+      type: "scan_returned",
+      actor: auth.user.id,
+      reason: parsed.data.reason,
+    });
     await batch.send();
 
     const updated = await pb

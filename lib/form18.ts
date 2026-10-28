@@ -8,7 +8,7 @@ import type { AppUser } from "@/types/user";
 import type PocketBase from "pocketbase";
 import "server-only";
 
-export const POINT_EXPAND = "raised_by,responded_by,judged_by";
+export const POINT_EXPAND = "raised_by,responded_by,judged_by,version";
 
 const person = (id: string, user?: AppUser) =>
   id ? { id, name: user?.name ?? "" } : null;
@@ -17,6 +17,7 @@ export function toPointResponse(point: Form18Point): Form18PointResponse {
   return {
     id: point.id,
     version: point.version,
+    version_no: point.expand?.version?.version_no ?? 0,
     part: point.part,
     stage: point.stage,
     code: point.code,

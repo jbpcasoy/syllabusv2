@@ -12,7 +12,7 @@ import {
   toSyllabusResponse,
 } from "@/lib/syllabus";
 import { findPreviousSyllabus } from "@/lib/syllabus-previous";
-import { listAwaitingReviewIds } from "@/lib/syllabus-queue";
+import { listAwaitingReviewIds } from "@/lib/review-queue";
 import { findLiveReference } from "@/lib/syllabus-reference";
 import { INITIAL_STATE } from "@/lib/syllabus-workflow";
 import { isSyllabusStatus, parseSyllabusInput } from "@/lib/validators/syllabus";

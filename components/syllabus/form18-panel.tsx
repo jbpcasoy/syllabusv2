@@ -27,7 +27,6 @@ type Form18PanelProps = {
   stage: number;
   /** The stage the viewer may decide now, or null. */
   actorStage: number | null;
-  isLead: boolean;
 };
 
 const STATUS_STYLES: Record<PointStatus, string> = {
@@ -48,13 +47,15 @@ const inputClass =
 const smallButton =
   "rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50";
 
-/** Form 18-1 (CITL-F-018): review points with the lead's action taken. */
+/**
+ * Form 18-1 (CITL-F-018) for the reviewer: raise, edit and judge points.
+ * The lead answers them in the revision workspace (revise-workspace.tsx).
+ */
 export function Form18Panel({
   syllabusId,
   status,
   stage,
   actorStage,
-  isLead,
 }: Form18PanelProps) {
   const [data, setData] = useState<Form18Response | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,7 +104,6 @@ export function Form18Panel({
   const form = (data && formDefinition(data.form_revision)) ?? CURRENT_FORM18;
   const points = data?.points ?? [];
   const reviewing = status === "submitted" && actorStage === stage;
-  const answering = isLead && status === "returned";
 
   return (
     <section className="rounded-lg bg-white p-4 shadow ring-1 ring-black/5">
@@ -115,12 +115,6 @@ export function Form18Panel({
           {form.code} · Rev {form.revision}
         </span>
       </div>
-      {answering && (
-        <p className="mt-1 text-sm text-gray-600">
-          Answer every open point of stage {stage} with the action you took
-          and its page number, then resubmit.
-        </p>
-      )}
 
       {error && (
         <div
@@ -164,11 +158,6 @@ export function Form18Panel({
                       busy={busy}
                       editing={editing === point.id}
                       canReview={reviewing && point.stage === stage}
-                      canAnswer={
-                        answering &&
-                        point.stage === stage &&
-                        (point.status === "open" || point.status === "responded")
-                      }
                       onEdit={() => setEditing(point.id)}
                       onCancel={() => setEditing(null)}
                       run={run}
@@ -200,8 +189,6 @@ type PointRowProps = {
   editing: boolean;
   /** The viewer reviews the point's stage now. */
   canReview: boolean;
-  /** The viewer is the lead and may answer this point now. */
-  canAnswer: boolean;
   onEdit: () => void;
   onCancel: () => void;
   run: (change: () => Promise<unknown>) => Promise<boolean>;
@@ -213,7 +200,6 @@ function PointRow({
   busy,
   editing,
   canReview,
-  canAnswer,
   onEdit,
   onCancel,
   run,
@@ -304,17 +290,6 @@ function PointRow({
             </>
           )}
         </div>
-      )}
-
-      {canAnswer && (
-        <AnswerForm
-          key={point.updated}
-          point={point}
-          busy={busy}
-          onAnswer={(action_taken, page_number) =>
-            update({ action: "respond", action_taken, page_number })
-          }
-        />
       )}
     </li>
   );
@@ -440,66 +415,5 @@ function NewPointForm({
       </h3>
       <PointForm stage={stage} busy={busy} submitLabel="Add point" onSubmit={onAdd} />
     </div>
-  );
-}
-
-function AnswerForm({
-  point,
-  busy,
-  onAnswer,
-}: {
-  point: Form18PointResponse;
-  busy: boolean;
-  onAnswer: (actionTaken: string, pageNumber: string) => Promise<boolean>;
-}) {
-  const [actionTaken, setActionTaken] = useState(point.action_taken);
-  const [pageNumber, setPageNumber] = useState(point.page_number);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!actionTaken.trim()) return setError("Describe the action taken.");
-    setError(null);
-    await onAnswer(actionTaken, pageNumber);
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="mt-2 grid gap-2 sm:grid-cols-[1fr_8rem_auto] sm:items-end">
-      <Field>
-        <Label className="block text-xs font-medium text-gray-700">
-          Action taken
-        </Label>
-        <Textarea
-          rows={1}
-          value={actionTaken}
-          onChange={(e) => setActionTaken(e.target.value)}
-          disabled={busy}
-          className={inputClass}
-        />
-      </Field>
-      <Field>
-        <Label className="block text-xs font-medium text-gray-700">
-          Page number
-        </Label>
-        <Input
-          value={pageNumber}
-          onChange={(e) => setPageNumber(e.target.value)}
-          disabled={busy}
-          className={inputClass}
-        />
-      </Field>
-      <button
-        type="submit"
-        disabled={busy}
-        className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
-      >
-        {point.status === "responded" ? "Update" : "Answer"}
-      </button>
-      {error && (
-        <p role="alert" className="text-sm text-red-600 sm:col-span-3">
-          {error}
-        </p>
-      )}
-    </form>
   );
 }

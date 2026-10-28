@@ -3,9 +3,10 @@
 import { formatDate } from "@/lib/format-date";
 import {
   getSyllabus,
+  getSyllabusTimeline,
   startFromPrevious,
-  type ReviewDecision,
   type SyllabusResponse,
+  type TimelineEntry,
 } from "@/lib/syllabus-client";
 import { CHAIN_ROLES } from "@/lib/syllabus-workflow";
 import Link from "next/link";
@@ -15,10 +16,8 @@ import type { ReferenceViewer } from "../syllabus-reference/reference-row-action
 import { CoAuthorsPanel } from "./co-authors-panel";
 import { DeleteSyllabusDialog } from "./delete-syllabus-dialog";
 import { Form17Panel } from "./form17-panel";
-import { Form18Panel } from "./form18-panel";
 import { JustificationPanel } from "./justification-panel";
-import { ResubmitSyllabusDialog } from "./resubmit-syllabus-dialog";
-import { ReviewDecisionDialog } from "./review-decision-dialog";
+import { ReviewPointsHistory } from "./review-points-history";
 import { SignedCopyPanel } from "./signed-copy-panel";
 import { TransferLeadDialog } from "./transfer-lead-dialog";
 import { StandInsPanel } from "./stand-ins-panel";
@@ -29,10 +28,21 @@ import {
   termLabel,
 } from "./syllabus-status";
 import { SyllabusReferencesPanel } from "./syllabus-references-panel";
+import { SyllabusTimeline } from "./syllabus-timeline";
 import { SyllabusVersions } from "./syllabus-versions";
 import { UploadVersionModal } from "./upload-version-modal";
 
 type SyllabusDetailProps = { id: string; viewer: ReferenceViewer };
+
+/** "S1 returned", "S2 approved" per version number, oldest first. */
+function decisionsByVersion(entries: TimelineEntry[] | null) {
+  const map = new Map<number, string[]>();
+  for (const e of entries ?? []) {
+    if ((e.kind !== "approved" && e.kind !== "returned") || !e.version_no) continue;
+    map.set(e.version_no, [...(map.get(e.version_no) ?? []), `S${e.stage} ${e.kind}`]);
+  }
+  return map;
+}
 
 type DialogState = { open: boolean; key: number };
 const closed: DialogState = { open: false, key: 0 };
@@ -47,17 +57,16 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
   const [reloadKey, setReloadKey] = useState(0);
   const [versionsKey, setVersionsKey] = useState(0);
   const [versionCount, setVersionCount] = useState<number | null>(null);
+  const [timeline, setTimeline] = useState<TimelineEntry[] | null>(null);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
+  const [timelineRetry, setTimelineRetry] = useState(0);
 
   const [upload, setUpload] = useState(closed);
   const [submit, setSubmit] = useState(closed);
   const [remove, setRemove] = useState(closed);
-  const [resubmit, setResubmit] = useState(closed);
   const [transfer, setTransfer] = useState(closed);
   const [copying, setCopying] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
-  const [decide, setDecide] = useState<DialogState & { decision: ReviewDecision }>(
-    { ...closed, decision: "approve" },
-  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -77,6 +86,21 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
 
     return () => controller.abort();
   }, [id, reloadKey]);
+
+  // Uploads and transitions both add rows, so refetch on either.
+  useEffect(() => {
+    const controller = new AbortController();
+    setTimelineError(null);
+
+    getSyllabusTimeline(id, controller.signal)
+      .then((result) => setTimeline(result.items))
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        setTimelineError(err instanceof Error ? err.message : "Something went wrong");
+      });
+
+    return () => controller.abort();
+  }, [id, reloadKey, versionsKey, timelineRetry]);
 
   if (!syllabus) {
     return (
@@ -208,20 +232,12 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
 
         {revising && (
           <div className="mt-4 flex flex-wrap gap-2 sm:mt-0">
-            <button
-              type="button"
-              onClick={() => setUpload(opened)}
-              className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            <Link
+              href={`/syllabus/${syllabus.id}/revise`}
+              className="rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500"
             >
-              Upload revision
-            </button>
-            <button
-              type="button"
-              onClick={() => setResubmit(opened)}
-              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-            >
-              Resubmit
-            </button>
+              Open revision workspace
+            </Link>
           </div>
         )}
       </div>
@@ -267,7 +283,7 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
           Returned for revision at stage {syllabus.stage} ({stageLabel})
           {syllabus.returned_at && ` on ${formatDate(syllabus.returned_at)}`}.
           {revising &&
-            " Upload a revised PDF, answer the review points, then resubmit."}
+            " Open the revision workspace to upload a revised PDF, answer the review points and resubmit."}
         </p>
       )}
 
@@ -293,27 +309,24 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
             {review.actingAs === "standIn" && ", as stand-in"}).
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                setDecide((prev) => ({ ...opened(prev), decision: "approve" }))
-              }
+            <Link
+              href={`/syllabus/${syllabus.id}/review`}
               className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
             >
-              Approve
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setDecide((prev) => ({ ...opened(prev), decision: "return" }))
-              }
-              className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-amber-700 ring-1 ring-inset ring-amber-300 hover:bg-amber-50"
-            >
-              Return for revision
-            </button>
+              Open review workspace
+            </Link>
           </div>
         </section>
       )}
+
+      <div className="mt-6">
+        <SyllabusTimeline
+          syllabus={syllabus}
+          entries={timeline}
+          error={timelineError}
+          onRetry={() => setTimelineRetry((k) => k + 1)}
+        />
+      </div>
 
       <section className="mt-6">
         <h2 className="mb-2 text-base font-semibold text-gray-900">
@@ -323,6 +336,7 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
           syllabusId={syllabus.id}
           reloadKey={versionsKey}
           onCountChange={setVersionCount}
+          decisions={decisionsByVersion(timeline)}
         />
       </section>
 
@@ -348,21 +362,15 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
 
       {syllabus.status !== "draft" && (
         <>
+          {/* Read-only here: reviewers edit in /review, the lead answers in /revise. */}
           <div className="mt-6">
-            <Form18Panel
-              key={`form18-${reloadKey}`}
-              syllabusId={syllabus.id}
-              status={syllabus.status}
-              stage={syllabus.stage}
-              actorStage={review?.actorStage ?? null}
-              isLead={isLead}
-            />
+            <ReviewPointsHistory syllabusId={syllabus.id} reloadKey={reloadKey} />
           </div>
           <div className="mt-6">
             <Form17Panel
               key={`form17-${reloadKey}`}
               syllabusId={syllabus.id}
-              editable={!!review?.actorStage}
+              editable={false}
             />
           </div>
         </>
@@ -392,7 +400,7 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
         </div>
       )}
 
-      {(editable || revising) && (
+      {editable && (
         <UploadVersionModal
           key={`upload-${upload.key}`}
           open={upload.open}
@@ -413,33 +421,6 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
           onClose={() => setTransfer(shut)}
           onTransferred={() => {
             setTransfer(shut);
-            reload();
-          }}
-        />
-      )}
-
-      {revising && (
-        <ResubmitSyllabusDialog
-          key={`resubmit-${resubmit.key}`}
-          open={resubmit.open}
-          syllabus={syllabus}
-          onClose={() => setResubmit(shut)}
-          onResubmitted={() => {
-            setResubmit(shut);
-            reload();
-          }}
-        />
-      )}
-
-      {review?.actorStage && (
-        <ReviewDecisionDialog
-          key={`decide-${decide.key}`}
-          open={decide.open}
-          syllabus={syllabus}
-          decision={decide.decision}
-          onClose={() => setDecide(shut)}
-          onDecided={() => {
-            setDecide(shut);
             reload();
           }}
         />

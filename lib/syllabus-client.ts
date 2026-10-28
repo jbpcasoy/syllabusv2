@@ -29,6 +29,10 @@ import type {
   StandInResponse,
 } from "@/types/syllabus-stand-in";
 import type { SyllabusVersionResponse } from "@/types/syllabus-version";
+import type {
+  TimelineEntry,
+  TimelineResponse,
+} from "@/types/syllabus-timeline";
 import type { ListResult } from "pocketbase";
 
 export { MAX_PDF_BYTES } from "@/types/syllabus-version";
@@ -53,6 +57,8 @@ export type {
   SyllabusStatus,
   SyllabusUpdateInput,
   SyllabusVersionResponse,
+  TimelineEntry,
+  TimelineResponse,
 };
 
 export type SyllabusListParams = {
@@ -134,6 +140,10 @@ export function listAvailableSyllabi(
 
 export function getSyllabus(id: string, signal?: AbortSignal) {
   return request<SyllabusResponse>(`/api/syllabus/${id}`, { signal });
+}
+
+export function getSyllabusTimeline(id: string, signal?: AbortSignal) {
+  return request<TimelineResponse>(`/api/syllabus/${id}/timeline`, { signal });
 }
 
 export function createSyllabus(input: SyllabusInput) {

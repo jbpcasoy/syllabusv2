@@ -17,6 +17,7 @@ import {
   lastReturnedVersionId,
   loadFormFacts,
 } from "@/lib/syllabus-decision";
+import { addSyllabusEvent } from "@/lib/syllabus-events";
 import { needsStandIn } from "@/lib/syllabus-review";
 import { latestVersion } from "@/lib/syllabus-version";
 import { transition } from "@/lib/syllabus-workflow";
@@ -109,7 +110,15 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
         version.id,
       );
     }
-    batch.collection("syllabi").update(id, result.next);
+    batch
+      .collection("syllabi")
+      .update(id, { ...result.next, status_changed_at: new Date().toISOString() });
+    addSyllabusEvent(batch, id, {
+      type: "resubmitted",
+      actor: me,
+      stage: result.next.stage,
+      version: version?.id,
+    });
     await batch.send();
 
     const updated = await pb

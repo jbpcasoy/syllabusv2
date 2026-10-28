@@ -261,6 +261,28 @@ describe.each(["signedCopy.return", "justification.return"] as const)("%s", (cap
   });
 });
 
+describe("reviewQueue.view", () => {
+  it.each([
+    ["a program reviewer", roles({ reviewerOfPrograms: [OTHER.program] })],
+    ["a dean", roles({ deanOfColleges: [OTHER.college] })],
+    ["the FDIS chair", roles({ isFdisChair: true })],
+    ["the CITL director", roles({ isCitlDirector: true })],
+    ["the VPAA", vpaa],
+    ["an admin", admin],
+  ])("passes for %s, without any scope", (_label, who) => {
+    expect(can(who, "reviewQueue.view")).toBe(true);
+    expect(canAnywhere(who, "reviewQueue.view")).toBe(true);
+  });
+
+  it.each([
+    ["the department head", head],
+    ["the program chair", chair],
+    ["faculty", facultyOnly],
+  ])("refuses %s", (_label, who) => {
+    expect(canAnywhere(who, "reviewQueue.view")).toBe(false);
+  });
+});
+
 describe("faculty.write", () => {
   it("a chair passes only for their own program", () => {
     expect(can(chair, "faculty.write", SCOPE)).toBe(true);

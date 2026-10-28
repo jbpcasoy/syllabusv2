@@ -13,8 +13,9 @@ import {
   missingChainRoles,
 } from "@/lib/syllabus-chain";
 import { ensureRefSeq } from "@/lib/syllabus-decision";
+import { addSyllabusEvent } from "@/lib/syllabus-events";
 import { needsStandIn } from "@/lib/syllabus-review";
-import { latestVersionNo } from "@/lib/syllabus-version";
+import { latestVersion } from "@/lib/syllabus-version";
 import { transition } from "@/lib/syllabus-workflow";
 import type { Syllabus } from "@/types/syllabus";
 import type { Term } from "@/types/term";
@@ -49,9 +50,9 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
       );
     }
 
-    const [term, latest, holders, standIns, faculty] = await Promise.all([
+    const [term, version, holders, standIns, faculty] = await Promise.all([
       pb.collection("terms").getOne<Term>(syllabus.term, { fields: "id,open" }),
-      latestVersionNo(pb, id),
+      latestVersion(pb, id),
       loadChainHolders(pb, syllabus.program),
       loadStandIns(pb, id),
       activeFacultyAmong(pb, syllabus.program, [me]),
@@ -65,7 +66,7 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
 
     const result = transition(syllabus, {
       type: "submit",
-      hasVersion: latest > 0,
+      hasVersion: !!version,
       termOpen: term.open,
       missingRoles: missingChainRoles(holders),
       proxyNeeded: needsStandIn(1, syllabus, holders, standIns),
@@ -77,11 +78,24 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     // Prefix of every approval code this syllabus will get.
     await ensureRefSeq(pb, syllabus);
 
-    const updated = await pb.collection("syllabi").update<Syllabus>(
-      id,
-      { ...result.next, submitted_at: new Date().toISOString() },
-      { expand: SYLLABUS_EXPAND },
-    );
+    const now = new Date().toISOString();
+    const batch = pb.createBatch();
+    batch.collection("syllabi").update(id, {
+      ...result.next,
+      submitted_at: now,
+      status_changed_at: now,
+    });
+    addSyllabusEvent(batch, id, {
+      type: "submitted",
+      actor: me,
+      stage: result.next.stage,
+      version: version?.id,
+    });
+    await batch.send();
+
+    const updated = await pb
+      .collection("syllabi")
+      .getOne<Syllabus>(id, { expand: SYLLABUS_EXPAND });
     return NextResponse.json(toSyllabusResponse(updated, "lead"));
   } catch (error) {
     return handlePbError(error);

@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   syllabiGetOne: vi.fn(),
-  syllabiUpdate: vi.fn(),
+  batchOps: [] as unknown[][],
+  batchSend: vi.fn(),
   termsGetOne: vi.fn(),
   activeFacultyAmong: vi.fn(),
   getSyllabusAccess: vi.fn(),
@@ -11,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   loadStandIns: vi.fn(),
   missingChainRoles: vi.fn(),
   ensureRefSeq: vi.fn(),
-  latestVersionNo: vi.fn(),
+  latestVersion: vi.fn(),
   transition: vi.fn(),
   toSyllabusResponse: vi.fn((record: Record<string, unknown>, access?: string) => ({
     ...record,
@@ -23,12 +24,21 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/pocketbase", async () => {
   const { NextResponse } = await import("next/server");
   const collections: Record<string, unknown> = {
-    syllabi: { getOne: mocks.syllabiGetOne, update: mocks.syllabiUpdate },
+    syllabi: { getOne: mocks.syllabiGetOne },
     terms: { getOne: mocks.termsGetOne },
+  };
+  const batch = {
+    collection: (name: string) => ({
+      create: (body: unknown) => mocks.batchOps.push(["create", name, body]),
+      update: (id: string, body: unknown) =>
+        mocks.batchOps.push(["update", name, id, body]),
+    }),
+    send: mocks.batchSend,
   };
   return {
     createAdminPb: vi.fn(async () => ({
       collection: (name: string) => collections[name],
+      createBatch: () => batch,
     })),
     handlePbError: vi.fn((error: unknown) => {
       const status =
@@ -53,7 +63,7 @@ vi.mock("@/lib/syllabus-chain", () => ({
 }));
 vi.mock("@/lib/syllabus-decision", () => ({ ensureRefSeq: mocks.ensureRefSeq }));
 vi.mock("@/lib/syllabus-version", () => ({
-  latestVersionNo: mocks.latestVersionNo,
+  latestVersion: mocks.latestVersion,
 }));
 vi.mock("@/lib/syllabus-workflow", () => ({ transition: mocks.transition }));
 
@@ -73,6 +83,9 @@ const ME = "me1me1me1me1me1";
 const PROGRAM = "prg123prg123prg";
 const TERM = "trm123trm123trm";
 const REVIEWER = "revwrevwrevwrev";
+const VERSION = "ververververver";
+const NOW = "2026-10-26T08:00:00.000Z";
+const EXPAND = "course,term.school_year,program,lead,co_authors";
 const HOLDERS = [[REVIEWER], ["dean"], ["fdis"], ["citl"], ["vpaa"]];
 const ctx = { params: Promise.resolve({ id: ID }) };
 
@@ -95,12 +108,18 @@ function post() {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
-  vi.setSystemTime(new Date("2026-10-26T08:00:00.000Z"));
+  vi.setSystemTime(new Date(NOW));
   mockAuth({ id: ME, roles: { facultyOfPrograms: [PROGRAM] } });
-  mocks.syllabiGetOne.mockResolvedValue(draft);
+  mocks.batchOps.length = 0;
+  mocks.batchSend.mockResolvedValue([]);
+  // The first load is the draft; the reload after the batch sees it submitted.
+  mocks.syllabiGetOne.mockImplementation(
+    async (_id: string, options?: { expand?: string }) =>
+      options?.expand ? { ...draft, status: "submitted", stage: 1 } : draft,
+  );
   mocks.getSyllabusAccess.mockReturnValue("lead");
   mocks.termsGetOne.mockResolvedValue({ id: TERM, open: true });
-  mocks.latestVersionNo.mockResolvedValue(2);
+  mocks.latestVersion.mockResolvedValue({ id: VERSION, version_no: 2 });
   mocks.loadChainHolders.mockResolvedValue(HOLDERS);
   mocks.loadStandIns.mockResolvedValue([]);
   mocks.missingChainRoles.mockReturnValue([]);
@@ -110,10 +129,6 @@ beforeEach(() => {
     ok: true,
     next: { status: "submitted", stage: 1 },
   });
-  mocks.syllabiUpdate.mockImplementation(async (_id: string, data: object) => ({
-    ...draft,
-    ...data,
-  }));
 });
 
 describe("POST /api/syllabus/:id/submit", () => {
@@ -128,15 +143,34 @@ describe("POST /api/syllabus/:id/submit", () => {
       missingRoles: [],
       proxyNeeded: false,
     });
-    expect(mocks.syllabiUpdate).toHaveBeenCalledWith(
-      ID,
-      {
-        status: "submitted",
-        stage: 1,
-        submitted_at: "2026-10-26T08:00:00.000Z",
-      },
-      { expand: "course,term.school_year,program,lead,co_authors" },
-    );
+    expect(mocks.batchOps).toEqual([
+      [
+        "update",
+        "syllabi",
+        ID,
+        {
+          status: "submitted",
+          stage: 1,
+          submitted_at: NOW,
+          status_changed_at: NOW,
+        },
+      ],
+      [
+        "create",
+        "syllabus_events",
+        {
+          syllabus: ID,
+          type: "submitted",
+          actor: ME,
+          stage: 1,
+          version: VERSION,
+          approval_code: "",
+          reason: "",
+        },
+      ],
+    ]);
+    expect(mocks.batchSend).toHaveBeenCalledTimes(1);
+    expect(mocks.syllabiGetOne).toHaveBeenLastCalledWith(ID, { expand: EXPAND });
     expect(await res.json()).toMatchObject({
       status: "submitted",
       stage: 1,
@@ -156,7 +190,7 @@ describe("POST /api/syllabus/:id/submit", () => {
 
     expect(mocks.ensureRefSeq).toHaveBeenCalledWith(expect.anything(), draft);
     expect(mocks.ensureRefSeq.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.syllabiUpdate.mock.invocationCallOrder[0],
+      mocks.batchSend.mock.invocationCallOrder[0],
     );
   });
 
@@ -197,7 +231,7 @@ describe("POST /api/syllabus/:id/submit", () => {
 
   it("passes the gathered facts to the workflow", async () => {
     mocks.termsGetOne.mockResolvedValue({ id: TERM, open: false });
-    mocks.latestVersionNo.mockResolvedValue(0);
+    mocks.latestVersion.mockResolvedValue(null);
     mocks.missingChainRoles.mockReturnValue(["dean", "vpaa"]);
     mocks.transition.mockReturnValue({ ok: false, error: "nope" });
 
@@ -225,7 +259,7 @@ describe("POST /api/syllabus/:id/submit", () => {
 
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error });
-    expect(mocks.syllabiUpdate).not.toHaveBeenCalled();
+    expect(mocks.batchSend).not.toHaveBeenCalled();
   });
 
   it("returns 401 when signed out", async () => {
@@ -240,7 +274,7 @@ describe("POST /api/syllabus/:id/submit", () => {
     const res = await POST(post(), ctx);
     expect(res.status).toBe(404);
     expect(mocks.transition).not.toHaveBeenCalled();
-    expect(mocks.syllabiUpdate).not.toHaveBeenCalled();
+    expect(mocks.batchSend).not.toHaveBeenCalled();
   });
 
   it.each(["coAuthor", "admin"])("returns 403 for %s access", async (access) => {
@@ -248,14 +282,14 @@ describe("POST /api/syllabus/:id/submit", () => {
     const res = await POST(post(), ctx);
     expect(res.status).toBe(403);
     expect(mocks.transition).not.toHaveBeenCalled();
-    expect(mocks.syllabiUpdate).not.toHaveBeenCalled();
+    expect(mocks.batchSend).not.toHaveBeenCalled();
   });
 
   it("returns 403 when the lead is no longer faculty of the program", async () => {
     mocks.activeFacultyAmong.mockResolvedValue(new Set());
     const res = await POST(post(), ctx);
     expect(res.status).toBe(403);
-    expect(mocks.syllabiUpdate).not.toHaveBeenCalled();
+    expect(mocks.batchSend).not.toHaveBeenCalled();
   });
 
   it("propagates 404 from PocketBase", async () => {
@@ -264,8 +298,8 @@ describe("POST /api/syllabus/:id/submit", () => {
     expect(res.status).toBe(404);
   });
 
-  it("delegates update errors", async () => {
-    mocks.syllabiUpdate.mockRejectedValue({ status: 400 });
+  it("delegates batch errors", async () => {
+    mocks.batchSend.mockRejectedValue({ status: 400 });
     const res = await POST(post(), ctx);
     expect(res.status).toBe(400);
   });

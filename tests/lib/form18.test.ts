@@ -32,6 +32,7 @@ const point = {
   expand: {
     raised_by: { name: "Fe", tokenKey: "secret" },
     responded_by: { name: "Lea" },
+    version: { version_no: 2 },
   },
 } as unknown as Form18Point;
 
@@ -41,6 +42,7 @@ describe("toPointResponse", () => {
     expect(response).toEqual({
       id: "pntpntpntpntpnt",
       version: "v1v1v1v1v1v1v1v",
+      version_no: 2,
       part: "B",
       stage: 3,
       code: "B.3",
@@ -57,6 +59,10 @@ describe("toPointResponse", () => {
     });
     expect(JSON.stringify(response)).not.toContain("secret");
   });
+
+  it("reports version 0 when the version didn't expand", () => {
+    expect(toPointResponse({ ...point, expand: {} }).version_no).toBe(0);
+  });
 });
 
 describe("listPoints and loadForm18", () => {
@@ -66,7 +72,7 @@ describe("listPoints and loadForm18", () => {
 
     expect(await listPoints(pb, ID)).toEqual([point]);
     expect(getFullList).toHaveBeenCalledWith({
-      expand: "raised_by,responded_by,judged_by",
+      expand: "raised_by,responded_by,judged_by,version",
       sort: "stage,created",
       filter: `syllabus = "${ID}"`,
     });

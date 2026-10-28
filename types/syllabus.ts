@@ -46,6 +46,8 @@ export interface Syllabus extends RecordModel {
   returned_at: string;
   /** Last school year's syllabus for the slot, set on create; "" if none. */
   based_on: string;
+  /** PocketBase datetime of the latest transition, or "" while a draft. */
+  status_changed_at?: string;
   expand?: {
     course?: Course;
     term?: Term;
@@ -128,6 +130,8 @@ export interface SyllabusResponse {
   returned_at: string;
   /** Last school year's syllabus for the slot, or "". */
   based_on: string;
+  /** Latest transition, or "" while a draft. */
+  status_changed_at: string;
   created: string;
   updated: string;
   /** The caller's relation, set by routes that know the caller. */

@@ -9,6 +9,7 @@ import {
 } from "@/lib/signed-copy";
 import { getSyllabusAccess, resolveSyllabusAccess } from "@/lib/syllabus";
 import { hasNotUniqueError } from "@/lib/syllabus-decision";
+import { addSyllabusEvent } from "@/lib/syllabus-events";
 import { transition } from "@/lib/syllabus-workflow";
 import type { SignedCopy } from "@/types/signed-copy";
 import type { Syllabus } from "@/types/syllabus";
@@ -104,7 +105,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Two writes (the file upload can't join a batch): undo the copy if
     // filing fails, so a copy never sits valid on an unfiled syllabus.
     try {
-      await pb.collection("syllabi").update(id, result.next);
+      const batch = pb.createBatch();
+      batch.collection("syllabi").update(id, {
+        ...result.next,
+        status_changed_at: new Date().toISOString(),
+      });
+      addSyllabusEvent(batch, id, { type: "filed", actor: me });
+      await batch.send();
     } catch (error) {
       await pb.collection("syllabus_signed_copies").delete(created.id);
       throw error;

@@ -226,12 +226,30 @@ describe("recordDecision", () => {
           approval_code: "SYL-2627-1-0042-S2",
         },
       ],
-      ["update", "syllabi", ID, { status: "submitted", stage: 3 }],
+      [
+        "update",
+        "syllabi",
+        ID,
+        { status: "submitted", stage: 3, status_changed_at: input.now },
+      ],
+      [
+        "create",
+        "syllabus_events",
+        {
+          syllabus: ID,
+          type: "approved",
+          actor: "deandeandeandea",
+          stage: 2,
+          version: "ververververver",
+          approval_code: "SYL-2627-1-0042-S2",
+          reason: "",
+        },
+      ],
     ]);
     expect(send).toHaveBeenCalledTimes(1);
   });
 
-  it("stamps returned_at on a return", async () => {
+  it("stamps returned_at and logs a returned event on a return", async () => {
     await recordDecision(pb, {
       ...input,
       decision: "return",
@@ -242,7 +260,17 @@ describe("recordDecision", () => {
       "update",
       "syllabi",
       ID,
-      { status: "returned", stage: 2, returned_at: "2026-10-27T08:00:00.000Z" },
+      {
+        status: "returned",
+        stage: 2,
+        status_changed_at: input.now,
+        returned_at: input.now,
+      },
+    ]);
+    expect(ops[2]).toEqual([
+      "create",
+      "syllabus_events",
+      expect.objectContaining({ type: "returned", stage: 2, approval_code: "" }),
     ]);
   });
 
@@ -254,7 +282,7 @@ describe("recordDecision", () => {
       next: { status: "returned", stage: 2 },
       reopenPointIds: ["p3", "p5"],
     });
-    expect(ops.slice(2)).toEqual([
+    expect(ops.slice(3)).toEqual([
       ["update", "form18_points", "p3", { status: "open" }],
       ["update", "form18_points", "p5", { status: "open" }],
     ]);

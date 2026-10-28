@@ -27,6 +27,7 @@ vi.mock("@/lib/pocketbase", async () => {
   };
   const batch = {
     collection: (name: string) => ({
+      create: (body: unknown) => mocks.batchOps.push(["create", name, body]),
       update: (id: string, body: unknown) =>
         mocks.batchOps.push(["update", name, id, body]),
     }),
@@ -157,7 +158,20 @@ describe("POST /api/syllabus/:id/resubmit", () => {
       "update",
       "syllabi",
       ID,
-      { status: "submitted", stage: 3 },
+      { status: "submitted", stage: 3, status_changed_at: expect.any(String) },
+    ]);
+    expect(mocks.batchOps).toContainEqual([
+      "create",
+      "syllabus_events",
+      {
+        syllabus: ID,
+        type: "resubmitted",
+        actor: ME,
+        stage: 3,
+        version: NEW_VERSION,
+        approval_code: "",
+        reason: "",
+      },
     ]);
     expect(mocks.batchSend).toHaveBeenCalledTimes(1);
     expect(mocks.syllabiGetOne).toHaveBeenLastCalledWith(ID, {

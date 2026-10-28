@@ -162,6 +162,8 @@ Add every new check as a capability in `lib/capability-rules.ts`. Never branch o
 
 **Phase 3:** `syllabi` gains statuses `returned`, `approved`, `filed` and fields `ref_seq`, `returned_at` (a returned syllabus keeps `stage` at the returning stage); `syllabus_stand_ins`; `syllabus_reviews` (one per version and stage); `program_reviewers` (user, program, active; unique (user, program) and one active per program); stage fields max 5; `form17_answers` (unique (version, criterion)), `form17_changes` (append-only), `syllabus_versions.form17_suggestions`; `form18_points` (open → responded → resolved | unresolved; a return re-opens unresolved); `syllabus_signed_copies` (protected PDF; one valid per syllabus; returned copies kept); `syllabi.based_on`; `syllabus_justifications` (one per syllabus; draft → submitted → returned). Form definitions: `lib/forms/`.
 
+**Phase 4:** `syllabus_events` (append-only, one row per workflow transition, written in the transition's batch by `addSyllabusEvent()` in `lib/syllabus-events.ts`; it feeds the timeline and is narrower than `audit_log`); `syllabi.status_changed_at` (set by every transition; the queue sorts on it). Queues: `lib/review-queue.ts`, `/review`. Workspaces: `/syllabus/[id]/review` (reviewer) and `/syllabus/[id]/revise` (lead); the syllabus page itself is read-only for review. Spec: `docs/specs/phase-4-reviewer-experience.md`.
+
 **Planned collections:** `audit_log`.
 
 ## Roadmap and status
@@ -175,7 +177,7 @@ Work in this order and do not start a phase before the previous one is done unle
 | 1b    | Program membership requests, institutional-domain registration, email verification                         | Done        |
 | 2     | Syllabus submission, PDF versions, co-authors, protected file route, syllabus references                    | Done        |
 | 3     | Review engine, Form 17, Form 18-1, proxy, approval references, signed scan                                  | Done        |
-| 4     | Reviewer queues, PDF viewer, timeline, faculty return view                                                  | Not started |
+| 4     | Reviewer queues, PDF viewer, timeline, faculty return view                                                  | Done        |
 | 5     | Notifications, deadlines, dashboards                                                                        | Not started |
 | 6     | Audit trail, overrides, rate limits, end-to-end tests, accessibility                                        | Not started |
 

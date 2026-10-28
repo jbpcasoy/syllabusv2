@@ -75,7 +75,7 @@ vi.mock("@/lib/syllabus-previous", () => ({
   findPreviousSyllabus: mocks.findPreviousSyllabus,
 }));
 
-vi.mock("@/lib/syllabus-queue", () => ({
+vi.mock("@/lib/review-queue", () => ({
   listAwaitingReviewIds: mocks.listAwaitingReviewIds,
 }));
 

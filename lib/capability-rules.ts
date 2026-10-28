@@ -31,7 +31,8 @@ export type Capability =
   | "syllabusReference.request"
   | "syllabus.transferLead"
   | "signedCopy.return"
-  | "justification.return";
+  | "justification.return"
+  | "reviewQueue.view";
 
 /** The org chain a target sits in, resolved program → department → college. */
 export type ScopeChain = {
@@ -101,6 +102,15 @@ const RULES: Record<Capability, Rule> = {
   // Return a justification scan for revision: the program reviewer or any
   // higher role in the chain.
   "justification.return": anyOf(programReviewer, dean, fdisChair, citlDirector, vpaa),
+  // Open the Review Queue: holds a chain role anywhere. Global on purpose,
+  // since canAnywhere has no program-reviewer scopes; the queue route still
+  // shows only the stages the user holds or stands in for.
+  "reviewQueue.view": (r) =>
+    r.reviewerOfPrograms.length > 0 ||
+    r.deanOfColleges.length > 0 ||
+    r.isFdisChair ||
+    r.isCitlDirector ||
+    r.isVpaa,
 };
 
 export const CAPABILITIES = Object.keys(RULES) as Capability[];

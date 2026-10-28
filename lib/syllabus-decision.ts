@@ -1,5 +1,6 @@
 import { form17Facts } from "@/lib/form17";
 import { pointFacts, type PointFacts } from "@/lib/form18-rules";
+import { addSyllabusEvent } from "@/lib/syllabus-events";
 import type { Form18Point } from "@/types/form18";
 import type { ActingAs } from "@/lib/syllabus-review";
 import type { WorkflowState } from "@/lib/syllabus-workflow";
@@ -116,15 +117,15 @@ export interface DecisionInput {
   approvalCode: string;
   /** From lib/syllabus-workflow.ts. */
   next: WorkflowState;
-  /** ISO time stamped as returned_at on a return. */
+  /** ISO time stamped as status_changed_at, and returned_at on a return. */
   now: string;
   /** Unresolved points a return re-opens. */
   reopenPointIds?: string[];
 }
 
 /**
- * Writes the review row, the syllabus's next state and any re-opened
- * points in one batch. The
+ * Writes the review row, the syllabus's next state, its timeline event and
+ * any re-opened points in one batch. The
  * unique index (version, stage) makes a second decision on the same stage
  * fail as a whole: "conflict".
  */
@@ -145,7 +146,15 @@ export async function recordDecision(
   batch.collection("syllabi").update(input.syllabusId, {
     status: input.next.status,
     stage: input.next.stage,
+    status_changed_at: input.now,
     ...(input.decision === "return" && { returned_at: input.now }),
+  });
+  addSyllabusEvent(batch, input.syllabusId, {
+    type: input.decision === "approve" ? "approved" : "returned",
+    actor: input.reviewer,
+    stage: input.stage,
+    version: input.versionId,
+    approval_code: input.approvalCode,
   });
   for (const pointId of input.reopenPointIds ?? []) {
     batch.collection("form18_points").update(pointId, { status: "open" });

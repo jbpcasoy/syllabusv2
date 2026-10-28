@@ -18,6 +18,7 @@ vi.mock("@/lib/pocketbase", async () => {
       : { getOne: mocks.copiesGetOne };
   const batch = {
     collection: (name: string) => ({
+      create: (body: unknown) => mocks.batchOps.push(["create", name, body]),
       update: (id: string, body: unknown) =>
         mocks.batchOps.push(["update", name, id, body]),
     }),
@@ -103,7 +104,7 @@ beforeEach(() => {
 });
 
 describe("PATCH /api/syllabus/:id/signed-copy/:copyId", () => {
-  it("returns the copy and the syllabus to approved in one batch", async () => {
+  it("returns the copy and the syllabus to approved, with its event, in one batch", async () => {
     const res = await patch();
 
     expect(res.status).toBe(200);
@@ -119,7 +120,25 @@ describe("PATCH /api/syllabus/:id/signed-copy/:copyId", () => {
           returned_at: NOW,
         },
       ],
-      ["update", "syllabi", ID, { status: "approved", stage: 5 }],
+      [
+        "update",
+        "syllabi",
+        ID,
+        { status: "approved", stage: 5, status_changed_at: NOW },
+      ],
+      [
+        "create",
+        "syllabus_events",
+        {
+          syllabus: ID,
+          type: "scan_returned",
+          actor: ME,
+          stage: 0,
+          version: "",
+          approval_code: "",
+          reason: "Missing signature.",
+        },
+      ],
     ]);
     expect(mocks.batchSend).toHaveBeenCalledTimes(1);
     expect(authorizeMock).toHaveBeenCalledWith(

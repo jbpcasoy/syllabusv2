@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   syllabiGetOne: vi.fn(),
-  syllabiUpdate: vi.fn(),
+  batchOps: [] as unknown[][],
+  batchSend: vi.fn(),
   copiesCreate: vi.fn(),
   copiesDelete: vi.fn(),
   getSyllabusAccess: vi.fn(),
@@ -16,10 +17,18 @@ vi.mock("@/lib/pocketbase", async () => {
   const { NextResponse } = await import("next/server");
   const collection = (name: string) =>
     name === "syllabi"
-      ? { getOne: mocks.syllabiGetOne, update: mocks.syllabiUpdate }
+      ? { getOne: mocks.syllabiGetOne }
       : { create: mocks.copiesCreate, delete: mocks.copiesDelete };
+  const batch = {
+    collection: (name: string) => ({
+      create: (body: unknown) => mocks.batchOps.push(["create", name, body]),
+      update: (id: string, body: unknown) =>
+        mocks.batchOps.push(["update", name, id, body]),
+    }),
+    send: mocks.batchSend,
+  };
   return {
-    createAdminPb: vi.fn(async () => ({ collection })),
+    createAdminPb: vi.fn(async () => ({ collection, createBatch: () => batch })),
     handlePbError: vi.fn((error: unknown) => {
       const status =
         typeof error === "object" && error && "status" in error
@@ -82,7 +91,8 @@ beforeEach(() => {
   mocks.resolveSyllabusAccess.mockResolvedValue("lead");
   mocks.checkPdfUpload.mockResolvedValue({ ok: true, file: pdf });
   mocks.copiesCreate.mockImplementation(async (data: object) => ({ id: "cpy", ...data }));
-  mocks.syllabiUpdate.mockResolvedValue({});
+  mocks.batchOps.length = 0;
+  mocks.batchSend.mockResolvedValue([]);
   mocks.listSignedCopies.mockResolvedValue([{ id: "cpy" }]);
 });
 
@@ -110,7 +120,7 @@ describe("GET /api/syllabus/:id/signed-copy", () => {
 });
 
 describe("POST /api/syllabus/:id/signed-copy", () => {
-  it("stores the scan and files the syllabus", async () => {
+  it("stores the scan, then files the syllabus with its event in one batch", async () => {
     const res = await upload();
 
     expect(res.status).toBe(201);
@@ -118,10 +128,28 @@ describe("POST /api/syllabus/:id/signed-copy", () => {
       { syllabus: ID, file: pdf, uploaded_by: ME, status: "valid" },
       { expand: "uploaded_by,returned_by" },
     );
-    expect(mocks.syllabiUpdate).toHaveBeenCalledWith(ID, {
-      status: "filed",
-      stage: 5,
-    });
+    expect(mocks.batchOps).toEqual([
+      [
+        "update",
+        "syllabi",
+        ID,
+        { status: "filed", stage: 5, status_changed_at: expect.any(String) },
+      ],
+      [
+        "create",
+        "syllabus_events",
+        {
+          syllabus: ID,
+          type: "filed",
+          actor: ME,
+          stage: 0,
+          version: "",
+          approval_code: "",
+          reason: "",
+        },
+      ],
+    ]);
+    expect(mocks.batchSend).toHaveBeenCalledTimes(1);
     expect(await res.json()).toMatchObject({ mapped: true, status: "valid" });
   });
 
@@ -159,11 +187,11 @@ describe("POST /api/syllabus/:id/signed-copy", () => {
     const res = await upload();
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "A valid signed copy is already on file." });
-    expect(mocks.syllabiUpdate).not.toHaveBeenCalled();
+    expect(mocks.batchSend).not.toHaveBeenCalled();
   });
 
   it("removes the copy again when filing fails", async () => {
-    mocks.syllabiUpdate.mockRejectedValue({ status: 400 });
+    mocks.batchSend.mockRejectedValue({ status: 400 });
     const res = await upload();
     expect(res.status).toBe(400);
     expect(mocks.copiesDelete).toHaveBeenCalledWith("cpy");

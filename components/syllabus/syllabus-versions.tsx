@@ -16,12 +16,15 @@ type SyllabusVersionsProps = {
   /** Bump to refetch, e.g. after an upload. */
   reloadKey: number;
   onCountChange?: (count: number) => void;
+  /** Decisions per version number, e.g. ["S1 returned", "S2 approved"]. */
+  decisions?: ReadonlyMap<number, string[]>;
 };
 
 export function SyllabusVersions({
   syllabusId,
   reloadKey,
   onCountChange,
+  decisions,
 }: SyllabusVersionsProps) {
   const [page, setPage] = useState(1);
   const [retryKey, setRetryKey] = useState(0);
@@ -115,6 +118,11 @@ export function SyllabusVersions({
                     <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
                       Latest
                     </span>
+                  )}
+                  {(decisions?.get(version.version_no) ?? []).length > 0 && (
+                    <div className="mt-1 text-xs font-normal text-gray-500">
+                      {decisions?.get(version.version_no)?.join(" · ")}
+                    </div>
                   )}
                 </td>
                 <td className="hidden max-w-xs px-4 py-3 text-sm text-gray-500 sm:table-cell">

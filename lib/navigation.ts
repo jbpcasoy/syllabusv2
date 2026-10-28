@@ -10,6 +10,7 @@ export type NavItem = {
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { label: "My Syllabi", href: "/syllabus" },
+  { label: "Review Queue", href: "/review", capability: "reviewQueue.view" },
   {
     label: "Syllabus References",
     href: "/syllabus-reference",
