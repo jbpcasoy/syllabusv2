@@ -1,7 +1,7 @@
 # Graph Report - syllabusv2  (2026-10-28)
 
 ## Corpus Check
-- 653 files · ~298,735 words
+- 653 files · ~298,767 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 4, .ico 1, .css 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `526da529`
+- Built from commit: `e6f3ca3a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -178,14 +178,14 @@
 ## Surprising Connections (you probably didn't know these)
 - `Deadlines` --references--> `ReviewQueueItem`  [INFERRED]
   docs/specs/phase-5-visibility.md → types/review-queue.ts
-- `Hub (`/syllabus/[id]`)` --references--> `SyllabusVersions()`  [INFERRED]
-  docs/specs/phase-4-reviewer-experience.md → components/syllabus/syllabus-versions.tsx
 - `API` --references--> `requireUser()`  [INFERRED]
   docs/specs/phase-2-syllabus-submission.md → lib/auth.ts
+- `Timeline` --references--> `resolveSyllabusAccess()`  [INFERRED]
+  docs/specs/phase-4-reviewer-experience.md → lib/syllabus.ts
 - `Boundaries` --references--> `toAuditResponse()`  [INFERRED]
   docs/specs/phase-6-hardening.md → lib/audit-log.ts
-- `Definitions` --references--> `getSyllabusAccess()`  [INFERRED]
-  docs/specs/phase-2-syllabus-submission.md → lib/syllabus.ts
+- `Proposals (accept or amend before task 1)` --references--> `justificationScope()`  [INFERRED]
+  docs/specs/phase-5-visibility.md → lib/dashboard-scope.ts
 
 ## Import Cycles
 - None detected.
@@ -781,16 +781,16 @@ Nodes (3): ctx, draft, mocks
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `pocketbase` connect `pocketbase` to `prospectus-item-manager.tsx`, `react`, `scan/route.ts`, `dependencies`, `[id]/justification/route.ts`, `validators/user.ts`, `course-modal.tsx`, `Package & Tooling Config`, `User Admin UI`, `fdis-chair/route.ts`, `lib/form17.ts`, `audit-manager.tsx`, `pocketbase`, `types/justification.ts`, `dean/route.ts`, `resolveSyllabusAccess`, `Department UI`, `Faculty UI`, `program-join-request-manager.tsx`, `lib/prospectus-duplicate.ts`, `Syllabus`, `next`, `form18-panel.tsx`, `VPAA UI`, `types/program-join-request.ts`, `Program Chair UI`, `[pointId]/route.ts`, `dean-manager.tsx`, `syllabus-client.ts`, `audit-log.test.ts`, `campus/[id]/route.ts`, `Department Head API`, `getUserRoles`, `types/notification.ts`, `signed-copy/route.ts`, `lib/dashboard.ts`, `program-reviewer-manager.tsx`, `lib/syllabus.ts`, `canSomewhere`, `helpers.ts`, `addAudit`, `dashboard-manager.tsx`, `lib/review-queue.ts`, `signed-copy/route.test.ts`, `citl-director/route.ts`, `next`, `prospectus-client.ts`, `react`, `audit-phase-a.ts`, `timeline/route.ts`, `resubmit/route.ts`, `term-manager.tsx`, `react`, `reference-manager.tsx`, `pocketbase`, `types/term.ts`, `05-a11y.spec.ts`?**
-  _High betweenness centrality (0.191) - this node is a cross-community bridge._
+- **Why does `next` connect `next` to `dashboard-scope.ts`, `[id]/justification/route.ts`, `lib/syllabus-review.ts`, `validators/user.ts`, `Package & Tooling Config`, `User Admin UI`, `fdis-chair/route.ts`, `mock-auth.ts`, `getCurrentUser`, `mockAuth`, `requireUser`, `pocketbase`, `dean/route.ts`, `resolveSyllabusAccess`, `Department UI`, `lib/prospectus-duplicate.ts`, `capability-rules.ts`, `Syllabus`, `export/route.ts`, `summary/route.ts`, `dean/route.test.ts`, `dean-manager.tsx`, `Department Head API`, `program-chair/route.test.ts`, `faculty/route.test.ts`, `getUserRoles`, `types/notification.ts`, `signed-copy/route.ts`, `lib/syllabus.ts`, `course/route.test.ts`, `export.ts`, `dashboard-manager.tsx`, `lib/review-queue.ts`, `signed-copy/route.test.ts`, `citl-director/route.ts`, `next`, `createAdminPb`, `syllabus-detail.tsx`, `vitest`, `react`, `resubmit/route.ts`, `AppUser`, `vpaa/route.ts`, `register/page.tsx`, `reference-manager.tsx`, `review-workspace.tsx`, `org-visibility.ts`, `scan/route.ts`, `dependencies`, `handlePbError`, `revise-workspace.tsx`, `lib/form17.ts`, `audit-manager.tsx`, `Phase 3: Review engine and forms`, `program-reviewer/route.ts`, `auth-client.ts`, `notification-bell.tsx`, `[id]/form17/route.test.ts`, `types/program-join-request.ts`, `[pointId]/route.ts`, `campus/[id]/route.ts`, `term/[id]/route.ts`, `stand-in/route.test.ts`, `prospectus-item/route.test.ts`, `prospectus-item/route.ts`, `review/route.test.ts`, `citl-director/route.test.ts`, `department-head/route.test.ts`, `fdis-chair/route.test.ts`, `program-join-request/route.test.ts`, `program-reviewer/route.test.ts`, `vpaa/route.test.ts`, `duplicate/route.test.ts`, `[id]/form18/route.test.ts`, `lead/route.test.ts`, `syllabus-reference/route.test.ts`, `term/route.test.ts`, `resubmit/route.test.ts`, `[copyId]/route.test.ts`, `stand-in-candidates/route.test.ts`, `college/route.test.ts`, `course/[id]/route.test.ts`, `program-reviewer/[id]/route.test.ts`, `co-author-candidates/route.test.ts`, `lead-candidates/route.test.ts`, `submit/route.test.ts`, `from-previous/route.test.ts`, `[versionId]/file/route.test.ts`, `syllabus/route.test.ts`, `school-year/[id]/route.test.ts`, `syllabus/[id]/route.test.ts`?**
+  _High betweenness centrality (0.165) - this node is a cross-community bridge._
 - **Are the 79 inferred relationships involving `createAdminPb()` (e.g. with `audit/route.test.ts` and `register/route.test.ts`) actually correct?**
   _`createAdminPb()` has 79 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `RFC-4180`, `Org chain (campus, college, department, program)`, `Scoped list visibility (lib/org-visibility.ts)` to the rest of the system?**
   _10 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `prospectus-item-manager.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.13230769230769232 - nodes in this community are weakly interconnected._
-- **Why does `next` connect `next` to `dashboard-scope.ts`, `[id]/justification/route.ts`, `lib/syllabus-review.ts`, `validators/user.ts`, `Package & Tooling Config`, `User Admin UI`, `fdis-chair/route.ts`, `mock-auth.ts`, `getCurrentUser`, `mockAuth`, `requireUser`, `pocketbase`, `dean/route.ts`, `resolveSyllabusAccess`, `Department UI`, `lib/prospectus-duplicate.ts`, `capability-rules.ts`, `Syllabus`, `export/route.ts`, `summary/route.ts`, `dean/route.test.ts`, `dean-manager.tsx`, `Department Head API`, `program-chair/route.test.ts`, `faculty/route.test.ts`, `getUserRoles`, `types/notification.ts`, `signed-copy/route.ts`, `lib/syllabus.ts`, `course/route.test.ts`, `export.ts`, `dashboard-manager.tsx`, `lib/review-queue.ts`, `signed-copy/route.test.ts`, `citl-director/route.ts`, `next`, `createAdminPb`, `syllabus-detail.tsx`, `vitest`, `react`, `resubmit/route.ts`, `AppUser`, `vpaa/route.ts`, `register/page.tsx`, `reference-manager.tsx`, `review-workspace.tsx`, `org-visibility.ts`, `scan/route.ts`, `dependencies`, `handlePbError`, `revise-workspace.tsx`, `lib/form17.ts`, `audit-manager.tsx`, `Phase 3: Review engine and forms`, `program-reviewer/route.ts`, `auth-client.ts`, `notification-bell.tsx`, `[id]/form17/route.test.ts`, `types/program-join-request.ts`, `[pointId]/route.ts`, `campus/[id]/route.ts`, `term/[id]/route.ts`, `stand-in/route.test.ts`, `prospectus-item/route.test.ts`, `prospectus-item/route.ts`, `review/route.test.ts`, `citl-director/route.test.ts`, `department-head/route.test.ts`, `fdis-chair/route.test.ts`, `program-join-request/route.test.ts`, `program-reviewer/route.test.ts`, `vpaa/route.test.ts`, `duplicate/route.test.ts`, `[id]/form18/route.test.ts`, `lead/route.test.ts`, `syllabus-reference/route.test.ts`, `term/route.test.ts`, `resubmit/route.test.ts`, `[copyId]/route.test.ts`, `stand-in-candidates/route.test.ts`, `college/route.test.ts`, `course/[id]/route.test.ts`, `program-reviewer/[id]/route.test.ts`, `co-author-candidates/route.test.ts`, `lead-candidates/route.test.ts`, `submit/route.test.ts`, `from-previous/route.test.ts`, `[versionId]/file/route.test.ts`, `syllabus/route.test.ts`, `school-year/[id]/route.test.ts`, `syllabus/[id]/route.test.ts`?**
-  _High betweenness centrality (0.165) - this node is a cross-community bridge._
+- **Why does `pocketbase` connect `pocketbase` to `prospectus-item-manager.tsx`, `react`, `scan/route.ts`, `dependencies`, `[id]/justification/route.ts`, `validators/user.ts`, `course-modal.tsx`, `Package & Tooling Config`, `User Admin UI`, `fdis-chair/route.ts`, `lib/form17.ts`, `audit-manager.tsx`, `pocketbase`, `types/justification.ts`, `dean/route.ts`, `resolveSyllabusAccess`, `Department UI`, `Faculty UI`, `program-join-request-manager.tsx`, `lib/prospectus-duplicate.ts`, `Syllabus`, `next`, `form18-panel.tsx`, `VPAA UI`, `types/program-join-request.ts`, `Program Chair UI`, `[pointId]/route.ts`, `dean-manager.tsx`, `syllabus-client.ts`, `audit-log.test.ts`, `campus/[id]/route.ts`, `Department Head API`, `getUserRoles`, `types/notification.ts`, `signed-copy/route.ts`, `lib/dashboard.ts`, `program-reviewer-manager.tsx`, `lib/syllabus.ts`, `canSomewhere`, `helpers.ts`, `addAudit`, `dashboard-manager.tsx`, `lib/review-queue.ts`, `signed-copy/route.test.ts`, `citl-director/route.ts`, `next`, `prospectus-client.ts`, `react`, `audit-phase-a.ts`, `timeline/route.ts`, `resubmit/route.ts`, `term-manager.tsx`, `react`, `reference-manager.tsx`, `pocketbase`, `types/term.ts`, `05-a11y.spec.ts`?**
+  _High betweenness centrality (0.156) - this node is a cross-community bridge._
 - **Are the 20 inferred relationships involving `handlePbError()` (e.g. with `Testing` and `Testing`) actually correct?**
   _`handlePbError()` has 20 INFERRED edges - model-reasoned connections that need verification._
 - **Should `dashboard-scope.ts` be split into smaller, more focused modules?**

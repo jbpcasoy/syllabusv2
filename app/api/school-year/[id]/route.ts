@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import {
   describeSchoolYearDependents,
+  schoolYearHasRefSeqs,
   toSchoolYearResponse,
 } from "@/lib/school-year";
 import { parseSchoolYearInput } from "@/lib/validators/school-year";
@@ -26,6 +27,8 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 }
 
 // PATCH /api/school-year/:id  { "label": "2027-2028" }
+// 409 when renaming once its syllabi hold a ref_seq (the label is in their
+// approval codes).
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const auth = await requireUser("schoolYear.write");
   if (!auth.ok) return auth.response;
@@ -52,6 +55,20 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (duplicate.items.length > 0) {
       return NextResponse.json(
         { error: "That school year already exists" },
+        { status: 409 },
+      );
+    }
+
+    const current = await pb.collection("school_years").getOne<SchoolYear>(id);
+    if (
+      current.label !== parsed.data.label &&
+      (await schoolYearHasRefSeqs(pb, id))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This school year's label is part of approval codes already issued to its syllabi, so it can't be renamed.",
+        },
         { status: 409 },
       );
     }

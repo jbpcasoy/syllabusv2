@@ -1,5 +1,6 @@
 import { createAdminPb } from "@/lib/pocketbase";
 import type { SchoolYear, SchoolYearResponse } from "@/types/school-year";
+import type PocketBase from "pocketbase";
 import "server-only";
 
 export function toSchoolYearResponse(record: SchoolYear): SchoolYearResponse {
@@ -41,4 +42,21 @@ export async function describeSchoolYearDependents(
 
   if (parts.length === 0) return null;
   return `This school year still has ${parts.join(" and ")}. Delete them first.`;
+}
+
+/**
+ * True once a syllabus in one of the school year's terms holds a ref_seq.
+ * Approval codes embed the label (SYL-2627-...), so renaming it then would
+ * let a new school year reuse codes already printed on signed forms.
+ */
+export async function schoolYearHasRefSeqs(
+  pb: PocketBase,
+  id: string,
+): Promise<boolean> {
+  const result = await pb.collection("syllabi").getList(1, 1, {
+    skipTotal: true,
+    fields: "id",
+    filter: pb.filter("term.school_year = {:id} && ref_seq > 0", { id }),
+  });
+  return result.items.length > 0;
 }

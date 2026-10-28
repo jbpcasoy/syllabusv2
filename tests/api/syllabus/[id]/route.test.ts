@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   parseSyllabusUpdateInput: vi.fn(),
   activeFacultyAmong: vi.fn(),
   hasLiveReferenceTo: vi.fn(),
+  loadStandIns: vi.fn(),
+  loadReviewerIds: vi.fn(),
   getSyllabusAccess: vi.fn(),
   toSyllabusResponse: vi.fn((record: Record<string, unknown>, access?: string) => ({
     ...record,
@@ -54,7 +56,8 @@ vi.mock("@/lib/syllabus-reference", () => ({
 
 vi.mock("@/lib/syllabus-chain", () => ({
   loadChainHolders: vi.fn(async () => [["revwrevwrevwrev"], ["d"], ["f"], ["c"], ["v"]]),
-  loadStandIns: vi.fn(async () => []),
+  loadStandIns: mocks.loadStandIns,
+  loadReviewerIds: mocks.loadReviewerIds,
 }));
 
 vi.mock("@/lib/auth", async () =>
@@ -103,6 +106,8 @@ beforeEach(() => {
   mocks.getOne.mockResolvedValue(draft);
   mocks.getSyllabusAccess.mockReturnValue("lead");
   mocks.hasLiveReferenceTo.mockResolvedValue(false);
+  mocks.loadStandIns.mockResolvedValue([]);
+  mocks.loadReviewerIds.mockResolvedValue([]);
 });
 
 describe("GET /api/syllabus/:id", () => {
@@ -276,11 +281,81 @@ describe("PATCH /api/syllabus/:id", () => {
     },
   );
 
-  it("returns 409 once submitted", async () => {
-    mocks.getOne.mockResolvedValue({ ...draft, status: "submitted", stage: 1 });
+  it.each([
+    ["submitted", 1],
+    ["approved", 5],
+    ["filed", 5],
+  ])("returns 409 while %s", async (status, stage) => {
+    mocks.getOne.mockResolvedValue({ ...draft, status, stage });
     const res = await PATCH(req("PATCH", { co_authors: [CO] }), ctx);
     expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error:
+        "Co-authors can only be changed while the syllabus is a draft or returned for revision.",
+    });
     expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  describe("while returned", () => {
+    const returned = { ...draft, status: "returned", stage: 2 };
+    const conflict = {
+      error:
+        "Someone who has reviewed this syllabus or stands in on it can't be added as a co-author.",
+    };
+
+    beforeEach(() => {
+      mocks.getOne.mockResolvedValue(returned);
+    });
+
+    it("adds a co-author", async () => {
+      const res = await PATCH(req("PATCH", { co_authors: [CO] }), ctx);
+      expect(res.status).toBe(200);
+      expect(mocks.loadStandIns).toHaveBeenCalledWith(expect.anything(), ID);
+      expect(mocks.loadReviewerIds).toHaveBeenCalledWith(expect.anything(), ID);
+      expect(mocks.update).toHaveBeenCalledWith(
+        ID,
+        { co_authors: [CO] },
+        expect.anything(),
+      );
+    });
+
+    it("returns 409 when adding someone who has decided on it", async () => {
+      mocks.loadReviewerIds.mockResolvedValue([CO]);
+      const res = await PATCH(req("PATCH", { co_authors: [CO] }), ctx);
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual(conflict);
+      expect(mocks.update).not.toHaveBeenCalled();
+    });
+
+    it("returns 409 when adding a stand-in", async () => {
+      mocks.loadStandIns.mockResolvedValue([{ stage: 3, user: CO }]);
+      const res = await PATCH(req("PATCH", { co_authors: [CO] }), ctx);
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual(conflict);
+      expect(mocks.update).not.toHaveBeenCalled();
+    });
+
+    it("removes a co-author without the reviewer check", async () => {
+      mocks.getOne.mockResolvedValue({ ...returned, co_authors: [CO] });
+      mocks.parseSyllabusUpdateInput.mockReturnValue({
+        ok: true,
+        data: { co_authors: [] },
+      });
+      mocks.activeFacultyAmong.mockResolvedValue(new Set());
+      const res = await PATCH(req("PATCH", { co_authors: [] }), ctx);
+      expect(res.status).toBe(200);
+      expect(mocks.loadReviewerIds).not.toHaveBeenCalled();
+      expect(mocks.update).toHaveBeenCalledWith(
+        ID,
+        { co_authors: [] },
+        expect.anything(),
+      );
+    });
+  });
+
+  it("skips the reviewer check on a draft", async () => {
+    await PATCH(req("PATCH", { co_authors: [CO] }), ctx);
+    expect(mocks.loadReviewerIds).not.toHaveBeenCalled();
   });
 
   it("returns 400 when the lead lists themself", async () => {

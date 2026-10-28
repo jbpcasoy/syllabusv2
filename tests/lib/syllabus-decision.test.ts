@@ -7,6 +7,7 @@ vi.mock("@/lib/form17", () => form17);
 
 import {
   ensureRefSeq,
+  explainConflict,
   hasNotUniqueError,
   lastReturnedVersionId,
   loadFormFacts,
@@ -121,20 +122,43 @@ describe("lastReturnedVersionId", () => {
 });
 
 describe("ensureRefSeq", () => {
+  let getOne: ReturnType<typeof vi.fn>;
   let getList: ReturnType<typeof vi.fn>;
   let update: ReturnType<typeof vi.fn>;
   let pb: PocketBase;
 
   beforeEach(() => {
+    getOne = vi.fn(async () => ({ ref_seq: 0 }));
     getList = vi.fn(async () => ({ items: [{ ref_seq: 41 }] }));
     update = vi.fn(async () => ({}));
-    pb = { filter, collection: () => ({ getList, update }) } as unknown as PocketBase;
+    pb = {
+      filter,
+      collection: () => ({ getOne, getList, update }),
+    } as unknown as PocketBase;
   });
 
   it("keeps an existing sequence without querying", async () => {
     expect(await ensureRefSeq(pb, { id: ID, term: TERM, ref_seq: 9 })).toBe(9);
+    expect(getOne).not.toHaveBeenCalled();
     expect(getList).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it("keeps a number another request assigned after the syllabus was read", async () => {
+    getOne.mockResolvedValue({ ref_seq: 5 });
+    expect(await ensureRefSeq(pb, { id: ID, term: TERM, ref_seq: 0 })).toBe(5);
+    expect(getOne).toHaveBeenCalledWith(ID, { fields: "ref_seq" });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("re-reads the syllabus after a lost race and keeps what it finds", async () => {
+    getOne
+      .mockResolvedValueOnce({ ref_seq: 0 })
+      .mockResolvedValueOnce({ ref_seq: 42 });
+    update.mockRejectedValueOnce(NOT_UNIQUE);
+
+    expect(await ensureRefSeq(pb, { id: ID, term: TERM, ref_seq: 0 })).toBe(42);
+    expect(update).toHaveBeenCalledTimes(1);
   });
 
   it("assigns the term's next number", async () => {
@@ -362,6 +386,21 @@ describe("recordDecision", () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  it("writes a first ref_seq with the decision", async () => {
+    await recordDecision(pb, { ...input, refSeq: 42 });
+    expect(ops[1]).toEqual([
+      "update",
+      "syllabi",
+      ID,
+      {
+        status: "submitted",
+        stage: 3,
+        status_changed_at: input.now,
+        ref_seq: 42,
+      },
+    ]);
+  });
+
   it("reports a conflict when the unique index rejects the batch", async () => {
     send.mockRejectedValue(BATCH_NOT_UNIQUE);
     expect(await recordDecision(pb, input)).toBe("conflict");
@@ -370,5 +409,78 @@ describe("recordDecision", () => {
   it("rethrows other errors", async () => {
     send.mockRejectedValue({ status: 500 });
     await expect(recordDecision(pb, input)).rejects.toEqual({ status: 500 });
+  });
+});
+
+describe("explainConflict", () => {
+  const scope = {
+    syllabusId: ID,
+    versionId: "ververververver",
+    stage: 2,
+    approvalCode: "SYL-2627-1-0042-S2",
+  };
+  const found = { items: [{ id: "x" }] };
+  const none = { items: [] };
+  let getOne: ReturnType<typeof vi.fn>;
+  let getList: ReturnType<typeof vi.fn>;
+  let pb: PocketBase;
+
+  /** Answers for the (version, stage) and approval-code lookups. */
+  function rows(sameStage: object, sameCode: object) {
+    getList.mockImplementation(async (_p: number, _n: number, o: { filter: string }) =>
+      o.filter.startsWith("approval_code") ? sameCode : sameStage,
+    );
+  }
+
+  beforeEach(() => {
+    getOne = vi.fn(async () => ({ status: "submitted", stage: 3 }));
+    getList = vi.fn();
+    pb = { filter, collection: () => ({ getOne, getList }) } as unknown as PocketBase;
+  });
+
+  it("is a lost race when the stage's decision exists and the syllabus moved on", async () => {
+    rows(found, found);
+    expect(await explainConflict(pb, scope)).toBe("decided");
+    expect(getOne).toHaveBeenCalledWith(ID, { fields: "status,stage" });
+    expect(getList).toHaveBeenCalledWith(1, 1, {
+      skipTotal: true,
+      fields: "id",
+      filter: `version = "ververververver" && stage = 2`,
+    });
+    expect(getList).toHaveBeenCalledWith(1, 1, {
+      skipTotal: true,
+      fields: "id",
+      filter: `approval_code = "SYL-2627-1-0042-S2"`,
+    });
+  });
+
+  it("counts a returned syllabus as moved on", async () => {
+    getOne.mockResolvedValue({ status: "returned", stage: 2 });
+    rows(found, none);
+    expect(await explainConflict(pb, scope)).toBe("decided");
+  });
+
+  it("flags a decision recorded while the syllabus still waits at the stage", async () => {
+    getOne.mockResolvedValue({ status: "submitted", stage: 2 });
+    rows(found, none);
+    expect(await explainConflict(pb, scope)).toBe("duplicateReview");
+  });
+
+  it("flags an approval code another review holds", async () => {
+    rows(none, found);
+    expect(await explainConflict(pb, scope)).toBe("duplicateCode");
+  });
+
+  it("skips the code lookup on a return", async () => {
+    rows(none, found);
+    expect(await explainConflict(pb, { ...scope, approvalCode: "" })).toBe(
+      "unexplained",
+    );
+    expect(getList).toHaveBeenCalledTimes(1);
+  });
+
+  it("is unexplained when neither row exists", async () => {
+    rows(none, none);
+    expect(await explainConflict(pb, scope)).toBe("unexplained");
   });
 });

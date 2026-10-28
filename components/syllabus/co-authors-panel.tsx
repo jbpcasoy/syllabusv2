@@ -18,7 +18,7 @@ import { useEffect, useState } from "react";
 
 type CoAuthorsPanelProps = {
   syllabus: SyllabusResponse;
-  /** Lead of a draft: may add and remove. */
+  /** Lead of a draft or returned syllabus: may add and remove. */
   editable: boolean;
   onChanged: (syllabus: SyllabusResponse) => void;
 };

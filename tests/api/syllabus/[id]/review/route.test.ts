@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({
   resolveSyllabusAccess: vi.fn(),
   loadChainHolders: vi.fn(),
   loadStandIns: vi.fn(),
-  ensureRefSeq: vi.fn(),
+  nextRefSeq: vi.fn(),
+  explainConflict: vi.fn(),
   loadFormFacts: vi.fn(),
   recordDecision: vi.fn(),
   latestVersion: vi.fn(),
@@ -42,7 +43,8 @@ vi.mock("@/lib/syllabus-chain", () => ({
   loadStandIns: mocks.loadStandIns,
 }));
 vi.mock("@/lib/syllabus-decision", () => ({
-  ensureRefSeq: mocks.ensureRefSeq,
+  nextRefSeq: mocks.nextRefSeq,
+  explainConflict: mocks.explainConflict,
   loadFormFacts: mocks.loadFormFacts,
   recordDecision: mocks.recordDecision,
 }));
@@ -137,7 +139,7 @@ beforeEach(() => {
   mocks.resolveSyllabusAccess.mockResolvedValue("reviewer");
   mocks.loadChainHolders.mockResolvedValue(HOLDERS);
   mocks.loadStandIns.mockResolvedValue([]);
-  mocks.ensureRefSeq.mockResolvedValue(7);
+  mocks.nextRefSeq.mockResolvedValue(7);
   mocks.loadFormFacts.mockResolvedValue(NO_POINTS);
   mocks.recordDecision.mockResolvedValue("ok");
   mocks.latestVersion.mockResolvedValue(VERSION);
@@ -157,6 +159,7 @@ describe("POST /api/syllabus/:id/review", () => {
         actingAs: "holder",
         decision: "approve",
         approvalCode: "SYL-2627-1-0007-S1",
+        refSeq: 7,
         next: { status: "submitted", stage: 2 },
         now: NOW,
         reopenPointIds: [],
@@ -188,6 +191,16 @@ describe("POST /api/syllabus/:id/review", () => {
           approval_code: "SYL-2627-1-0007-S1",
         },
       });
+    });
+
+    it("keeps the ref_seq assigned at submit", async () => {
+      loads(syllabus(1, "submitted", { ref_seq: 42 }));
+
+      expect((await decide("approve")).status).toBe(200);
+      expect(mocks.nextRefSeq).not.toHaveBeenCalled();
+      const input = mocks.recordDecision.mock.calls[0][1];
+      expect(input.approvalCode).toBe("SYL-2627-1-0042-S1");
+      expect(input).not.toHaveProperty("refSeq");
     });
 
     it.each([2, 3, 4])("lets the stage %i holder move it on", async (stage) => {
@@ -234,7 +247,7 @@ describe("POST /api/syllabus/:id/review", () => {
       const res = await decide("approve");
       expect(res.status).toBe(409);
       expect(await res.json()).toEqual({ error });
-      expect(mocks.ensureRefSeq).not.toHaveBeenCalled();
+      expect(mocks.nextRefSeq).not.toHaveBeenCalled();
       expect(mocks.recordDecision).not.toHaveBeenCalled();
     });
   });
@@ -260,7 +273,7 @@ describe("POST /api/syllabus/:id/review", () => {
         { user: LEAD, kind: "returned", stage: 2 },
         { user: CO, kind: "returned", stage: 2 },
       ]);
-      expect(mocks.ensureRefSeq).not.toHaveBeenCalled();
+      expect(mocks.nextRefSeq).not.toHaveBeenCalled();
     });
 
     it("re-opens unresolved points with the return", async () => {
@@ -443,14 +456,86 @@ describe("POST /api/syllabus/:id/review", () => {
   });
 
   describe("concurrency and errors", () => {
-    it("returns 409 when another decision on the stage won", async () => {
+    it.each([
+      ["decided", "Another decision on this stage finished first."],
+      [
+        "duplicateReview",
+        "A stage 1 decision is already recorded for the latest version, but the syllabus is still waiting at that stage. Ask an administrator to check its review records.",
+      ],
+      [
+        "duplicateCode",
+        "Approval code SYL-2627-1-0042-S1 is already used by another review. Ask an administrator to check the review records.",
+      ],
+      [
+        "unexplained",
+        "This decision clashed with another record and wasn't saved. Refresh the page and try again.",
+      ],
+    ])("explains a %s conflict with 409", async (why, error) => {
+      loads(syllabus(1, "submitted", { ref_seq: 42 }));
       mocks.recordDecision.mockResolvedValue("conflict");
+      mocks.explainConflict.mockResolvedValue(why);
+
+      const res = await decide("approve");
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error });
+      expect(mocks.explainConflict).toHaveBeenCalledWith(expect.anything(), {
+        syllabusId: ID,
+        versionId: VERSION.id,
+        stage: 1,
+        approvalCode: "SYL-2627-1-0042-S1",
+      });
+      // A ref_seq that is already set is never retried.
+      expect(mocks.recordDecision).toHaveBeenCalledTimes(1);
+    });
+
+    it("explains a conflict on a return", async () => {
+      mocks.loadFormFacts.mockResolvedValue({ ...NO_POINTS, openPoints: 1 });
+      mocks.recordDecision.mockResolvedValue("conflict");
+      mocks.explainConflict.mockResolvedValue("decided");
+
+      expect((await decide("return")).status).toBe(409);
+      expect(mocks.explainConflict).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ approvalCode: "" }),
+      );
+      expect(mocks.recordDecision).toHaveBeenCalledTimes(1);
+    });
+
+    it("retries with a fresh ref_seq when the new number clashed", async () => {
+      mocks.nextRefSeq.mockResolvedValueOnce(7).mockResolvedValueOnce(8);
+      mocks.recordDecision
+        .mockResolvedValueOnce("conflict")
+        .mockResolvedValueOnce("ok");
+      mocks.explainConflict.mockResolvedValue("duplicateCode");
+
+      const res = await decide("approve");
+      expect(res.status).toBe(200);
+      expect(mocks.recordDecision).toHaveBeenCalledTimes(2);
+      expect(mocks.recordDecision.mock.calls[1][1]).toMatchObject({
+        refSeq: 8,
+        approvalCode: "SYL-2627-1-0008-S1",
+      });
+      expect((await res.json()).review.approval_code).toBe("SYL-2627-1-0008-S1");
+    });
+
+    it("never retries a ref_seq when another decision won", async () => {
+      mocks.recordDecision.mockResolvedValue("conflict");
+      mocks.explainConflict.mockResolvedValue("decided");
 
       const res = await decide("approve");
       expect(res.status).toBe(409);
       expect(await res.json()).toEqual({
         error: "Another decision on this stage finished first.",
       });
+      expect(mocks.recordDecision).toHaveBeenCalledTimes(1);
+    });
+
+    it("gives up after three clashing ref_seq numbers", async () => {
+      mocks.recordDecision.mockResolvedValue("conflict");
+      mocks.explainConflict.mockResolvedValue("unexplained");
+
+      expect((await decide("approve")).status).toBe(409);
+      expect(mocks.recordDecision).toHaveBeenCalledTimes(3);
     });
 
     it("propagates 404 for an unknown syllabus", async () => {

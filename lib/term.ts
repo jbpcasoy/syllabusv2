@@ -4,7 +4,25 @@ import type {
   TermResponse,
   TermUpdateInput,
 } from "@/types/term";
+import type PocketBase from "pocketbase";
 import "server-only";
+
+/**
+ * True once a syllabus in the term holds a ref_seq. Approval codes embed
+ * the semester (SYL-2627-1-...), so changing it then would let another
+ * term reuse codes already printed on signed forms.
+ */
+export async function termHasRefSeqs(
+  pb: PocketBase,
+  id: string,
+): Promise<boolean> {
+  const result = await pb.collection("syllabi").getList(1, 1, {
+    skipTotal: true,
+    fields: "id",
+    filter: pb.filter("term = {:id} && ref_seq > 0", { id }),
+  });
+  return result.items.length > 0;
+}
 
 export function toTermResponse(record: Term): TermResponse {
   const schoolYear = record.expand?.school_year;

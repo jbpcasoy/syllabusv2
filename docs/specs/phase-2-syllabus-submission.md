@@ -111,7 +111,7 @@ All routes call `requireUser()` first. Lists follow the standard paging, search 
 | `GET /api/syllabus?term=&status=&search=` | signed in | Syllabi where the caller is lead, co-author or referencer (admin: all) |
 | `POST /api/syllabus` `{ course, term, program }` | eligible author | 201. 409 when the term is closed, the program already has a syllabus ("…led by X. Ask them to add you as a co-author."), or the program has a pending or approved reference ("Withdraw the reference first.") |
 | `GET /api/syllabus/[id]` | access | Detail with lead, co-authors, latest version and references |
-| `PATCH /api/syllabus/[id]` `{ co_authors }` | lead, draft | Each user must be an eligible author for the target program and not the lead. Duplicates removed |
+| `PATCH /api/syllabus/[id]` `{ co_authors }` | lead, draft or returned | Each user must be an eligible author for the target program and not the lead. Duplicates removed. While returned, nobody who is a stand-in on the syllabus or has recorded a decision on it may be added |
 | `DELETE /api/syllabus/[id]` | lead, draft, never submitted | 204. 409 while any reference is pending or approved |
 | `GET /api/syllabus/[id]/co-author-candidates?search=` | lead | Eligible authors for the Combobox |
 | `GET /api/syllabus/[id]/version` | access | Versions, newest first. No file URLs |

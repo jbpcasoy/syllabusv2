@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
-import { toTermRecord, toTermResponse } from "@/lib/term";
+import { termHasRefSeqs, toTermRecord, toTermResponse } from "@/lib/term";
 import { parseTermUpdate } from "@/lib/validators/term";
 import type { Term } from "@/types/term";
 import { NextResponse, type NextRequest } from "next/server";
@@ -25,6 +25,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 }
 
 // PATCH /api/term/:id  { "semester"?, "open"?: boolean, "submission_deadline"?: "2026-12-01" | null, "review_days"?: 0-90 }
+// 409 when changing the semester once its syllabi hold a ref_seq.
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const auth = await requireUser("term.write");
   if (!auth.ok) return auth.response;
@@ -39,10 +40,20 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
     const pb = await createAdminPb();
 
-    // Changing the semester must not collide with another term of the same year.
+    // Changing the semester must not collide with another term of the same
+    // year, nor change approval codes its syllabi already hold.
     if (parsed.data.semester !== undefined) {
       const current = await pb.collection("terms").getOne<Term>(id);
       if (current.semester !== parsed.data.semester) {
+        if (await termHasRefSeqs(pb, id)) {
+          return NextResponse.json(
+            {
+              error:
+                "This term's semester is part of approval codes already issued to its syllabi, so it can't be changed.",
+            },
+            { status: 409 },
+          );
+        }
         const duplicate = await pb.collection("terms").getList<Term>(1, 1, {
           skipTotal: true,
           filter: pb.filter(

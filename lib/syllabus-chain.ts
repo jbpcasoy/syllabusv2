@@ -57,6 +57,20 @@ export async function loadStandIns(
   });
 }
 
+/** Everyone who has recorded a decision on the syllabus, at any stage. */
+export async function loadReviewerIds(
+  pb: PocketBase,
+  syllabusId: string,
+): Promise<string[]> {
+  const rows = await pb
+    .collection("syllabus_reviews")
+    .getFullList<{ reviewer: string }>({
+      fields: "reviewer",
+      filter: pb.filter("syllabus = {:syllabusId}", { syllabusId }),
+    });
+  return rows.map((row) => row.reviewer);
+}
+
 /** Chain roles with no active holder. Feeds the workflow's submit check. */
 export function missingChainRoles(holders: ChainHolders): ChainRole[] {
   return CHAIN_ROLES.filter((_, i) => (holders[i] ?? []).length === 0).map(

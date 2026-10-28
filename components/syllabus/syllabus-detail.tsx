@@ -385,8 +385,11 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
       <div className="mt-6">
         <CoAuthorsPanel
           syllabus={syllabus}
-          editable={editable}
-          onChanged={setSyllabus}
+          editable={editable || revising}
+          // The PATCH response has no review or permission fields; keep them.
+          onChanged={(updated) =>
+            setSyllabus((prev) => (prev ? { ...prev, ...updated } : updated))
+          }
         />
       </div>
 

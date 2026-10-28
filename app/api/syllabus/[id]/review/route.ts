@@ -14,9 +14,11 @@ import {
 } from "@/lib/syllabus";
 import { loadChainHolders, loadStandIns } from "@/lib/syllabus-chain";
 import {
-  ensureRefSeq,
+  explainConflict,
   loadFormFacts,
+  nextRefSeq,
   recordDecision,
+  type DecisionConflict,
 } from "@/lib/syllabus-decision";
 import { isAuthor, resolveActor } from "@/lib/syllabus-review";
 import { latestVersion } from "@/lib/syllabus-version";
@@ -31,11 +33,29 @@ type RouteContext = { params: Promise<{ id: string }> };
 const conflict = (error: string) =>
   NextResponse.json({ error }, { status: 409 });
 
+/** What the reviewer is told when the decision's batch hit a unique index. */
+function conflictMessage(
+  why: DecisionConflict,
+  { stage, approvalCode }: { stage: number; approvalCode: string },
+): string {
+  switch (why) {
+    case "decided":
+      return "Another decision on this stage finished first.";
+    case "duplicateReview":
+      return `A stage ${stage} decision is already recorded for the latest version, but the syllabus is still waiting at that stage. Ask an administrator to check its review records.`;
+    case "duplicateCode":
+      return `Approval code ${approvalCode} is already used by another review. Ask an administrator to check the review records.`;
+    case "unexplained":
+      return "This decision clashed with another record and wasn't saved. Refresh the page and try again.";
+  }
+}
+
 // POST /api/syllabus/:id/review  { "decision": "approve" | "return" }
 // The reviewer at the current stage: its holder, or the stand-in (proxy at
 // stage 1) when one is set. Never an author, and an admin only through a
 // stand-in. The workflow decides; the review row and the syllabus update
-// are written in one batch, so a second decision on the stage gets a 409.
+// are written in one batch, so a second decision on the stage gets a 409
+// whose message says whether it lost a race or the records disagree.
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
@@ -107,45 +127,62 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (!result.ok) return conflict(result.error);
     if (!actor || !version) return conflict("This syllabus has no version to review.");
 
+    // Submit assigns ref_seq. A syllabus submitted before that gets one with
+    // its first approval, written in the decision's batch so a losing
+    // request can't change it. A fresh number that clashes is retried.
+    const assignsRefSeq = decision === "approve" && syllabus.ref_seq === 0;
+    const notify = {
+      targets: notificationRecipients(
+        {
+          type: decision === "approve" ? "approved" : "returned",
+          stage: actor.stage,
+          actor: me,
+        },
+        syllabus,
+        holders,
+        standIns,
+      ),
+      facts: notificationFacts(syllabus, auth.user.name),
+    };
     let code = "";
-    if (decision === "approve") {
-      const term = syllabus.expand?.term;
-      if (!term) throw new Error("The syllabus's term didn't load.");
-      code = approvalCode({
-        schoolYearLabel: term.expand?.school_year?.label ?? "",
-        semester: term.semester,
-        refSeq: await ensureRefSeq(pb, syllabus),
-        stage: actor.stage,
-      });
-    }
+    for (let attempt = 1; ; attempt++) {
+      const refSeq = assignsRefSeq
+        ? await nextRefSeq(pb, syllabus.term)
+        : syllabus.ref_seq;
+      if (decision === "approve") {
+        const term = syllabus.expand?.term;
+        if (!term) throw new Error("The syllabus's term didn't load.");
+        code = approvalCode({
+          schoolYearLabel: term.expand?.school_year?.label ?? "",
+          semester: term.semester,
+          refSeq,
+          stage: actor.stage,
+        });
+      }
 
-    const outcome = await recordDecision(pb, {
-      syllabusId: id,
-      versionId: version.id,
-      stage: actor.stage,
-      reviewer: me,
-      actingAs: actor.actingAs,
-      decision,
-      approvalCode: code,
-      next: result.next,
-      now: new Date().toISOString(),
-      reopenPointIds: decision === "return" ? facts.unresolvedIds : [],
-      notify: {
-        targets: notificationRecipients(
-          {
-            type: decision === "approve" ? "approved" : "returned",
-            stage: actor.stage,
-            actor: me,
-          },
-          syllabus,
-          holders,
-          standIns,
-        ),
-        facts: notificationFacts(syllabus, auth.user.name),
-      },
-    });
-    if (outcome === "conflict") {
-      return conflict("Another decision on this stage finished first.");
+      const decided = {
+        syllabusId: id,
+        versionId: version.id,
+        stage: actor.stage,
+        approvalCode: code,
+      };
+      const outcome = await recordDecision(pb, {
+        ...decided,
+        reviewer: me,
+        actingAs: actor.actingAs,
+        decision,
+        ...(assignsRefSeq && { refSeq }),
+        next: result.next,
+        now: new Date().toISOString(),
+        reopenPointIds: decision === "return" ? facts.unresolvedIds : [],
+        notify,
+      });
+      if (outcome === "ok") break;
+
+      const why = await explainConflict(pb, decided);
+      const settled = why === "decided" || why === "duplicateReview";
+      if (assignsRefSeq && !settled && attempt < 3) continue;
+      return conflict(conflictMessage(why, decided));
     }
 
     const updated = await pb

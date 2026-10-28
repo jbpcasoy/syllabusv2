@@ -1,17 +1,17 @@
 # Graph Report - syllabusv2  (2026-10-28)
 
 ## Corpus Check
-- 653 files · ~298,767 words
+- 654 files · ~298,953 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 4, .ico 1, .css 1)
 
 ## Summary
-- 3342 nodes · 10481 edges · 216 communities (144 shown, 72 thin omitted)
+- 3343 nodes · 10483 edges · 210 communities (137 shown, 73 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 322 edges (avg confidence: 0.89)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e6f3ca3a`
+- Built from commit: `8c2c4230`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -19,7 +19,7 @@
 - prospectus-item-manager.tsx
 - dashboard-scope.ts
 - react
-- [id]/justification/route.ts
+- prospectus/[id]/route.ts
 - lib/syllabus-review.ts
 - Project Docs & Domain Rules
 - validators/user.ts
@@ -34,7 +34,7 @@
 - requireUser
 - pocketbase
 - timeline/route.ts
-- dean/route.ts
+- college/[id]/route.ts
 - resolveSyllabusAccess
 - Department UI
 - Faculty UI
@@ -50,7 +50,7 @@
 - dean-manager.tsx
 - TypeScript Config
 - Department Head API
-- program-chair/route.test.ts
+- department-head/route.test.ts
 - faculty/route.test.ts
 - getUserRoles
 - types/notification.ts
@@ -108,7 +108,7 @@
 - 3. Letter Body (in order, top to bottom)
 - README.md
 - CITL Syllabus Review Guide (Instructions for Part B)
-- program-reviewer/route.ts
+- prospectus/route.test.ts
 - auth-client.ts
 - overdue-badge.tsx
 - program-join-request-manager.tsx
@@ -119,11 +119,11 @@
 - types/justification.ts
 - [pointId]/route.ts
 - syllabus-client.ts
-- campus/[id]/route.ts
+- program-join-request/[id]/route.test.ts
 - term/[id]/route.ts
 - audit-log.test.ts
 - stand-in/route.test.ts
-- prospectus-item/route.test.ts
+- requireUserMock
 - validators/syllabus-review.ts
 - Phase 6: Hardening
 - validators/course.ts
@@ -134,15 +134,14 @@
 - review/route.test.ts
 - addAudit
 - citl-director/route.test.ts
-- department-head/route.test.ts
+- program-join-request/route.ts
 - fdis-chair/route.test.ts
 - program-join-request/route.test.ts
-- program-reviewer/route.test.ts
+- export/form18/route.test.ts
 - vpaa/route.test.ts
 - co-authors-panel.tsx
 - duplicate/route.test.ts
 - [id]/form18/route.test.ts
-- lead/route.test.ts
 - syllabus-reference/route.test.ts
 - term/route.test.ts
 - scope-filters.tsx
@@ -152,16 +151,10 @@
 - [copyId]/route.test.ts
 - stand-in-candidates/route.test.ts
 - college/route.test.ts
-- course/[id]/route.test.ts
-- program-reviewer/[id]/route.test.ts
 - co-author-candidates/route.test.ts
-- lead-candidates/route.test.ts
-- submit/route.test.ts
-- from-previous/route.test.ts
 - [versionId]/file/route.test.ts
 - syllabus/route.test.ts
 - school-year/[id]/route.test.ts
-- syllabus/[id]/route.test.ts
 
 ## God Nodes (most connected - your core abstractions)
 1. `createAdminPb()` - 347 edges
@@ -195,7 +188,7 @@
 - **University review forms supported by the system** — agents_form17, agents_form18_1, agents_justification_form, syllabus_review_system_project_plan__v5__enhanced_obe_syllabus, syllabus_review_system_project_plan__v5__form_definitions_versioning [EXTRACTED 1.00]
 - **Phase A migration from role-based PERMISSIONS to derived-role capabilities** — project_context_users_role_field, project_context_permissions_map, agents_isadmin, agents_getuserroles, agents_capability_authorization [INFERRED 0.85]
 
-## Communities (216 total, 72 thin omitted)
+## Communities (210 total, 73 thin omitted)
 
 ### Community 0 - "prospectus-item-manager.tsx"
 Cohesion: 0.13
@@ -209,9 +202,9 @@ Nodes (32): anyOf(), Bind, filterInScope(), programInScope(), programMatches(), 
 Cohesion: 0.15
 Nodes (22): DeleteSchoolYearDialog(), handleDelete(), DeleteSchoolYearDialogProps, ModalState, SchoolYearManager(), SchoolYearManagerProps, SchoolYearModal(), handleSubmit() (+14 more)
 
-### Community 3 - "[id]/justification/route.ts"
-Cohesion: 0.12
-Nodes (23): GET(), notFound(), RouteContext, GET(), RouteContext, conflict(), GET(), load() (+15 more)
+### Community 3 - "prospectus/[id]/route.ts"
+Cohesion: 0.28
+Nodes (10): DELETE(), GET(), PATCH(), RouteContext, GET(), POST(), PROSPECTUS_EXPAND, toProspectusResponse() (+2 more)
 
 ### Community 4 - "lib/syllabus-review.ts"
 Cohesion: 0.15
@@ -242,8 +235,8 @@ Cohesion: 0.22
 Nodes (15): DELETE(), PATCH(), RouteContext, GET(), POST(), getActiveFdisChair(), hasActiveFdisChair(), isFdisChair() (+7 more)
 
 ### Community 11 - "mock-auth.ts"
-Cohesion: 0.06
-Nodes (28): evaluateCapability(), listResult, mocks, base, listResult, mocks, base, listResult (+20 more)
+Cohesion: 0.07
+Nodes (20): evaluateCapability(), base, listResult, mocks, ctx, forbidden(), mocks, ctx (+12 more)
 
 ### Community 12 - "getCurrentUser"
 Cohesion: 0.08
@@ -255,11 +248,11 @@ Nodes (22): APP_PORT, APP_URL, DIST_DIR, LOCAL_PB, PB_BIN, PB_PORT, PB_URL, ROOT
 
 ### Community 14 - "mockAuth"
 Cohesion: 0.05
-Nodes (39): ctx, forbidden(), mocks, unauthorized(), ctx, forbidden(), mocks, unauthorized() (+31 more)
+Nodes (37): ctx, forbidden(), mocks, unauthorized(), ctx, forbidden(), mocks, unauthorized() (+29 more)
 
 ### Community 15 - "requireUser"
-Cohesion: 0.09
-Nodes (44): GET(), GET(), GET(), GET(), DELETE(), GET(), PATCH(), RouteContext (+36 more)
+Cohesion: 0.07
+Nodes (59): GET(), GET(), RouteContext, GET(), notFound(), RouteContext, GET(), RouteContext (+51 more)
 
 ### Community 16 - "pocketbase"
 Cohesion: 0.11
@@ -269,9 +262,9 @@ Nodes (24): metadata, ProgramPage(), CourseManagerProps, ModalState, DeleteCours
 Cohesion: 0.16
 Nodes (13): buildTimeline(), name(), Named, TimelineEvent, TimelineVersion, base, SYLLABUS_EVENT_TYPES, SyllabusEvent (+5 more)
 
-### Community 18 - "dean/route.ts"
-Cohesion: 0.08
-Nodes (30): DELETE(), GET(), PATCH(), RouteContext, GET(), POST(), DELETE(), PATCH() (+22 more)
+### Community 18 - "college/[id]/route.ts"
+Cohesion: 0.09
+Nodes (25): DELETE(), GET(), PATCH(), RouteContext, GET(), POST(), DELETE(), GET() (+17 more)
 
 ### Community 19 - "resolveSyllabusAccess"
 Cohesion: 0.10
@@ -299,7 +292,7 @@ Nodes (34): POST(), POST(), isListedForProgram(), ReferenceSourceParams, findLiv
 
 ### Community 25 - "next"
 Cohesion: 0.07
-Nodes (35): GET(), POST(), POST(), GET(), POST(), GET(), GET(), notFound() (+27 more)
+Nodes (33): GET(), POST(), POST(), GET(), POST(), GET(), GET(), AUTH_COOKIE (+25 more)
 
 ### Community 26 - "export/route.ts"
 Cohesion: 0.08
@@ -330,12 +323,12 @@ Cohesion: 0.11
 Nodes (18): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+10 more)
 
 ### Community 33 - "Department Head API"
-Cohesion: 0.11
-Nodes (28): DELETE(), PATCH(), RouteContext, GET(), POST(), DELETE(), GET(), PATCH() (+20 more)
+Cohesion: 0.20
+Nodes (17): DELETE(), PATCH(), RouteContext, GET(), POST(), departmentHasActiveHead(), isHeadOfDepartment(), listDepartmentsHeadedBy() (+9 more)
 
-### Community 34 - "program-chair/route.test.ts"
-Cohesion: 0.22
-Nodes (6): base, forbidden(), listResult, mocks, rows, unauthorized()
+### Community 34 - "department-head/route.test.ts"
+Cohesion: 0.05
+Nodes (26): base, forbidden(), listResult, mocks, rows, unauthorized(), base, forbidden() (+18 more)
 
 ### Community 35 - "faculty/route.test.ts"
 Cohesion: 0.22
@@ -411,7 +404,7 @@ Nodes (28): PATCH(), RouteContext, POST(), CitlDirectorManager(), toggleActive()
 
 ### Community 53 - "next"
 Cohesion: 0.06
-Nodes (24): mocks, mocks, valid, approve, ctx, mocks, pending, SCOPE (+16 more)
+Nodes (22): mocks, mocks, valid, candidates, ctx, get(), mocks, syllabus (+14 more)
 
 ### Community 54 - "pocketbase"
 Cohesion: 0.07
@@ -422,16 +415,16 @@ Cohesion: 0.14
 Nodes (25): DeleteProspectusDialog(), handleDelete(), DeleteProspectusDialogProps, DuplicateProspectusDialog(), handleConfirm(), DuplicateProspectusDialogProps, ItemList(), ModalState (+17 more)
 
 ### Community 56 - "createAdminPb"
-Cohesion: 0.16
-Nodes (22): DELETE(), GET(), PATCH(), RouteContext, GET(), POST(), DELETE(), GET() (+14 more)
+Cohesion: 0.11
+Nodes (34): DELETE(), GET(), PATCH(), RouteContext, GET(), POST(), DELETE(), PATCH() (+26 more)
 
 ### Community 57 - "syllabus-detail.tsx"
 Cohesion: 0.12
 Nodes (22): metadata, PageProps, SyllabusDetailPage(), DeleteSyllabusDialog(), handleDelete(), DeleteSyllabusDialogProps, groupPoints(), ReviewPointsHistory() (+14 more)
 
 ### Community 58 - "vitest"
-Cohesion: 0.10
-Nodes (13): vitest, mocks, SCOPE, term, mocks, mocks, USER, mocks (+5 more)
+Cohesion: 0.11
+Nodes (13): vitest, ctx, get(), mocks, mocks, mocks, USER, mocks (+5 more)
 
 ### Community 59 - "react"
 Cohesion: 0.11
@@ -502,8 +495,8 @@ Cohesion: 0.20
 Nodes (9): API, Capabilities, Decisions (2026-10-26), Definitions, Out of scope, Phase 2: Syllabus submission, Schema changes (to apply to `pb_schema.json`), UI (+1 more)
 
 ### Community 128 - "org-visibility.ts"
-Cohesion: 0.11
-Nodes (23): DELETE(), GET(), PATCH(), RouteContext, GET(), POST(), POST(), AssignmentPaths (+15 more)
+Cohesion: 0.07
+Nodes (38): DELETE(), GET(), PATCH(), RouteContext, GET(), POST(), DELETE(), GET() (+30 more)
 
 ### Community 129 - "scripts"
 Cohesion: 0.22
@@ -518,8 +511,8 @@ Cohesion: 0.29
 Nodes (7): dependencies, @headlessui/react@^2.2.10, next@16.3.6, pocketbase@^0.28.1, react@19.2.8, react-dom@19.2.8, react-dom
 
 ### Community 132 - "handlePbError"
-Cohesion: 0.11
-Nodes (33): DELETE(), DELETE(), PATCH(), RouteContext, GET(), POST(), DELETE(), PATCH() (+25 more)
+Cohesion: 0.10
+Nodes (36): DELETE(), DELETE(), PATCH(), RouteContext, GET(), POST(), DELETE(), PATCH() (+28 more)
 
 ### Community 133 - "revise-workspace.tsx"
 Cohesion: 0.14
@@ -557,9 +550,9 @@ Nodes (15): 1. Document Overview, 2. Letterhead (fixed, centered at top), 3.1 Da
 Cohesion: 0.14
 Nodes (13): A. Format and House Style, B. Alignment (Coherence and Logical Connection Between Learning Plan Components), C. Use of Behavioral Verbs (Bloom's Taxonomy), CITL Syllabus Review Guide (Instructions for Part B), CITL Syllabus Review: Suggestions and Action Taken (Form 18-1), D. Gradation of COs and SLOs, E. Supplementary Documentation, F. Inclusion of Prescribed Institutional Forms (+5 more)
 
-### Community 147 - "program-reviewer/route.ts"
-Cohesion: 0.33
-Nodes (9): DELETE(), PATCH(), RouteContext, GET(), POST(), programHasActiveReviewer(), toProgramReviewerResponse(), parseProgramReviewerInput() (+1 more)
+### Community 147 - "prospectus/route.test.ts"
+Cohesion: 0.22
+Nodes (6): base, forbidden(), listResult, mocks, rows, unauthorized()
 
 ### Community 148 - "auth-client.ts"
 Cohesion: 0.16
@@ -601,9 +594,9 @@ Nodes (21): conflict(), DELETE(), load(), Loaded, notFound(), PATCH(), reviewerC
 Cohesion: 0.16
 Nodes (16): AvailableListParams, SyllabusStatus, isObject(), ParseResult, parseSyllabusInput(), parseSyllabusUpdateInput(), parseSyllabusVersionInput(), JustificationResponse (+8 more)
 
-### Community 159 - "campus/[id]/route.ts"
-Cohesion: 0.19
-Nodes (12): DELETE(), GET(), PATCH(), RouteContext, GET(), POST(), parseCampusInput(), ParseResult (+4 more)
+### Community 159 - "program-join-request/[id]/route.test.ts"
+Cohesion: 0.29
+Nodes (5): approve, ctx, mocks, pending, SCOPE
 
 ### Community 160 - "term/[id]/route.ts"
 Cohesion: 0.26
@@ -617,9 +610,9 @@ Nodes (14): anyOf(), auditDetail(), auditFilter(), listAudit(), stateLabel(), sy
 Cohesion: 0.22
 Nodes (4): ctx, HOLDERS, ITEMS, mocks
 
-### Community 163 - "prospectus-item/route.test.ts"
-Cohesion: 0.12
-Nodes (9): base, forbidden(), listResult, mocks, rows, forbidden(), listResult, mocks (+1 more)
+### Community 163 - "requireUserMock"
+Cohesion: 0.05
+Nodes (23): listResult, mocks, ctx, EXPAND, forbidden(), mocks, base, forbidden() (+15 more)
 
 ### Community 164 - "validators/syllabus-review.ts"
 Cohesion: 0.40
@@ -661,9 +654,9 @@ Nodes (6): Audit module, Tasks, addAudit(), Batch, AuditEntry, AuditInput
 Cohesion: 0.22
 Nodes (6): base, forbidden(), listResult, mocks, rows, unauthorized()
 
-### Community 176 - "department-head/route.test.ts"
-Cohesion: 0.22
-Nodes (6): base, forbidden(), listResult, mocks, rows, unauthorized()
+### Community 176 - "program-join-request/route.ts"
+Cohesion: 0.53
+Nodes (4): GET(), POST(), isJoinRequestStatus(), parseProgramJoinRequestInput()
 
 ### Community 177 - "fdis-chair/route.test.ts"
 Cohesion: 0.22
@@ -673,9 +666,9 @@ Nodes (6): base, forbidden(), listResult, mocks, rows, unauthorized()
 Cohesion: 0.22
 Nodes (5): base, data, listResult, mocks, rows
 
-### Community 190 - "program-reviewer/route.test.ts"
-Cohesion: 0.22
-Nodes (6): base, forbidden(), listResult, mocks, rows, unauthorized()
+### Community 190 - "export/form18/route.test.ts"
+Cohesion: 0.33
+Nodes (5): ctx, form18(), mocks, SYLLABUS, VERSION
 
 ### Community 191 - "vpaa/route.test.ts"
 Cohesion: 0.22
@@ -692,10 +685,6 @@ Nodes (4): forbidden(), input, mocks, pb
 ### Community 195 - "[id]/form18/route.test.ts"
 Cohesion: 0.25
 Nodes (5): ctx, HOLDERS, LATEST, mocks, post()
-
-### Community 196 - "lead/route.test.ts"
-Cohesion: 0.25
-Nodes (4): ctx, mocks, put(), SCOPE
 
 ### Community 197 - "syllabus-reference/route.test.ts"
 Cohesion: 0.25
@@ -726,36 +715,16 @@ Cohesion: 0.29
 Nodes (4): ctx, mocks, patch(), SCOPE
 
 ### Community 204 - "stand-in-candidates/route.test.ts"
-Cohesion: 0.29
-Nodes (6): candidates, ctx, get(), HOLDERS, mocks, syllabus
+Cohesion: 0.14
+Nodes (11): ctx, form17(), mocks, SYLLABUS, VERSION, candidates, ctx, get() (+3 more)
 
 ### Community 205 - "college/route.test.ts"
 Cohesion: 0.33
 Nodes (3): base, listResult, mocks
 
-### Community 206 - "course/[id]/route.test.ts"
-Cohesion: 0.33
-Nodes (4): ctx, EXPAND, forbidden(), mocks
-
-### Community 207 - "program-reviewer/[id]/route.test.ts"
-Cohesion: 0.33
-Nodes (4): ctx, forbidden(), mocks, unauthorized()
-
 ### Community 208 - "co-author-candidates/route.test.ts"
 Cohesion: 0.33
 Nodes (4): candidates, ctx, mocks, syllabus
-
-### Community 209 - "lead-candidates/route.test.ts"
-Cohesion: 0.33
-Nodes (5): candidates, ctx, get(), mocks, syllabus
-
-### Community 210 - "submit/route.test.ts"
-Cohesion: 0.33
-Nodes (4): ctx, draft, HOLDERS, mocks
-
-### Community 211 - "from-previous/route.test.ts"
-Cohesion: 0.33
-Nodes (4): ctx, mocks, OLD_VERSION, post()
 
 ### Community 212 - "[versionId]/file/route.test.ts"
 Cohesion: 0.33
@@ -769,28 +738,24 @@ Nodes (3): input, mocks, openTerm
 Cohesion: 0.40
 Nodes (3): ctx, forbidden(), mocks
 
-### Community 215 - "syllabus/[id]/route.test.ts"
-Cohesion: 0.40
-Nodes (3): ctx, draft, mocks
-
 ## Knowledge Gaps
 - **10 isolated node(s):** `RFC-4180`, `Org chain (campus, college, department, program)`, `Scoped list visibility (lib/org-visibility.ts)`, `Plain CRUD entities (campus, college, department, program, user)`, `Advisory PDF checks (informational only)` (+5 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1178 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **72 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1179 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **73 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `next` connect `next` to `dashboard-scope.ts`, `[id]/justification/route.ts`, `lib/syllabus-review.ts`, `validators/user.ts`, `Package & Tooling Config`, `User Admin UI`, `fdis-chair/route.ts`, `mock-auth.ts`, `getCurrentUser`, `mockAuth`, `requireUser`, `pocketbase`, `dean/route.ts`, `resolveSyllabusAccess`, `Department UI`, `lib/prospectus-duplicate.ts`, `capability-rules.ts`, `Syllabus`, `export/route.ts`, `summary/route.ts`, `dean/route.test.ts`, `dean-manager.tsx`, `Department Head API`, `program-chair/route.test.ts`, `faculty/route.test.ts`, `getUserRoles`, `types/notification.ts`, `signed-copy/route.ts`, `lib/syllabus.ts`, `course/route.test.ts`, `export.ts`, `dashboard-manager.tsx`, `lib/review-queue.ts`, `signed-copy/route.test.ts`, `citl-director/route.ts`, `next`, `createAdminPb`, `syllabus-detail.tsx`, `vitest`, `react`, `resubmit/route.ts`, `AppUser`, `vpaa/route.ts`, `register/page.tsx`, `reference-manager.tsx`, `review-workspace.tsx`, `org-visibility.ts`, `scan/route.ts`, `dependencies`, `handlePbError`, `revise-workspace.tsx`, `lib/form17.ts`, `audit-manager.tsx`, `Phase 3: Review engine and forms`, `program-reviewer/route.ts`, `auth-client.ts`, `notification-bell.tsx`, `[id]/form17/route.test.ts`, `types/program-join-request.ts`, `[pointId]/route.ts`, `campus/[id]/route.ts`, `term/[id]/route.ts`, `stand-in/route.test.ts`, `prospectus-item/route.test.ts`, `prospectus-item/route.ts`, `review/route.test.ts`, `citl-director/route.test.ts`, `department-head/route.test.ts`, `fdis-chair/route.test.ts`, `program-join-request/route.test.ts`, `program-reviewer/route.test.ts`, `vpaa/route.test.ts`, `duplicate/route.test.ts`, `[id]/form18/route.test.ts`, `lead/route.test.ts`, `syllabus-reference/route.test.ts`, `term/route.test.ts`, `resubmit/route.test.ts`, `[copyId]/route.test.ts`, `stand-in-candidates/route.test.ts`, `college/route.test.ts`, `course/[id]/route.test.ts`, `program-reviewer/[id]/route.test.ts`, `co-author-candidates/route.test.ts`, `lead-candidates/route.test.ts`, `submit/route.test.ts`, `from-previous/route.test.ts`, `[versionId]/file/route.test.ts`, `syllabus/route.test.ts`, `school-year/[id]/route.test.ts`, `syllabus/[id]/route.test.ts`?**
-  _High betweenness centrality (0.165) - this node is a cross-community bridge._
+- **Why does `next` connect `next` to `dashboard-scope.ts`, `prospectus/[id]/route.ts`, `lib/syllabus-review.ts`, `validators/user.ts`, `Package & Tooling Config`, `User Admin UI`, `fdis-chair/route.ts`, `mock-auth.ts`, `getCurrentUser`, `mockAuth`, `requireUser`, `pocketbase`, `college/[id]/route.ts`, `resolveSyllabusAccess`, `Department UI`, `lib/prospectus-duplicate.ts`, `capability-rules.ts`, `Syllabus`, `export/route.ts`, `summary/route.ts`, `dean/route.test.ts`, `dean-manager.tsx`, `Department Head API`, `department-head/route.test.ts`, `faculty/route.test.ts`, `getUserRoles`, `types/notification.ts`, `signed-copy/route.ts`, `lib/syllabus.ts`, `course/route.test.ts`, `export.ts`, `dashboard-manager.tsx`, `lib/review-queue.ts`, `signed-copy/route.test.ts`, `citl-director/route.ts`, `next`, `createAdminPb`, `syllabus-detail.tsx`, `vitest`, `react`, `resubmit/route.ts`, `AppUser`, `vpaa/route.ts`, `register/page.tsx`, `reference-manager.tsx`, `review-workspace.tsx`, `org-visibility.ts`, `scan/route.ts`, `dependencies`, `handlePbError`, `revise-workspace.tsx`, `lib/form17.ts`, `audit-manager.tsx`, `Phase 3: Review engine and forms`, `prospectus/route.test.ts`, `auth-client.ts`, `notification-bell.tsx`, `[id]/form17/route.test.ts`, `types/program-join-request.ts`, `[pointId]/route.ts`, `program-join-request/[id]/route.test.ts`, `term/[id]/route.ts`, `stand-in/route.test.ts`, `requireUserMock`, `prospectus-item/route.ts`, `review/route.test.ts`, `citl-director/route.test.ts`, `program-join-request/route.ts`, `fdis-chair/route.test.ts`, `program-join-request/route.test.ts`, `export/form18/route.test.ts`, `vpaa/route.test.ts`, `duplicate/route.test.ts`, `[id]/form18/route.test.ts`, `syllabus-reference/route.test.ts`, `term/route.test.ts`, `resubmit/route.test.ts`, `[copyId]/route.test.ts`, `stand-in-candidates/route.test.ts`, `college/route.test.ts`, `co-author-candidates/route.test.ts`, `[versionId]/file/route.test.ts`, `syllabus/route.test.ts`, `school-year/[id]/route.test.ts`?**
+  _High betweenness centrality (0.171) - this node is a cross-community bridge._
 - **Are the 79 inferred relationships involving `createAdminPb()` (e.g. with `audit/route.test.ts` and `register/route.test.ts`) actually correct?**
   _`createAdminPb()` has 79 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `RFC-4180`, `Org chain (campus, college, department, program)`, `Scoped list visibility (lib/org-visibility.ts)` to the rest of the system?**
   _10 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `prospectus-item-manager.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.13230769230769232 - nodes in this community are weakly interconnected._
-- **Why does `pocketbase` connect `pocketbase` to `prospectus-item-manager.tsx`, `react`, `scan/route.ts`, `dependencies`, `[id]/justification/route.ts`, `validators/user.ts`, `course-modal.tsx`, `Package & Tooling Config`, `User Admin UI`, `fdis-chair/route.ts`, `lib/form17.ts`, `audit-manager.tsx`, `pocketbase`, `types/justification.ts`, `dean/route.ts`, `resolveSyllabusAccess`, `Department UI`, `Faculty UI`, `program-join-request-manager.tsx`, `lib/prospectus-duplicate.ts`, `Syllabus`, `next`, `form18-panel.tsx`, `VPAA UI`, `types/program-join-request.ts`, `Program Chair UI`, `[pointId]/route.ts`, `dean-manager.tsx`, `syllabus-client.ts`, `audit-log.test.ts`, `campus/[id]/route.ts`, `Department Head API`, `getUserRoles`, `types/notification.ts`, `signed-copy/route.ts`, `lib/dashboard.ts`, `program-reviewer-manager.tsx`, `lib/syllabus.ts`, `canSomewhere`, `helpers.ts`, `addAudit`, `dashboard-manager.tsx`, `lib/review-queue.ts`, `signed-copy/route.test.ts`, `citl-director/route.ts`, `next`, `prospectus-client.ts`, `react`, `audit-phase-a.ts`, `timeline/route.ts`, `resubmit/route.ts`, `term-manager.tsx`, `react`, `reference-manager.tsx`, `pocketbase`, `types/term.ts`, `05-a11y.spec.ts`?**
-  _High betweenness centrality (0.156) - this node is a cross-community bridge._
+- **Why does `pocketbase` connect `pocketbase` to `prospectus-item-manager.tsx`, `org-visibility.ts`, `react`, `scan/route.ts`, `dependencies`, `validators/user.ts`, `course-modal.tsx`, `Package & Tooling Config`, `User Admin UI`, `fdis-chair/route.ts`, `lib/form17.ts`, `audit-manager.tsx`, `requireUser`, `pocketbase`, `timeline/route.ts`, `college/[id]/route.ts`, `resolveSyllabusAccess`, `Department UI`, `Faculty UI`, `program-join-request-manager.tsx`, `lib/prospectus-duplicate.ts`, `Syllabus`, `next`, `form18-panel.tsx`, `VPAA UI`, `types/program-join-request.ts`, `Program Chair UI`, `[pointId]/route.ts`, `dean-manager.tsx`, `syllabus-client.ts`, `audit-log.test.ts`, `Department Head API`, `types/justification.ts`, `getUserRoles`, `types/notification.ts`, `signed-copy/route.ts`, `lib/dashboard.ts`, `program-reviewer-manager.tsx`, `lib/syllabus.ts`, `canSomewhere`, `helpers.ts`, `addAudit`, `dashboard-manager.tsx`, `lib/review-queue.ts`, `signed-copy/route.test.ts`, `citl-director/route.ts`, `next`, `prospectus-client.ts`, `react`, `audit-phase-a.ts`, `resubmit/route.ts`, `term-manager.tsx`, `react`, `reference-manager.tsx`, `pocketbase`, `types/term.ts`, `05-a11y.spec.ts`?**
+  _High betweenness centrality (0.166) - this node is a cross-community bridge._
 - **Are the 20 inferred relationships involving `handlePbError()` (e.g. with `Testing` and `Testing`) actually correct?**
   _`handlePbError()` has 20 INFERRED edges - model-reasoned connections that need verification._
 - **Should `dashboard-scope.ts` be split into smaller, more focused modules?**

@@ -80,10 +80,25 @@ export async function lastReturnedVersionId(
   return result.items[0]?.version ?? null;
 }
 
+/** The term's next unused ref_seq. Callers write it and retry on a clash. */
+export async function nextRefSeq(pb: PocketBase, term: string): Promise<number> {
+  const top = await pb
+    .collection("syllabi")
+    .getList<Pick<Syllabus, "ref_seq">>(1, 1, {
+      skipTotal: true,
+      fields: "ref_seq",
+      sort: "-ref_seq",
+      filter: pb.filter("term = {:term}", { term }),
+    });
+  return (top.items[0]?.ref_seq ?? 0) + 1;
+}
+
 /**
  * The syllabus's ref_seq, assigning the term's next number on first use.
- * The partial unique index (term, ref_seq) rejects a concurrent duplicate,
- * so a lost race reads the new maximum and tries again.
+ * Each attempt re-reads the syllabus first, so a number another request
+ * has just assigned is kept rather than overwritten. The partial unique
+ * index (term, ref_seq) rejects a concurrent duplicate, so a lost race
+ * reads the new maximum and tries again.
  */
 export async function ensureRefSeq(
   pb: PocketBase,
@@ -92,15 +107,12 @@ export async function ensureRefSeq(
   if (syllabus.ref_seq > 0) return syllabus.ref_seq;
 
   for (let attempt = 0; attempt < 3; attempt++) {
-    const top = await pb
+    const current = await pb
       .collection("syllabi")
-      .getList<Pick<Syllabus, "ref_seq">>(1, 1, {
-        skipTotal: true,
-        fields: "ref_seq",
-        sort: "-ref_seq",
-        filter: pb.filter("term = {:term}", { term: syllabus.term }),
-      });
-    const next = (top.items[0]?.ref_seq ?? 0) + 1;
+      .getOne<Pick<Syllabus, "ref_seq">>(syllabus.id, { fields: "ref_seq" });
+    if (current.ref_seq > 0) return current.ref_seq;
+
+    const next = await nextRefSeq(pb, syllabus.term);
     try {
       await pb.collection("syllabi").update(syllabus.id, { ref_seq: next });
       return next;
@@ -120,6 +132,12 @@ export interface DecisionInput {
   decision: ReviewDecision;
   /** "" on return. */
   approvalCode: string;
+  /**
+   * Only for a syllabus without a ref_seq yet (submitted before submit
+   * assigned one). Written in the decision's batch, so it lands only with
+   * the decision that used it.
+   */
+  refSeq?: number;
   /** From lib/syllabus-workflow.ts. */
   next: WorkflowState;
   /** ISO time stamped as status_changed_at, and returned_at on a return. */
@@ -155,6 +173,7 @@ export async function recordDecision(
     stage: input.next.stage,
     status_changed_at: input.now,
     ...(input.decision === "return" && { returned_at: input.now }),
+    ...(input.refSeq && { ref_seq: input.refSeq }),
   });
   addSyllabusEvent(
     batch,
@@ -188,4 +207,61 @@ export async function recordDecision(
     if (hasNotUniqueError(error)) return "conflict";
     throw error;
   }
+}
+
+/**
+ * Why recordDecision answered "conflict", read back from the data:
+ * - "decided": the stage's decision on this version exists and the
+ *   syllabus has moved on. Another request won the race.
+ * - "duplicateReview": that decision exists, yet the syllabus still waits
+ *   at the stage. The records disagree; the workflow never does this.
+ * - "duplicateCode": another review already holds the approval code.
+ * - "unexplained": neither. A ref_seq written with the decision clashed
+ *   with another syllabus's, or the clashing row is gone.
+ */
+export type DecisionConflict =
+  | "decided"
+  | "duplicateReview"
+  | "duplicateCode"
+  | "unexplained";
+
+export async function explainConflict(
+  pb: PocketBase,
+  input: Pick<
+    DecisionInput,
+    "syllabusId" | "versionId" | "stage" | "approvalCode"
+  >,
+): Promise<DecisionConflict> {
+  const reviews = pb.collection("syllabus_reviews");
+  const [syllabus, sameStage, sameCode] = await Promise.all([
+    pb
+      .collection("syllabi")
+      .getOne<Pick<Syllabus, "status" | "stage">>(input.syllabusId, {
+        fields: "status,stage",
+      }),
+    reviews.getList(1, 1, {
+      skipTotal: true,
+      fields: "id",
+      filter: pb.filter("version = {:version} && stage = {:stage}", {
+        version: input.versionId,
+        stage: input.stage,
+      }),
+    }),
+    input.approvalCode
+      ? reviews.getList(1, 1, {
+          skipTotal: true,
+          fields: "id",
+          filter: pb.filter("approval_code = {:code}", {
+            code: input.approvalCode,
+          }),
+        })
+      : null,
+  ]);
+  if (sameStage.items.length > 0) {
+    const stillWaiting =
+      syllabus.status === "submitted" && syllabus.stage === input.stage;
+    return stillWaiting ? "duplicateReview" : "decided";
+  }
+  if (sameCode && sameCode.items.length > 0) return "duplicateCode";
+  return "unexplained";
 }

@@ -10,9 +10,13 @@ import {
   SYLLABUS_EXPAND,
   toSyllabusResponse,
 } from "@/lib/syllabus";
-import { loadChainHolders, loadStandIns } from "@/lib/syllabus-chain";
+import {
+  loadChainHolders,
+  loadReviewerIds,
+  loadStandIns,
+} from "@/lib/syllabus-chain";
 import { hasLiveReferenceTo } from "@/lib/syllabus-reference";
-import { reviewContext } from "@/lib/syllabus-review";
+import { isPersonalReviewer, reviewContext } from "@/lib/syllabus-review";
 import { parseSyllabusUpdateInput } from "@/lib/validators/syllabus";
 import type { Syllabus } from "@/types/syllabus";
 import { NextResponse, type NextRequest } from "next/server";
@@ -31,9 +35,12 @@ function leadOnly() {
   );
 }
 
-function notDraft() {
+function notEditable() {
   return NextResponse.json(
-    { error: "A submitted syllabus can't be changed." },
+    {
+      error:
+        "Co-authors can only be changed while the syllabus is a draft or returned for revision.",
+    },
     { status: 409 },
   );
 }
@@ -91,8 +98,9 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 }
 
 // PATCH /api/syllabus/:id  { "co_authors": ["<userId>", ...] }
-// Lead only, while a draft. Replaces the list; each co-author must be active
-// faculty of the target program.
+// Lead only, while a draft or returned. Replaces the list; each co-author
+// must be active faculty of the target program. On a returned syllabus,
+// nobody who is a stand-in on it or has decided on it may be added.
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
@@ -113,7 +121,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const access = getSyllabusAccess(auth.user.id, roles, syllabus);
     if (!access) return notFound();
     if (access !== "lead") return leadOnly();
-    if (syllabus.status !== "draft") return notDraft();
+    if (syllabus.status !== "draft" && syllabus.status !== "returned") {
+      return notEditable();
+    }
 
     const { co_authors } = parsed.data;
     if (co_authors.includes(syllabus.lead)) {
@@ -128,6 +138,23 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         { error: "Every co-author must be active faculty of this program." },
         { status: 409 },
       );
+    }
+
+    const added = co_authors.filter((u) => !syllabus.co_authors.includes(u));
+    if (syllabus.status === "returned" && added.length > 0) {
+      const [standIns, reviewerIds] = await Promise.all([
+        loadStandIns(pb, id),
+        loadReviewerIds(pb, id),
+      ]);
+      if (added.some((u) => isPersonalReviewer(u, standIns, reviewerIds))) {
+        return NextResponse.json(
+          {
+            error:
+              "Someone who has reviewed this syllabus or stands in on it can't be added as a co-author.",
+          },
+          { status: 409 },
+        );
+      }
     }
 
     const updated = await pb

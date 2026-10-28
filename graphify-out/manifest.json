@@ -426,10 +426,10 @@
     "semantic_hash": ""
   },
   "components/college/college-modal.tsx": {
-    "mtime": 1790656583.6506808,
-    "seen": 1793005117.8659098,
-    "ast_hash": "e7a5a343d535ee0780457f6183ed24ea",
-    "semantic_hash": "e7a5a343d535ee0780457f6183ed24ea"
+    "mtime": 1793177786.55404,
+    "seen": 1793178457.2202249,
+    "ast_hash": "9280cfb3c66ab9239f58a16ffcc9b374",
+    "semantic_hash": ""
   },
   "components/college/delete-college-modal.tsx": {
     "mtime": 1790656625.0826273,
@@ -1008,10 +1008,10 @@
     "semantic_hash": "4eb73cc9a32bf7f2706aba93c02eb8da"
   },
   "lib/validators/college.ts": {
-    "mtime": 1790652738.9134693,
-    "seen": 1793005117.8659894,
-    "ast_hash": "417763fbfde62f168cf42552dd20c682",
-    "semantic_hash": "417763fbfde62f168cf42552dd20c682"
+    "mtime": 1793177774.7098124,
+    "seen": 1793178457.2244134,
+    "ast_hash": "8e6aaa1098dd043446ef55a226a78955",
+    "semantic_hash": ""
   },
   "lib/validators/course.ts": {
     "mtime": 1793000883.6309092,
@@ -1728,10 +1728,10 @@
     "semantic_hash": ""
   },
   "tests/lib/validators/org.test.ts": {
-    "mtime": 1793084378.9050422,
-    "seen": 1793092773.7948618,
-    "ast_hash": "12035f6bd891acaa9c5445283cfd86b0",
-    "semantic_hash": "12035f6bd891acaa9c5445283cfd86b0"
+    "mtime": 1793177763.6189878,
+    "seen": 1793178457.2291715,
+    "ast_hash": "96601468f20898158105f6cb7e7ff4ac",
+    "semantic_hash": ""
   },
   "tests/lib/validators/user.test.ts": {
     "mtime": 1792980761.0729873,
@@ -1758,10 +1758,10 @@
     "semantic_hash": "637c93ea27d100f4bc0f2fdb920b5e1d"
   },
   "types/college.ts": {
-    "mtime": 1790652724.626573,
-    "seen": 1793005117.8661003,
-    "ast_hash": "098bc03aaa91718b6352a9c2555037b8",
-    "semantic_hash": "098bc03aaa91718b6352a9c2555037b8"
+    "mtime": 1793177777.2917826,
+    "seen": 1793178457.229404,
+    "ast_hash": "91125a9e496fb64aa027cd6e40e3fe84",
+    "semantic_hash": ""
   },
   "types/course.ts": {
     "mtime": 1793000881.2064662,
@@ -3915,6 +3915,12 @@
     "mtime": 1793176330.6613653,
     "seen": 1793177407.978188,
     "ast_hash": "31a9d58469abcb448ea4b9f936510160",
+    "semantic_hash": ""
+  },
+  "pb_migrations/1793000027_updated_colleges_campus_required.js": {
+    "mtime": 1793177787.514068,
+    "seen": 1793178457.2263305,
+    "ast_hash": "deab985f83b22a5c0d3fcd7295bdfd81",
     "semantic_hash": ""
   }
 }

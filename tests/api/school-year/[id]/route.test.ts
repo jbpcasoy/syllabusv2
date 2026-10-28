@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   ),
   parseSchoolYearInput: vi.fn(),
   describeSchoolYearDependents: vi.fn(),
+  schoolYearHasRefSeqs: vi.fn(),
   toSchoolYearResponse: vi.fn((record: Record<string, unknown>) => ({
     ...record,
     mapped: true,
@@ -44,6 +45,7 @@ vi.mock("@/lib/validators/school-year", () => ({
 
 vi.mock("@/lib/school-year", () => ({
   describeSchoolYearDependents: mocks.describeSchoolYearDependents,
+  schoolYearHasRefSeqs: mocks.schoolYearHasRefSeqs,
   toSchoolYearResponse: mocks.toSchoolYearResponse,
 }));
 
@@ -118,6 +120,42 @@ describe("PATCH /api/school-year/:id", () => {
   beforeEach(() => {
     mocks.parseSchoolYearInput.mockReturnValue({ ok: true, data });
     mocks.getList.mockResolvedValue({ items: [] });
+    mocks.getOne.mockResolvedValue({ id: ID, label: "2026-2027" });
+    mocks.schoolYearHasRefSeqs.mockResolvedValue(false);
+  });
+
+  it("returns 409 when renaming a school year whose codes are issued", async () => {
+    mocks.schoolYearHasRefSeqs.mockResolvedValue(true);
+
+    const res = await PATCH(req("PATCH", data), ctx);
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error:
+        "This school year's label is part of approval codes already issued to its syllabi, so it can't be renamed.",
+    });
+    expect(mocks.schoolYearHasRefSeqs).toHaveBeenCalledWith(expect.anything(), ID);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("allows saving the same label once codes are issued", async () => {
+    mocks.getOne.mockResolvedValue({ id: ID, label: "2027-2028" });
+    mocks.schoolYearHasRefSeqs.mockResolvedValue(true);
+    mocks.update.mockResolvedValue({ id: ID, ...data });
+
+    const res = await PATCH(req("PATCH", data), ctx);
+
+    expect(res.status).toBe(200);
+    expect(mocks.schoolYearHasRefSeqs).not.toHaveBeenCalled();
+  });
+
+  it("propagates a 404 when the school year doesn't exist", async () => {
+    mocks.getOne.mockRejectedValue({ status: 404 });
+
+    const res = await PATCH(req("PATCH", data), ctx);
+
+    expect(res.status).toBe(404);
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 
   it("updates the label after checking for another record with it", async () => {

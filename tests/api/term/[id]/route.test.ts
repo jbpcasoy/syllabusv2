@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
       `${expr}|${JSON.stringify(params)}`,
   ),
   parseTermUpdate: vi.fn(),
+  termHasRefSeqs: vi.fn(),
   toTermRecord: vi.fn((data: Record<string, unknown>) => data),
   toTermResponse: vi.fn((record: Record<string, unknown>) => ({
     ...record,
@@ -43,6 +44,7 @@ vi.mock("@/lib/validators/term", () => ({
 }));
 
 vi.mock("@/lib/term", () => ({
+  termHasRefSeqs: mocks.termHasRefSeqs,
   toTermRecord: mocks.toTermRecord,
   toTermResponse: mocks.toTermResponse,
 }));
@@ -77,6 +79,7 @@ function forbidden() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockAuth({ isAdmin: true });
+  mocks.termHasRefSeqs.mockResolvedValue(false);
 });
 
 describe("GET /api/term/:id", () => {
@@ -159,6 +162,41 @@ describe("PATCH /api/term/:id", () => {
     await PATCH(req("PATCH", { semester: "Summer" }), ctx);
 
     expect(mocks.getList).not.toHaveBeenCalled();
+    expect(mocks.termHasRefSeqs).not.toHaveBeenCalled();
+  });
+
+  it("returns 409 when changing the semester of a term whose codes are issued", async () => {
+    mocks.parseTermUpdate.mockReturnValue({
+      ok: true,
+      data: { semester: "Summer" },
+    });
+    mocks.getOne.mockResolvedValue({
+      id: ID,
+      school_year: SCHOOL_YEAR_ID,
+      semester: "First Semester",
+    });
+    mocks.termHasRefSeqs.mockResolvedValue(true);
+
+    const res = await PATCH(req("PATCH", { semester: "Summer" }), ctx);
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error:
+        "This term's semester is part of approval codes already issued to its syllabi, so it can't be changed.",
+    });
+    expect(mocks.termHasRefSeqs).toHaveBeenCalledWith(expect.anything(), ID);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("still lets a term with issued codes open and close", async () => {
+    mocks.termHasRefSeqs.mockResolvedValue(true);
+    mocks.parseTermUpdate.mockReturnValue({ ok: true, data: { open: false } });
+    mocks.update.mockResolvedValue({ id: ID, open: false });
+
+    const res = await PATCH(req("PATCH", { open: false }), ctx);
+
+    expect(res.status).toBe(200);
+    expect(mocks.termHasRefSeqs).not.toHaveBeenCalled();
   });
 
   it("returns 409 when the school year already has the new semester", async () => {

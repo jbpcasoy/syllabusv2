@@ -75,6 +75,21 @@ export function needsStandIn(
 }
 
 /**
+ * True when the user reviews this syllabus in person: a stand-in at any
+ * stage, or anyone who has recorded a decision on it. Such a user can't be
+ * added as a co-author after it has been routed.
+ */
+export function isPersonalReviewer(
+  userId: string,
+  standIns: readonly StandIn[],
+  reviewerIds: readonly string[],
+): boolean {
+  return (
+    standIns.some((s) => s.user === userId) || reviewerIds.includes(userId)
+  );
+}
+
+/**
  * Who may set or clear the stand-in for a stage: an admin, or an active
  * holder of a later stage. The stage-1 holder also names their own proxy.
  */

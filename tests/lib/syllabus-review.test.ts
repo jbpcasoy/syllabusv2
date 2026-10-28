@@ -1,6 +1,7 @@
 import {
   canDesignate,
   isAuthor,
+  isPersonalReviewer,
   isReviewer,
   needsStandIn,
   resolveActor,
@@ -293,5 +294,21 @@ describe("isReviewer", () => {
 
   it("excludes outsiders", () => {
     expect(isReviewer(OTHER, syllabus(2), HOLDERS, [])).toBe(false);
+  });
+});
+
+describe("isPersonalReviewer", () => {
+  it("is true for a stand-in at any stage", () => {
+    expect(isPersonalReviewer(OTHER, [{ stage: 4, user: OTHER }], [])).toBe(true);
+  });
+
+  it("is true for anyone who has decided", () => {
+    expect(isPersonalReviewer(DEAN, [], [PROGRAM_REVIEWER, DEAN])).toBe(true);
+  });
+
+  it("is false otherwise, even for a chain holder who hasn't decided", () => {
+    expect(isPersonalReviewer(FDIS, [{ stage: 1, user: OTHER }], [DEAN])).toBe(
+      false,
+    );
   });
 });
