@@ -1,10 +1,45 @@
+import { parseCollegeInput } from "@/lib/validators/college";
 import { parseDepartmentInput } from "@/lib/validators/department";
 import { parseProgramInput } from "@/lib/validators/program";
 import { describe, expect, it } from "vitest";
 
 // PocketBase ids are lowercase: /^[a-z0-9]{15}$/
+const CAMPUS = "campacampacampa";
 const COLLEGE = "colgacolgacolga";
 const DEPARTMENT = "deptadeptadepta";
+
+describe("parseCollegeInput campus", () => {
+  const base = { name: "Science", code: "COS" };
+
+  it("is required on create", () => {
+    expect(parseCollegeInput(base)).toEqual({
+      ok: false,
+      error: "`campus` is required",
+    });
+  });
+
+  it.each(["", null, "short", 123])("rejects %s", (campus) => {
+    expect(parseCollegeInput({ ...base, campus })).toEqual({
+      ok: false,
+      error: "`campus` must be a valid campus id",
+    });
+  });
+
+  it("accepts a valid id", () => {
+    expect(parseCollegeInput({ ...base, campus: CAMPUS })).toEqual({
+      ok: true,
+      data: { ...base, campus: CAMPUS },
+    });
+  });
+
+  it("may be omitted in a partial update, but not cleared", () => {
+    expect(parseCollegeInput({ name: "X" }, { partial: true })).toEqual({
+      ok: true,
+      data: { name: "X" },
+    });
+    expect(parseCollegeInput({ campus: "" }, { partial: true }).ok).toBe(false);
+  });
+});
 
 describe("parseDepartmentInput college", () => {
   it("is required on create", () => {

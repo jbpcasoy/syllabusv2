@@ -552,9 +552,9 @@
     "semantic_hash": ""
   },
   "components/layout/app-header.tsx": {
-    "mtime": 1793153844.1238706,
-    "seen": 1793159836.3694482,
-    "ast_hash": "4926a68abe39940cfac5895353235a9c",
+    "mtime": 1793176808.049625,
+    "seen": 1793177407.9773052,
+    "ast_hash": "fa25032fe6f2676a2c4e079a2025f57f",
     "semantic_hash": ""
   },
   "components/layout/app-shell.tsx": {
@@ -3912,9 +3912,9 @@
     "semantic_hash": ""
   },
   "docs/feature-walkthrough.md": {
-    "mtime": 1793172940.6023872,
-    "seen": 1793175155.5162184,
-    "ast_hash": "4490b63650efee6dedeeacaa2ebe2780",
+    "mtime": 1793176330.6613653,
+    "seen": 1793177407.978188,
+    "ast_hash": "31a9d58469abcb448ea4b9f936510160",
     "semantic_hash": ""
   }
 }

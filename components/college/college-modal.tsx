@@ -66,6 +66,7 @@ export function CollegeModal({
     const trimmedCode = code.trim();
     if (!trimmedName) return setError("Name is required.");
     if (!trimmedCode) return setError("Code is required.");
+    if (!campusId) return setError("Select a campus.");
 
     setSaving(true);
     setError(null);
@@ -73,7 +74,7 @@ export function CollegeModal({
       const input = {
         name: trimmedName,
         code: trimmedCode,
-        campus: campusId, // "" clears the relation
+        campus: campusId,
       };
       if (mode === "edit" && college) {
         await updateCollege(college.id, input);
@@ -179,7 +180,7 @@ export function CollegeModal({
                   disabled={saving}
                   className={inputClass}
                 >
-                  <option value="">No campus</option>
+                  <option value="">Select a campus…</option>
                   {!hasCurrentInList && currentCampus && (
                     <option value={currentCampus.id}>
                       {currentCampus.name || currentCampus.id}

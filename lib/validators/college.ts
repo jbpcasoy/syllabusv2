@@ -39,14 +39,12 @@ export function parseCollegeInput(
   }
 
   if (campus !== undefined) {
-    // "" or null clears the relation; otherwise it must look like a PB id.
-    if (campus === null || campus === "") {
-      data.campus = "";
-    } else if (typeof campus === "string" && PB_ID.test(campus)) {
-      data.campus = campus;
-    } else {
+    if (typeof campus !== "string" || !PB_ID.test(campus)) {
       return { ok: false, error: "`campus` must be a valid campus id" };
     }
+    data.campus = campus;
+  } else if (!partial) {
+    return { ok: false, error: "`campus` is required" };
   }
 
   return { ok: true, data };
