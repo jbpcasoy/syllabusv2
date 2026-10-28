@@ -2,7 +2,8 @@
 
 import type { DepartmentRecord } from "@/lib/department-client";
 import { createDepartmentHead } from "@/lib/department-head-client";
-import type { UserResponse } from "@/lib/user-client";
+import { UserCombobox } from "@/components/user/user-combobox";
+import type { UserOption } from "@/lib/user-client";
 import {
   Dialog,
   DialogBackdrop,
@@ -16,7 +17,6 @@ import { useState, type FormEvent } from "react";
 
 type DepartmentHeadModalProps = {
   open: boolean;
-  users: UserResponse[];
   departments: DepartmentRecord[];
   onClose: () => void;
   onSaved: () => void;
@@ -27,25 +27,24 @@ const inputClass =
 
 export function DepartmentHeadModal({
   open,
-  users,
   departments,
   onClose,
   onSaved,
 }: DepartmentHeadModalProps) {
-  const [userId, setUserId] = useState("");
+  const [user, setUser] = useState<UserOption | null>(null);
   const [departmentId, setDepartmentId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!userId) return setError("Select a user.");
+    if (!user) return setError("Select a user.");
     if (!departmentId) return setError("Select a department.");
 
     setSaving(true);
     setError(null);
     try {
-      await createDepartmentHead({ user: userId, department: departmentId });
+      await createDepartmentHead({ user: user.id, department: departmentId });
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -78,19 +77,11 @@ export function DepartmentHeadModal({
               <Label className="block text-sm font-medium text-gray-900">
                 User
               </Label>
-              <Select
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
+              <UserCombobox
+                value={user}
+                onChange={setUser}
                 disabled={saving}
-                className={inputClass}
-              >
-                <option value="">Select a user…</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name ? `${u.name} (${u.email})` : u.email}
-                  </option>
-                ))}
-              </Select>
+              />
             </Field>
 
             <Field>

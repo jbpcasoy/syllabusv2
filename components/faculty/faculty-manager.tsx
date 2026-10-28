@@ -8,7 +8,6 @@ import {
 } from "@/lib/faculty-client";
 import { formatDate } from "@/lib/format-date";
 import { listPrograms, type ProgramRecord } from "@/lib/program-client";
-import { listUsers, type UserResponse } from "@/lib/user-client";
 import { Select } from "@headlessui/react";
 import type { ListResult } from "pocketbase";
 import { useEffect, useState } from "react";
@@ -36,7 +35,6 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
   const [error, setError] = useState<string | null>(null);
 
   const [programs, setPrograms] = useState<ProgramRecord[]>([]);
-  const [users, setUsers] = useState<UserResponse[]>([]);
 
   const [modal, setModal] = useState({ open: false, key: 0 });
   const [deleteState, setDeleteState] = useState<{
@@ -56,18 +54,6 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
       });
     return () => controller.abort();
   }, []);
-
-  // Only managers can add faculty, so only they need the user list.
-  useEffect(() => {
-    if (!canManage) return;
-    const controller = new AbortController();
-    listUsers({ page: 1, perPage: 100 }, controller.signal)
-      .then((result) => setUsers(result.items))
-      .catch(() => {
-        // The dropdown just stays empty.
-      });
-    return () => controller.abort();
-  }, [canManage]);
 
   // Debounce the search box and go back to page 1 when the filter changes.
   useEffect(() => {
@@ -394,7 +380,6 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
         <FacultyModal
           key={`modal-${modal.key}`}
           open={modal.open}
-          users={users}
           programs={programs}
           onClose={() => setModal((prev) => ({ ...prev, open: false }))}
           onSaved={() => {

@@ -12,6 +12,8 @@ export type Capability =
   | "prospectus.write"
   | "prospectusItem.write"
   | "audit.view"
+  // Any manager, global
+  | "user.pick"
   // VPAA, global
   | "college.write"
   | "dean.write"
@@ -75,6 +77,14 @@ const RULES: Record<Capability, Rule> = {
   "prospectusItem.write": adminOnly,
   // The audit log (Phase 6, P5).
   "audit.view": adminOnly,
+
+  // Search users (id, name, email only) to assign a role: anyone who can
+  // write an assignment somewhere. Global because the directory isn't scoped.
+  "user.pick": (r) =>
+    r.isVpaa ||
+    r.deanOfColleges.length > 0 ||
+    r.headOfDepartments.length > 0 ||
+    r.chairOfPrograms.length > 0,
 
   "college.write": vpaa,
   "dean.write": vpaa,

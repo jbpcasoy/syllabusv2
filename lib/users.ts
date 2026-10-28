@@ -4,6 +4,7 @@ import type {
   AppUser,
   UserAssignment,
   UserKind,
+  UserOption,
   UserResponse,
 } from "@/types/user";
 import "server-only";
@@ -24,6 +25,11 @@ export function toUserResponse(
     created: user.created,
     updated: user.updated,
   };
+}
+
+/** Maps a user to the minimal shape a role-assignment picker needs. */
+export function toUserOption(user: AppUser): UserOption {
+  return { id: user.id, email: user.email, name: user.name };
 }
 
 /** True if at least one admin exists other than `exceptId`. */

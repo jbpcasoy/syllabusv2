@@ -8,7 +8,6 @@ import {
   type DeanResponse,
 } from "@/lib/dean-client";
 import { formatDate } from "@/lib/format-date";
-import { listUsers, type UserResponse } from "@/lib/user-client";
 import { Select } from "@headlessui/react";
 import type { ListResult } from "pocketbase";
 import { useEffect, useState } from "react";
@@ -42,7 +41,6 @@ export function DeanManager({ canManage }: DeanManagerProps) {
   const [error, setError] = useState<string | null>(null);
 
   const [colleges, setColleges] = useState<CollegeRecord[]>([]);
-  const [users, setUsers] = useState<UserResponse[]>([]);
 
   const [modal, setModal] = useState({ open: false, key: 0 });
   const [deleteState, setDeleteState] = useState<{
@@ -61,18 +59,6 @@ export function DeanManager({ canManage }: DeanManagerProps) {
       });
     return () => controller.abort();
   }, []);
-
-  // Only managers can assign deans, so only they need the user list.
-  useEffect(() => {
-    if (!canManage) return;
-    const controller = new AbortController();
-    listUsers({ page: 1, perPage: 100 }, controller.signal)
-      .then((result) => setUsers(result.items))
-      .catch(() => {
-        // The dropdown just stays empty.
-      });
-    return () => controller.abort();
-  }, [canManage]);
 
   // Debounce the search box and go back to page 1 when the filter changes.
   useEffect(() => {
@@ -384,7 +370,6 @@ export function DeanManager({ canManage }: DeanManagerProps) {
         <DeanModal
           key={`modal-${modal.key}`}
           open={modal.open}
-          users={users}
           colleges={colleges}
           onClose={() => setModal((prev) => ({ ...prev, open: false }))}
           onSaved={() => {

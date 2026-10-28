@@ -1,7 +1,8 @@
 "use client";
 
 import { createCitlDirector } from "@/lib/citl-director-client";
-import type { UserResponse } from "@/lib/user-client";
+import { UserCombobox } from "@/components/user/user-combobox";
+import type { UserOption } from "@/lib/user-client";
 import {
   Dialog,
   DialogBackdrop,
@@ -9,38 +10,32 @@ import {
   DialogTitle,
   Field,
   Label,
-  Select,
 } from "@headlessui/react";
 import { useState, type FormEvent } from "react";
 
 type CitlDirectorModalProps = {
   open: boolean;
-  users: UserResponse[];
   onClose: () => void;
   onSaved: () => void;
 };
 
-const inputClass =
-  "mt-1 block w-full rounded-md border-0 px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 disabled:bg-gray-50";
-
 export function CitlDirectorModal({
   open,
-  users,
   onClose,
   onSaved,
 }: CitlDirectorModalProps) {
-  const [userId, setUserId] = useState("");
+  const [user, setUser] = useState<UserOption | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!userId) return setError("Select a user.");
+    if (!user) return setError("Select a user.");
 
     setSaving(true);
     setError(null);
     try {
-      await createCitlDirector({ user: userId });
+      await createCitlDirector({ user: user.id });
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -73,19 +68,11 @@ export function CitlDirectorModal({
               <Label className="block text-sm font-medium text-gray-900">
                 User
               </Label>
-              <Select
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
+              <UserCombobox
+                value={user}
+                onChange={setUser}
                 disabled={saving}
-                className={inputClass}
-              >
-                <option value="">Select a user…</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name ? `${u.name} (${u.email})` : u.email}
-                  </option>
-                ))}
-              </Select>
+              />
             </Field>
 
             {error && (

@@ -1,7 +1,12 @@
-import type { UserInput, UserKind, UserResponse } from "@/types/user";
+import type {
+  UserInput,
+  UserKind,
+  UserOption,
+  UserResponse,
+} from "@/types/user";
 import type { ListResult } from "pocketbase";
 
-export type { UserInput, UserKind, UserResponse };
+export type { UserInput, UserKind, UserOption, UserResponse };
 
 export type UserListParams = {
   page: number;
@@ -49,6 +54,20 @@ export function listUsers(
   if (kind) qs.set("kind", kind);
 
   return request<ListResult<UserResponse>>(`/api/user?${qs}`, { signal });
+}
+
+/** Users to choose from when assigning a role. Open to any manager. */
+export function listUserOptions(
+  { search, perPage = 100 }: { search?: string; perPage?: number },
+  signal?: AbortSignal,
+) {
+  const qs = new URLSearchParams({ perPage: String(perPage) });
+  if (search) qs.set("search", search);
+
+  return request<{ items: UserOption[]; totalItems: number }>(
+    `/api/user/options?${qs}`,
+    { signal },
+  );
 }
 
 export function createUser(input: UserInput) {

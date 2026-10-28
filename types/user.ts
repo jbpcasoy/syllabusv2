@@ -52,6 +52,13 @@ export interface UserResponse {
   updated: string;
 }
 
+/** One choice in a role-assignment user picker (GET /api/user/options). */
+export interface UserOption {
+  id: string;
+  email: string;
+  name: string;
+}
+
 /** Filter accepted by GET /api/user?kind=... */
 export const USER_KINDS = ["admin", "assigned", "unassigned"] as const;
 export type UserKind = (typeof USER_KINDS)[number];

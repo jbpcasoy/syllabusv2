@@ -7,7 +7,6 @@ import {
   type FdisChairResponse,
 } from "@/lib/fdis-chair-client";
 import { formatDate } from "@/lib/format-date";
-import { listUsers, type UserResponse } from "@/lib/user-client";
 import { Select } from "@headlessui/react";
 import type { ListResult } from "pocketbase";
 import { useEffect, useState } from "react";
@@ -39,7 +38,6 @@ export function FdisChairManager({ canManage }: FdisChairManagerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [users, setUsers] = useState<UserResponse[]>([]);
 
   const [modal, setModal] = useState({ open: false, key: 0 });
   const [deleteState, setDeleteState] = useState<{
@@ -47,19 +45,6 @@ export function FdisChairManager({ canManage }: FdisChairManagerProps) {
     chair: FdisChairResponse | null;
     key: number;
   }>({ open: false, chair: null, key: 0 });
-
-  // Only managers can assign the chair, so only they need the user list.
-  // (The API caps perPage at 100; swap in a searchable combobox if you exceed that.)
-  useEffect(() => {
-    if (!canManage) return;
-    const controller = new AbortController();
-    listUsers({ page: 1, perPage: 100 }, controller.signal)
-      .then((result) => setUsers(result.items))
-      .catch(() => {
-        // The dropdown just stays empty.
-      });
-    return () => controller.abort();
-  }, [canManage]);
 
   // Debounce the search box and go back to page 1 when the filter changes.
   useEffect(() => {
@@ -338,7 +323,6 @@ export function FdisChairManager({ canManage }: FdisChairManagerProps) {
         <FdisChairModal
           key={`modal-${modal.key}`}
           open={modal.open}
-          users={users}
           onClose={() => setModal((prev) => ({ ...prev, open: false }))}
           onSaved={() => {
             setModal((prev) => ({ ...prev, open: false }));

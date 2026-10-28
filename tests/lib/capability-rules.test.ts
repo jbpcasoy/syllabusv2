@@ -333,6 +333,28 @@ describe("dashboard.view", () => {
   });
 });
 
+describe("user.pick", () => {
+  it.each([
+    ["a program chair", roles({ chairOfPrograms: [OTHER.program] })],
+    ["a department head", roles({ headOfDepartments: [OTHER.department] })],
+    ["a dean", roles({ deanOfColleges: [OTHER.college] })],
+    ["the VPAA", vpaa],
+    ["an admin", admin],
+  ])("passes for %s, without any scope", (_label, who) => {
+    expect(can(who, "user.pick")).toBe(true);
+  });
+
+  it.each([
+    ["faculty", facultyOnly],
+    ["a program reviewer", roles({ reviewerOfPrograms: [OTHER.program] })],
+    ["the FDIS chair", roles({ isFdisChair: true })],
+    ["the CITL director", roles({ isCitlDirector: true })],
+    ["an unassigned user", roles({})],
+  ])("refuses %s", (_label, who) => {
+    expect(can(who, "user.pick")).toBe(false);
+  });
+});
+
 describe("faculty.write", () => {
   it("a chair passes only for their own program", () => {
     expect(can(chair, "faculty.write", SCOPE)).toBe(true);
