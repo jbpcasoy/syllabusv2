@@ -11,6 +11,7 @@ export type Capability =
   | "course.write"
   | "prospectus.write"
   | "prospectusItem.write"
+  | "audit.view"
   // VPAA, global
   | "college.write"
   | "dean.write"
@@ -72,6 +73,8 @@ const RULES: Record<Capability, Rule> = {
   "course.write": adminOnly,
   "prospectus.write": adminOnly,
   "prospectusItem.write": adminOnly,
+  // The audit log (Phase 6, P5).
+  "audit.view": adminOnly,
 
   "college.write": vpaa,
   "dean.write": vpaa,
@@ -134,6 +137,19 @@ export function evaluateCapability(
   scope?: ScopeChain,
 ): boolean {
   return roles.isAdmin || RULES[capability](roles, scope);
+}
+
+/**
+ * True when only the admin bypass grants the capability: the user is admin
+ * and the rule itself would refuse them. Such an action is an override and
+ * is audited with a reason.
+ */
+export function isAdminOverride(
+  roles: UserRoles,
+  capability: Capability,
+  scope?: ScopeChain,
+): boolean {
+  return roles.isAdmin && !RULES[capability](roles, scope);
 }
 
 /**

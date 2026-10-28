@@ -272,7 +272,7 @@ export function FacultyManager({ canManage }: FacultyManagerProps) {
               <tr key={row.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">
                   {row.expand?.user?.name || (
-                    <span className="text-gray-400">Unnamed</span>
+                    <span className="text-gray-500">Unnamed</span>
                   )}
                 </td>
                 <td className="hidden px-4 py-3 text-sm text-gray-500 sm:table-cell">

@@ -251,7 +251,7 @@ function ItemList({
                 <span className="font-medium">{item.course.code}</span>{" "}
                 {item.course.title}
               </span>
-              <span className="shrink-0 text-xs text-gray-400">
+              <span className="shrink-0 text-xs text-gray-500">
                 {item.year_level}, {item.semester}
               </span>
             </li>

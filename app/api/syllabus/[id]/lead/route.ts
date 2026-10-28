@@ -1,5 +1,7 @@
+import { addAudit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/capabilities";
+import { isAdminOverride } from "@/lib/capability-rules";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
 import {
@@ -17,11 +19,13 @@ type RouteContext = { params: Promise<{ id: string }> };
 const conflict = (error: string) =>
   NextResponse.json({ error }, { status: 409 });
 
-// PUT /api/syllabus/:id/lead  { "lead": "<userId>", "keep_previous"?: true }
-// syllabus.transferLead: the program's chair, or admin. The new lead must be
-// active faculty of the program and leaves the co-author list; the previous
-// lead stays on as a co-author unless keep_previous is false. Any status but
-// filed.
+// PUT /api/syllabus/:id/lead
+//   { "lead": "<userId>", "keep_previous"?: true, "reason"?: "<10-500 chars>" }
+// syllabus.transferLead: the program's chair, or admin. An admin who isn't
+// the chair overrides and must give a reason. The new lead must be active
+// faculty of the program and leaves the co-author list; the previous lead
+// stays on as a co-author unless keep_previous is false. Any status but
+// filed. Audited as lead.transferred.
 export async function PUT(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
@@ -33,7 +37,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     if (!parsed.ok) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
-    const { lead, keep_previous } = parsed.data;
+    const { lead, keep_previous, reason } = parsed.data;
 
     const me = auth.user.id;
     const pb = await createAdminPb();
@@ -48,6 +52,17 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json(
         { error: "Only the program chair or an admin can transfer the lead." },
         { status: 403 },
+      );
+    }
+
+    // An admin standing in for the chair must say why (Phase 6, P3).
+    const override = isAdminOverride(roles, "syllabus.transferLead", {
+      programId: syllabus.program,
+    });
+    if (override && !reason) {
+      return NextResponse.json(
+        { error: "Give a reason for reassigning the lead." },
+        { status: 400 },
       );
     }
 
@@ -67,11 +82,24 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       return conflict(`A syllabus can have at most ${MAX_CO_AUTHORS} co-authors.`);
     }
 
+    // The change and its audit row land together or not at all.
+    const batch = pb.createBatch();
+    batch.collection("syllabi").update(id, { lead, co_authors: coAuthors });
+    addAudit(batch, {
+      actor: me,
+      action: "lead.transferred",
+      target_collection: "syllabi",
+      target_id: id,
+      syllabus: id,
+      override,
+      reason,
+      data: { from_lead: syllabus.lead, to_lead: lead, keep_previous },
+    });
+    await batch.send();
+
     const updated = await pb
       .collection("syllabi")
-      .update<Syllabus>(id, { lead, co_authors: coAuthors }, {
-        expand: SYLLABUS_EXPAND,
-      });
+      .getOne<Syllabus>(id, { expand: SYLLABUS_EXPAND });
     return NextResponse.json(toSyllabusResponse(updated));
   } catch (error) {
     return handlePbError(error);

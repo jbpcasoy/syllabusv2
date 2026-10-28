@@ -59,11 +59,15 @@ vi.mock("@/lib/auth", async () =>
 vi.mock("@/lib/roles", async () =>
   (await import("@/tests/helpers/mock-auth")).rolesModuleMock(),
 );
+vi.mock("@/lib/upload-limit", async () =>
+  (await import("@/tests/helpers/upload-limit")).uploadLimitModuleMock(),
+);
 
 // The workflow stays real: filing is its decision.
 import { GET, POST } from "@/app/api/syllabus/[id]/signed-copy/route";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { mockAuth } from "@/tests/helpers/mock-auth";
+import { checkUploadRateMock } from "@/tests/helpers/upload-limit";
 
 const ID = "sylsylsylsylsyl";
 const ME = "leadleadleadlea";
@@ -120,6 +124,18 @@ describe("GET /api/syllabus/:id/signed-copy", () => {
 });
 
 describe("POST /api/syllabus/:id/signed-copy", () => {
+  it("returns 429 with Retry-After before reading the body or any record", async () => {
+    checkUploadRateMock.mockResolvedValueOnce({ ok: false, retryAfter: 90 });
+    const res = await upload();
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("90");
+    expect(checkUploadRateMock).toHaveBeenCalledWith(expect.anything(), ME);
+    expect(mocks.checkPdfUpload).not.toHaveBeenCalled();
+    expect(mocks.syllabiGetOne).not.toHaveBeenCalled();
+    expect(mocks.copiesCreate).not.toHaveBeenCalled();
+  });
+
   it("stores the scan, then files the syllabus with its event in one batch", async () => {
     const res = await upload();
 
@@ -148,17 +164,46 @@ describe("POST /api/syllabus/:id/signed-copy", () => {
           reason: "",
         },
       ],
+      [
+        "create",
+        "audit_log",
+        {
+          actor: ME,
+          action: "filed",
+          target_collection: "syllabi",
+          target_id: ID,
+          syllabus: ID,
+          override: false,
+          reason: "",
+          data: {
+            from: { status: "approved", stage: 5 },
+            to: { status: "filed", stage: 5 },
+          },
+        },
+      ],
+      [
+        "create",
+        "audit_log",
+        {
+          actor: ME,
+          action: "file.uploaded",
+          syllabus: ID,
+          target_id: "cpy",
+          data: { kind: "signed_copy" },
+        },
+      ],
     ]);
     expect(mocks.batchSend).toHaveBeenCalledTimes(1);
     expect(await res.json()).toMatchObject({ mapped: true, status: "valid" });
   });
 
-  it("returns 400 for a bad file before touching PocketBase", async () => {
+  it("returns 400 for a bad file before reading any record", async () => {
     mocks.checkPdfUpload.mockResolvedValue({ ok: false, error: "The file is not a valid PDF" });
     const res = await upload();
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "The file is not a valid PDF" });
-    expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.syllabiGetOne).not.toHaveBeenCalled();
+    expect(mocks.copiesCreate).not.toHaveBeenCalled();
   });
 
   it("returns 400 for a non-multipart body", async () => {

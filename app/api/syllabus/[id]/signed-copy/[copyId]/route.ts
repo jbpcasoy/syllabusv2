@@ -68,11 +68,16 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     batch
       .collection("syllabi")
       .update(id, { ...result.next, status_changed_at: now });
-    addSyllabusEvent(batch, id, {
-      type: "scan_returned",
-      actor: auth.user.id,
-      reason: parsed.data.reason,
-    });
+    addSyllabusEvent(
+      batch,
+      id,
+      {
+        type: "scan_returned",
+        actor: auth.user.id,
+        reason: parsed.data.reason,
+      },
+      { from: syllabus, to: result.next },
+    );
     await batch.send();
 
     const updated = await pb

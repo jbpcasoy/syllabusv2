@@ -177,6 +177,20 @@ describe("POST /api/syllabus/:id/resubmit", () => {
         reason: "",
       },
     ]);
+    expect(mocks.batchOps).toContainEqual([
+      "create",
+      "audit_log",
+      expect.objectContaining({
+        actor: ME,
+        action: "resubmitted",
+        syllabus: ID,
+        data: {
+          from: { status: "returned", stage: 3 },
+          to: { status: "submitted", stage: 3 },
+          version: NEW_VERSION,
+        },
+      }),
+    ]);
     // Only the returning stage's holder hears about it.
     expect(mocks.batchOps.filter((op) => op[1] === "notifications")).toEqual([
       [

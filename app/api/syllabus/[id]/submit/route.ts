@@ -91,12 +91,17 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
       submitted_at: now,
       status_changed_at: now,
     });
-    addSyllabusEvent(batch, id, {
-      type: "submitted",
-      actor: me,
-      stage: result.next.stage,
-      version: version?.id,
-    });
+    addSyllabusEvent(
+      batch,
+      id,
+      {
+        type: "submitted",
+        actor: me,
+        stage: result.next.stage,
+        version: version?.id,
+      },
+      { from: syllabus, to: result.next },
+    );
     addNotifications(
       batch,
       id,

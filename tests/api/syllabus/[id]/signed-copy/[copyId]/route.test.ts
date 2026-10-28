@@ -139,6 +139,23 @@ describe("PATCH /api/syllabus/:id/signed-copy/:copyId", () => {
           reason: "Missing signature.",
         },
       ],
+      [
+        "create",
+        "audit_log",
+        {
+          actor: ME,
+          action: "scan_returned",
+          target_collection: "syllabi",
+          target_id: ID,
+          syllabus: ID,
+          override: false,
+          reason: "Missing signature.",
+          data: {
+            from: { status: "filed", stage: 5 },
+            to: { status: "approved", stage: 5 },
+          },
+        },
+      ],
     ]);
     expect(mocks.batchSend).toHaveBeenCalledTimes(1);
     expect(authorizeMock).toHaveBeenCalledWith(

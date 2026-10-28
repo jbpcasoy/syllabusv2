@@ -143,7 +143,7 @@ export function ReviewDecisionDialog({
                   className={`rounded-md px-3 py-2 text-sm font-semibold text-white disabled:opacity-50 ${
                     approve
                       ? "bg-indigo-600 hover:bg-indigo-500"
-                      : "bg-amber-600 hover:bg-amber-500"
+                      : "bg-amber-700 hover:bg-amber-600"
                   }`}
                 >
                   {saving ? "Saving…" : approve ? "Approve" : "Return"}

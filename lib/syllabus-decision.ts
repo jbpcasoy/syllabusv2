@@ -156,13 +156,19 @@ export async function recordDecision(
     status_changed_at: input.now,
     ...(input.decision === "return" && { returned_at: input.now }),
   });
-  addSyllabusEvent(batch, input.syllabusId, {
-    type: input.decision === "approve" ? "approved" : "returned",
-    actor: input.reviewer,
-    stage: input.stage,
-    version: input.versionId,
-    approval_code: input.approvalCode,
-  });
+  addSyllabusEvent(
+    batch,
+    input.syllabusId,
+    {
+      type: input.decision === "approve" ? "approved" : "returned",
+      actor: input.reviewer,
+      stage: input.stage,
+      version: input.versionId,
+      approval_code: input.approvalCode,
+    },
+    // Only a syllabus in review at the decided stage can be decided.
+    { from: { status: "submitted", stage: input.stage }, to: input.next },
+  );
   if (input.notify) {
     addNotifications(
       batch,

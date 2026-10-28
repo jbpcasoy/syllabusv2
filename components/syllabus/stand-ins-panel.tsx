@@ -118,7 +118,7 @@ export function StandInsPanel({
                   {current ? (
                     <div className="text-gray-600">
                       {current.user.name || current.user.email}
-                      <span className="text-gray-400">
+                      <span className="text-gray-500">
                         {" "}
                         · set by {current.assigned_by.name || "—"},{" "}
                         {formatDate(current.updated)}

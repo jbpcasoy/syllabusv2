@@ -232,12 +232,12 @@ export function CourseManager({ canManage }: CourseManagerProps) {
                   <td className="hidden px-4 py-3 text-sm text-gray-500 md:table-cell">
                     {row.expand?.program?.code ||
                       row.expand?.program?.name || (
-                        <span className="text-gray-400">Unknown program</span>
+                        <span className="text-gray-500">Unknown program</span>
                       )}
                   </td>
                   <td className="hidden px-4 py-3 text-sm text-gray-500 sm:table-cell">
                     {row.credit_units}
-                    <span className="block text-xs text-gray-400">
+                    <span className="block text-xs text-gray-500">
                       {row.lec_units} lec / {row.lab_units} lab ·{" "}
                       {row.nominal_duration_hours} h
                     </span>

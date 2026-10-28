@@ -10,6 +10,11 @@ import { getUserRoles } from "@/lib/roles";
 import { resolveSyllabusAccess } from "@/lib/syllabus";
 import { submitScanError } from "@/lib/syllabus-justification";
 import { fetchVersionFile } from "@/lib/syllabus-version";
+import {
+  addUploadAudit,
+  checkUploadRate,
+  tooManyUploads,
+} from "@/lib/upload-limit";
 import type { Syllabus } from "@/types/syllabus";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -19,13 +24,20 @@ const notFound = () => NextResponse.json({ error: "Not found" }, { status: 404 }
 
 // POST /api/syllabus/:id/justification/scan  multipart: file=<PDF, max 20 MB>
 // Lead only. Uploads the signed letter's scan: draft or returned ->
-// submitted, which locks the entries.
+// submitted, which locks the entries. Rate-limited (429) and audited as
+// file.uploaded.
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
 
   try {
+    const me = auth.user.id;
+    const pb = await createAdminPb();
+    // Before reading the body, so a flood never buffers 20 MB files.
+    const rate = await checkUploadRate(pb, me);
+    if (!rate.ok) return tooManyUploads(rate.retryAfter);
+
     const form = await request.formData().catch(() => null);
     if (!form) {
       return NextResponse.json(
@@ -38,8 +50,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: pdf.error }, { status: 400 });
     }
 
-    const me = auth.user.id;
-    const pb = await createAdminPb();
     const [syllabus, roles] = await Promise.all([
       pb.collection("syllabi").getOne<Syllabus>(id),
       getUserRoles(me),
@@ -68,6 +78,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       status: "submitted",
       submitted_at: new Date().toISOString(),
     });
+    // The update replaced the previous scan, so there is nothing to undo:
+    // a failed audit row is logged and the upload stands.
+    try {
+      const batch = pb.createBatch();
+      addUploadAudit(batch, me, id, "justification_scan", record.id);
+      await batch.send();
+    } catch (error) {
+      console.error("Upload audit failed", record.id, error);
+    }
     return NextResponse.json(
       await loadJustificationResponse(pb, syllabus, { access, canReturn: false }),
     );

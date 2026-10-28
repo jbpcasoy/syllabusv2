@@ -304,7 +304,7 @@ export function ProgramJoinRequestManager({
                   <td className="px-4 py-3 text-sm">
                     <div className="font-medium text-gray-900">
                       {row.expand?.user?.name || (
-                        <span className="text-gray-400">Unnamed</span>
+                        <span className="text-gray-500">Unnamed</span>
                       )}
                       {mine && (
                         <span className="ml-1 font-normal text-gray-500">
@@ -336,7 +336,7 @@ export function ProgramJoinRequestManager({
                       </p>
                     )}
                     {!pending && row.expand?.reviewed_by?.name && (
-                      <p className="mt-1 text-xs text-gray-400">
+                      <p className="mt-1 text-xs text-gray-500">
                         by {row.expand.reviewed_by.name}
                       </p>
                     )}

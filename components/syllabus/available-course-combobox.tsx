@@ -97,7 +97,10 @@ export function AvailableCourseCombobox({
           autoComplete="off"
           className="block w-full rounded-md border-0 py-2 pl-3 pr-9 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 data-disabled:bg-gray-50"
         />
-        <ComboboxButton className="absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-400">
+        <ComboboxButton
+          aria-label="Show options"
+          className="absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500"
+        >
           <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="size-4">
             <path
               fillRule="evenodd"

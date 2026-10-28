@@ -45,7 +45,7 @@ export function SignedCopiesPanel({ params }: { params: DashboardParams }) {
     <Panel
       title="Awaiting signed copy"
       description="Approved by the VPAA. The lead uploads the wet-signed scan to file it. Longest wait first."
-      action={<ExportLink href={exportUrl("signed-copies", params)} label="Export awaiting signed copy as CSV" />}
+      action={<ExportLink href={exportUrl("signed-copies", params)} subject="syllabi awaiting a signed copy" />}
     >
       {error && <ErrorBanner error={error} onRetry={() => setReloadKey((k) => k + 1)} />}
       <div className="overflow-hidden rounded-lg bg-white shadow ring-1 ring-black/5">

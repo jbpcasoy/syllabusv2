@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/capabilities";
+import { isAdminOverride } from "@/lib/capability-rules";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
 import {
@@ -71,6 +72,11 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       ...toSyllabusResponse(syllabus, access),
       can_return_signed_copy: canReturnSignedCopy,
       can_transfer_lead: canTransferLead,
+      lead_transfer_is_override: isAdminOverride(
+        roles,
+        "syllabus.transferLead",
+        { programId: syllabus.program },
+      ),
       review: reviewContext(
         auth.user.id,
         roles.isAdmin,

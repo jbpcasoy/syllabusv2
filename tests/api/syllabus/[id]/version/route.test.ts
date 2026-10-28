@@ -6,6 +6,9 @@ const mocks = vi.hoisted(() => ({
   termsGetOne: vi.fn(),
   versionsGetList: vi.fn(),
   versionsCreate: vi.fn(),
+  versionsDelete: vi.fn(),
+  batchOps: [] as unknown[][],
+  batchSend: vi.fn(),
   parseSyllabusVersionInput: vi.fn(),
   checkPdfUpload: vi.fn(),
   activeFacultyAmong: vi.fn(),
@@ -26,6 +29,7 @@ vi.mock("@/lib/pocketbase", async () => {
     syllabus_versions: {
       getList: mocks.versionsGetList,
       create: mocks.versionsCreate,
+      delete: mocks.versionsDelete,
     },
   };
   return {
@@ -33,6 +37,12 @@ vi.mock("@/lib/pocketbase", async () => {
       filter: (expr: string, params: Record<string, unknown>) =>
         expr.replace(/\{:(\w+)\}/g, (_, key) => JSON.stringify(params[key])),
       collection: (name: string) => collections[name],
+      createBatch: () => ({
+        collection: (name: string) => ({
+          create: (body: unknown) => mocks.batchOps.push(["create", name, body]),
+        }),
+        send: mocks.batchSend,
+      }),
     })),
     handlePbError: vi.fn((error: unknown) => {
       const status =
@@ -67,10 +77,14 @@ vi.mock("@/lib/auth", async () =>
 vi.mock("@/lib/roles", async () =>
   (await import("@/tests/helpers/mock-auth")).rolesModuleMock(),
 );
+vi.mock("@/lib/upload-limit", async () =>
+  (await import("@/tests/helpers/upload-limit")).uploadLimitModuleMock(),
+);
 
 import { GET, POST } from "@/app/api/syllabus/[id]/version/route";
 import { createAdminPb } from "@/lib/pocketbase";
 import { mockAuth } from "@/tests/helpers/mock-auth";
+import { checkUploadRateMock } from "@/tests/helpers/upload-limit";
 
 const ID = "sylsylsylsylsyl";
 const ME = "me1me1me1me1me1";
@@ -194,6 +208,45 @@ describe("POST /api/syllabus/:id/version", () => {
       id: "newnewnewnewnew",
       ...data,
     }));
+    mocks.batchOps.length = 0;
+    mocks.batchSend.mockResolvedValue([]);
+  });
+
+  it("returns 429 with Retry-After before reading the body or any record", async () => {
+    checkUploadRateMock.mockResolvedValueOnce({ ok: false, retryAfter: 600 });
+    const res = await POST(upload(), ctx);
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("600");
+    expect(checkUploadRateMock).toHaveBeenCalledWith(expect.anything(), ME);
+    expect(mocks.checkPdfUpload).not.toHaveBeenCalled();
+    expect(mocks.syllabiGetOne).not.toHaveBeenCalled();
+    expect(mocks.versionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("audits the stored upload so the limit counts it", async () => {
+    await POST(upload(), ctx);
+    expect(mocks.batchOps).toEqual([
+      [
+        "create",
+        "audit_log",
+        {
+          actor: ME,
+          action: "file.uploaded",
+          syllabus: ID,
+          target_id: "newnewnewnewnew",
+          data: { kind: "version" },
+        },
+      ],
+    ]);
+    expect(mocks.batchSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("deletes the version when its audit row fails", async () => {
+    mocks.batchSend.mockRejectedValue({ status: 500 });
+    const res = await POST(upload(), ctx);
+    expect(res.status).toBe(500);
+    expect(mocks.versionsDelete).toHaveBeenCalledWith("newnewnewnewnew");
   });
 
   it("stores the next version number", async () => {
@@ -236,7 +289,7 @@ describe("POST /api/syllabus/:id/version", () => {
       ctx,
     );
     expect(res.status).toBe(400);
-    expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.syllabiGetOne).not.toHaveBeenCalled();
   });
 
   it("returns 400 with the notes validator's error", async () => {
@@ -244,10 +297,10 @@ describe("POST /api/syllabus/:id/version", () => {
     const res = await POST(upload(), ctx);
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "bad" });
-    expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.syllabiGetOne).not.toHaveBeenCalled();
   });
 
-  it("returns 400 with the PDF check's error before touching PocketBase", async () => {
+  it("returns 400 with the PDF check's error before reading any record", async () => {
     mocks.checkPdfUpload.mockResolvedValue({
       ok: false,
       error: "The file is not a valid PDF",
@@ -255,7 +308,8 @@ describe("POST /api/syllabus/:id/version", () => {
     const res = await POST(upload(), ctx);
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "The file is not a valid PDF" });
-    expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.syllabiGetOne).not.toHaveBeenCalled();
+    expect(mocks.versionsCreate).not.toHaveBeenCalled();
   });
 
   it("returns 401 when signed out", async () => {

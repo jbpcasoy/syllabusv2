@@ -74,7 +74,7 @@ export function JustificationsPanel({ params }: { params: DashboardParams }) {
       action={
         <ExportLink
           href={exportUrl("justifications", params, { state: state || undefined })}
-          label="Export justifications as CSV"
+          subject="justifications"
         />
       }
     >

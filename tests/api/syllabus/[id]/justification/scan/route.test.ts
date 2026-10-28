@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   syllabiGetOne: vi.fn(),
   update: vi.fn(),
+  batchOps: [] as unknown[][],
+  batchSend: vi.fn(),
   resolveSyllabusAccess: vi.fn(),
   findJustification: vi.fn(),
   loadJustificationResponse: vi.fn(),
@@ -16,7 +18,15 @@ vi.mock("@/lib/pocketbase", async () => {
   const collection = (name: string) =>
     name === "syllabi" ? { getOne: mocks.syllabiGetOne } : { update: mocks.update };
   return {
-    createAdminPb: vi.fn(async () => ({ collection })),
+    createAdminPb: vi.fn(async () => ({
+      collection,
+      createBatch: () => ({
+        collection: (name: string) => ({
+          create: (body: unknown) => mocks.batchOps.push(["create", name, body]),
+        }),
+        send: mocks.batchSend,
+      }),
+    })),
     handlePbError: vi.fn((error: unknown) => {
       const status =
         typeof error === "object" && error && "status" in error
@@ -44,10 +54,13 @@ vi.mock("@/lib/auth", async () =>
 vi.mock("@/lib/roles", async () =>
   (await import("@/tests/helpers/mock-auth")).rolesModuleMock(),
 );
+vi.mock("@/lib/upload-limit", async () =>
+  (await import("@/tests/helpers/upload-limit")).uploadLimitModuleMock(),
+);
 
 import { GET, POST } from "@/app/api/syllabus/[id]/justification/scan/route";
-import { createAdminPb } from "@/lib/pocketbase";
 import { mockAuth } from "@/tests/helpers/mock-auth";
+import { checkUploadRateMock } from "@/tests/helpers/upload-limit";
 
 const ID = "sylsylsylsylsyl";
 const ctx = { params: Promise.resolve({ id: ID }) };
@@ -83,9 +96,50 @@ beforeEach(() => {
   mocks.loadJustificationResponse.mockResolvedValue({ applies: true });
   mocks.checkPdfUpload.mockResolvedValue({ ok: true, file: pdf });
   mocks.fetchVersionFile.mockResolvedValue(new Response("%PDF-1.7", { status: 200 }));
+  mocks.batchOps.length = 0;
+  mocks.batchSend.mockResolvedValue([]);
 });
 
 describe("POST /api/syllabus/:id/justification/scan", () => {
+  it("returns 429 with Retry-After before reading the body or any record", async () => {
+    checkUploadRateMock.mockResolvedValueOnce({ ok: false, retryAfter: 120 });
+    const res = await upload();
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("120");
+    expect(checkUploadRateMock).toHaveBeenCalledWith(expect.anything(), "l");
+    expect(mocks.checkPdfUpload).not.toHaveBeenCalled();
+    expect(mocks.syllabiGetOne).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("audits the stored scan so the limit counts it", async () => {
+    await upload();
+    expect(mocks.batchOps).toEqual([
+      [
+        "create",
+        "audit_log",
+        {
+          actor: "l",
+          action: "file.uploaded",
+          syllabus: ID,
+          target_id: "jst",
+          data: { kind: "justification_scan" },
+        },
+      ],
+    ]);
+  });
+
+  it("keeps the upload and logs when its audit row fails", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.batchSend.mockRejectedValue({ status: 500 });
+
+    expect((await upload()).status).toBe(200);
+    expect(mocks.update).toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith("Upload audit failed", "jst", { status: 500 });
+    log.mockRestore();
+  });
+
   it("stores the signed letter and submits the justification", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-28T08:00:00.000Z"));
@@ -120,10 +174,11 @@ describe("POST /api/syllabus/:id/justification/scan", () => {
     expect((await upload()).status).toBe(409);
   });
 
-  it("returns 400 for a bad file before touching PocketBase", async () => {
+  it("returns 400 for a bad file before reading any record", async () => {
     mocks.checkPdfUpload.mockResolvedValue({ ok: false, error: "The file is not a valid PDF" });
     expect((await upload()).status).toBe(400);
-    expect(createAdminPb).not.toHaveBeenCalled();
+    expect(mocks.syllabiGetOne).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 
   it.each(["coAuthor", "reviewer", "admin"])("returns 403 to %s", async (access) => {

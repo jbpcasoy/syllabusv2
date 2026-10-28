@@ -153,7 +153,7 @@ Add every new check as a capability in `lib/capability-rules.ts`. Never branch o
 - References: instead of writing its own, a program's chair may request to reference another program's syllabus for the same course and term. The source lead approves or rejects (self-approval allowed); admin may approve, reject and revoke on the lead's behalf. Any source status can be referenced and no second review happens. The chair may withdraw and the source lead may revoke. A program has either its own syllabus or one pending or approved reference per course and term.
 - Phase 2 spec: `docs/specs/phase-2-syllabus-submission.md`.
 
-**Files:** PDFs are validated server-side (MIME type, magic bytes, size) and are served only through a scoped route that checks the caller's access. Never expose raw S3 URLs.
+**Files:** PDFs are validated server-side (MIME type, magic bytes, size) and are served only through a scoped route that checks the caller's access. Never expose raw S3 URLs. Uploads are limited to 20 per user per rolling hour (`lib/upload-limit.ts`, counted from `file.uploaded` audit rows; 429 with `Retry-After`). Nothing is ever deleted automatically: see `docs/retention-policy.md`.
 
 ## Data model
 
@@ -169,7 +169,7 @@ Add every new check as a capability in `lib/capability-rules.ts`. Never branch o
 
 **Phase 5:** `notifications` (one row per recipient per submit, resubmit, approve or return, written in the transition's batch by `addNotifications()` in `lib/notifications.ts`, which also builds the title, body and link; it feeds the header badge and `/notifications` and is the email outbox that `pb_hooks/notifications.pb.js` drains every minute: `pending` → `sending` → `sent` | `failed` (3 attempts, 24 hours) | `skipped` (unverified)); `terms.review_days` (days per stage, 0 = no limit). Deadlines are indicators only (`lib/deadlines.ts`, Philippine time) and never block. Dashboards: `/dashboard`, `dashboard.view`, scope in `lib/dashboard-scope.ts` (justifications only through `justificationScope`, never department heads or program chairs), counts in `lib/dashboard-aggregate.ts`, CSV exports in `lib/dashboard-export.ts`. Spec: `docs/specs/phase-5-visibility.md`.
 
-**Planned collections:** `audit_log`.
+**Phase 6:** `audit_log` (append-only, `null` API rules, one row per status change, lead transfer and PDF upload; written by `addAudit()` in `lib/audit.ts` in the change's batch, and by `addSyllabusEvent()` for every transition; `syllabus` and `target_id` are plain ids so rows outlive deletions; read only through `GET /api/audit` and `/audit`, capability `audit.view`, admin only). An admin who isn't the program's chair transferring a lead is an override (`isAdminOverride()` in `lib/capability-rules.ts`): it needs a reason and is marked `override`. End-to-end tests: `npm run test:e2e` (Playwright + axe, `e2e/README.md`). Spec: `docs/specs/phase-6-hardening.md`.
 
 ## Roadmap and status
 
@@ -184,7 +184,7 @@ Work in this order and do not start a phase before the previous one is done unle
 | 3     | Review engine, Form 17, Form 18-1, proxy, approval references, signed scan                                  | Done        |
 | 4     | Reviewer queues, PDF viewer, timeline, faculty return view                                                  | Done        |
 | 5     | Notifications, deadlines, dashboards                                                                        | Done        |
-| 6     | Audit trail, overrides, rate limits, end-to-end tests, accessibility                                        | Not started |
+| 6     | Audit trail, overrides, rate limits, end-to-end tests, accessibility                                        | Done (manual keyboard pass pending) |
 
 Update the status column when a phase finishes.
 

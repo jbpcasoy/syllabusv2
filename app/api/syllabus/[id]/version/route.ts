@@ -13,6 +13,11 @@ import {
   SYLLABUS_VERSION_EXPAND,
   toSyllabusVersionResponse,
 } from "@/lib/syllabus-version";
+import {
+  addUploadAudit,
+  checkUploadRate,
+  tooManyUploads,
+} from "@/lib/upload-limit";
 import { parseSyllabusVersionInput } from "@/lib/validators/syllabus";
 import type { Syllabus } from "@/types/syllabus";
 import type { SyllabusVersion } from "@/types/syllabus-version";
@@ -72,13 +77,20 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
 // POST /api/syllabus/:id/version  multipart: file=<PDF, max 20 MB>, notes?=<text>
 // Lead only, while a draft or returned, in an open term, and still active faculty of
-// the target program. Numbers the version max + 1.
+// the target program. Numbers the version max + 1. Rate-limited (429) and
+// audited as file.uploaded.
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
 
   try {
+    const me = auth.user.id;
+    const pb = await createAdminPb();
+    // Before reading the body, so a flood never buffers 20 MB files.
+    const rate = await checkUploadRate(pb, me);
+    if (!rate.ok) return tooManyUploads(rate.retryAfter);
+
     const form = await request.formData().catch(() => null);
     if (!form) {
       return NextResponse.json(
@@ -95,8 +107,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: pdf.error }, { status: 400 });
     }
 
-    const me = auth.user.id;
-    const pb = await createAdminPb();
     const [syllabus, roles] = await Promise.all([
       pb.collection("syllabi").getOne<Syllabus>(id),
       getUserRoles(me),
@@ -136,8 +146,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     const versionNo = latest + 1;
+    let created: SyllabusVersion;
     try {
-      const created = await pb
+      created = await pb
         .collection("syllabus_versions")
         .create<SyllabusVersion>(
           {
@@ -149,9 +160,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           },
           { expand: SYLLABUS_VERSION_EXPAND },
         );
-      return NextResponse.json(toSyllabusVersionResponse(created), {
-        status: 201,
-      });
     } catch (error) {
       // The unique index (syllabus, version_no) rejects a concurrent upload.
       if (isNotUniqueError(error, "version_no")) {
@@ -162,6 +170,20 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
       throw error;
     }
+
+    // Two writes (the file upload can't join a batch): undo the version if
+    // its audit row fails, so every stored upload is counted.
+    try {
+      const batch = pb.createBatch();
+      addUploadAudit(batch, me, id, "version", created.id);
+      await batch.send();
+    } catch (error) {
+      await pb.collection("syllabus_versions").delete(created.id);
+      throw error;
+    }
+    return NextResponse.json(toSyllabusVersionResponse(created), {
+      status: 201,
+    });
   } catch (error) {
     return handlePbError(error);
   }

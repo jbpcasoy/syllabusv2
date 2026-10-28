@@ -120,6 +120,7 @@ describe("GET /api/syllabus/:id", () => {
         mapped: true,
         can_return_signed_copy: false,
         can_transfer_lead: false,
+        lead_transfer_is_override: false,
         review: { actorStage: null, actingAs: null, designatableStages: [] },
       });
       expect(mocks.getOne).toHaveBeenCalledWith(ID, {
@@ -127,6 +128,18 @@ describe("GET /api/syllabus/:id", () => {
       });
     },
   );
+
+  it("tells an admin who isn't the chair that a transfer is an override", async () => {
+    mockAuth({ id: "adminadminadmin", isAdmin: true });
+    mocks.getSyllabusAccess.mockReturnValue("admin");
+
+    const body = await (await GET(req("GET"), ctx)).json();
+
+    expect(body).toMatchObject({
+      can_transfer_lead: true,
+      lead_transfer_is_override: true,
+    });
+  });
 
   it("tells the program reviewer they may decide stage 1", async () => {
     mockAuth({ id: "revwrevwrevwrev" });

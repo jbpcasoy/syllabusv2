@@ -80,6 +80,8 @@ export interface LeadTransferInput {
   lead: string;
   /** Keep the previous lead as a co-author. Defaults to true. */
   keep_previous: boolean;
+  /** Why, 10 to 500 characters. Required when an admin overrides the chair. */
+  reason?: string;
 }
 
 /** Body of PATCH /api/syllabus/:id. Replaces the whole co-author list. */
@@ -153,6 +155,8 @@ export interface SyllabusResponse {
   can_return_signed_copy?: boolean;
   /** syllabus.transferLead in this program; set by GET /api/syllabus/:id. */
   can_transfer_lead?: boolean;
+  /** An admin who isn't the chair: a transfer needs a reason. */
+  lead_transfer_is_override?: boolean;
   expand?: {
     course?: { id: string; code: string; title: string };
     term?: TermSummary;

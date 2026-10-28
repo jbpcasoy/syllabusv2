@@ -245,6 +245,25 @@ describe("recordDecision", () => {
           reason: "",
         },
       ],
+      [
+        "create",
+        "audit_log",
+        {
+          actor: "deandeandeandea",
+          action: "approved",
+          target_collection: "syllabi",
+          target_id: ID,
+          syllabus: ID,
+          override: false,
+          reason: "",
+          data: {
+            from: { status: "submitted", stage: 2 },
+            to: { status: "submitted", stage: 3 },
+            version: "ververververver",
+            approval_code: "SYL-2627-1-0042-S2",
+          },
+        },
+      ],
     ]);
     expect(send).toHaveBeenCalledTimes(1);
   });
@@ -272,6 +291,18 @@ describe("recordDecision", () => {
       "syllabus_events",
       expect.objectContaining({ type: "returned", stage: 2, approval_code: "" }),
     ]);
+    expect(ops[3]).toEqual([
+      "create",
+      "audit_log",
+      expect.objectContaining({
+        action: "returned",
+        data: {
+          from: { status: "submitted", stage: 2 },
+          to: { status: "returned", stage: 2 },
+          version: "ververververver",
+        },
+      }),
+    ]);
   });
 
   it("re-opens unresolved points in the same batch as a return", async () => {
@@ -282,14 +313,14 @@ describe("recordDecision", () => {
       next: { status: "returned", stage: 2 },
       reopenPointIds: ["p3", "p5"],
     });
-    expect(ops.slice(3)).toEqual([
+    expect(ops.slice(4)).toEqual([
       ["update", "form18_points", "p3", { status: "open" }],
       ["update", "form18_points", "p5", { status: "open" }],
     ]);
     expect(send).toHaveBeenCalledTimes(1);
   });
 
-  it("queues the notifications in the same batch, after the event", async () => {
+  it("queues the notifications in the same batch, after the event and audit row", async () => {
     await recordDecision(pb, {
       ...input,
       notify: {
@@ -305,7 +336,7 @@ describe("recordDecision", () => {
         },
       },
     });
-    expect(ops.slice(3)).toEqual([
+    expect(ops.slice(4)).toEqual([
       [
         "create",
         "notifications",

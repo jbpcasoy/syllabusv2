@@ -762,9 +762,9 @@
     "semantic_hash": "84b444e7c26f95956065bf4e89769f73"
   },
   "lib/capability-rules.ts": {
-    "mtime": 1793091436.1652112,
-    "seen": 1793092773.794336,
-    "ast_hash": "6ead3afaf25efa853b5639958a7f68cb",
+    "mtime": 1793094830.865317,
+    "seen": 1793150312.6573372,
+    "ast_hash": "f90600685d89cbdf7b227f1ba82dd9ab",
     "semantic_hash": ""
   },
   "lib/citl-director-client.ts": {
@@ -864,9 +864,9 @@
     "semantic_hash": "c2a7ec1a374c0bd641b13642388675e5"
   },
   "lib/navigation.ts": {
-    "mtime": 1793084496.4254265,
-    "seen": 1793092773.7943852,
-    "ast_hash": "0c774536fe082acd3c44294488c76b19",
+    "mtime": 1793094993.939337,
+    "seen": 1793150312.6573687,
+    "ast_hash": "0233271c19d92ad6eaa52c4c1c088a11",
     "semantic_hash": ""
   },
   "lib/org-children.ts": {
@@ -1674,9 +1674,9 @@
     "semantic_hash": "172a5c0810bcb4123f14e6a434576534"
   },
   "tests/lib/capability-rules.test.ts": {
-    "mtime": 1793091471.6675665,
-    "seen": 1793092773.7948222,
-    "ast_hash": "d9d84b342e992228fa20bdb6df095e7d",
+    "mtime": 1793094831.817122,
+    "seen": 1793150312.6576157,
+    "ast_hash": "7bdd16f5711b3182f01dab5f5ed651da",
     "semantic_hash": ""
   },
   "tests/lib/navigation.test.ts": {
@@ -1866,9 +1866,9 @@
     "semantic_hash": "83e2d3be1ab85b665abb9d8f763f222c"
   },
   "AGENTS.md": {
-    "mtime": 1793092667.1609924,
-    "seen": 1793092773.7949073,
-    "ast_hash": "a788716bb54c39bb607b9414d654f55f",
+    "mtime": 1793149317.119686,
+    "seen": 1793150312.6577055,
+    "ast_hash": "9bfa60688a543be91d81cb12a9b4c2ce",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -1894,12 +1894,6 @@
     "seen": 1793005117.866119,
     "ast_hash": "d6e54296c770b601d07cc6745bbd12dd",
     "semantic_hash": "d6e54296c770b601d07cc6745bbd12dd"
-  },
-  "Syllabus Development and Review Guide.pdf": {
-    "mtime": 1792402047.5611231,
-    "seen": 1793005169.405461,
-    "ast_hash": "182d36289b6fcac1738af8e0ca2ca446",
-    "semantic_hash": ""
   },
   "app/api/program-join-request/[id]/route.ts": {
     "mtime": 1793006013.089275,
@@ -2046,9 +2040,9 @@
     "semantic_hash": ""
   },
   "app/api/syllabus/[id]/submit/route.ts": {
-    "mtime": 1793085626.8010454,
-    "seen": 1793092773.79406,
-    "ast_hash": "de145fa3f1bc4e7ecb5048b8e2e9ddad",
+    "mtime": 1793094336.1957586,
+    "seen": 1793150312.6571612,
+    "ast_hash": "00f9bfba116b7890c214e2774d7a3c9d",
     "semantic_hash": ""
   },
   "app/api/syllabus/[id]/version/[versionId]/file/route.ts": {
@@ -2070,9 +2064,9 @@
     "semantic_hash": ""
   },
   "app/api/syllabus/route.ts": {
-    "mtime": 1793090896.0779204,
-    "seen": 1793092773.79407,
-    "ast_hash": "25b0538643934f1ee45b0b5ebb58ebf3",
+    "mtime": 1793094796.3358202,
+    "seen": 1793150312.6571684,
+    "ast_hash": "10066f4f7f5e685fa04b03d5329758d1",
     "semantic_hash": ""
   },
   "app/syllabus-reference/page.tsx": {
@@ -2148,9 +2142,9 @@
     "semantic_hash": ""
   },
   "components/syllabus/syllabus-detail.tsx": {
-    "mtime": 1793091657.366886,
-    "seen": 1793092773.7942913,
-    "ast_hash": "ea808a6900a2a699a326e34b83eb46a3",
+    "mtime": 1793148284.6580727,
+    "seen": 1793150312.6573074,
+    "ast_hash": "b2da1d43ed5841c93c96b9fe693608f5",
     "semantic_hash": ""
   },
   "components/syllabus/syllabus-manager.tsx": {
@@ -2178,9 +2172,9 @@
     "semantic_hash": ""
   },
   "components/syllabus/syllabus-versions.tsx": {
-    "mtime": 1793012768.7632113,
-    "seen": 1793016863.245154,
-    "ast_hash": "b0055f44b1a6b84bebeff532d7431019",
+    "mtime": 1793099157.8762693,
+    "seen": 1793150312.657314,
+    "ast_hash": "52b1c0574ae320208a6dfbe9afd946f1",
     "semantic_hash": ""
   },
   "components/syllabus/upload-version-modal.tsx": {
@@ -2202,9 +2196,9 @@
     "semantic_hash": ""
   },
   "lib/syllabus-client.ts": {
-    "mtime": 1793091653.988108,
-    "seen": 1793092773.7944295,
-    "ast_hash": "78b05e60e9007fa64da4556dc74004d6",
+    "mtime": 1793099051.660295,
+    "seen": 1793150312.6573977,
+    "ast_hash": "658879ce2409bbc50033e398b2d5fdbf",
     "semantic_hash": ""
   },
   "lib/syllabus-reference-client.ts": {
@@ -2232,9 +2226,9 @@
     "semantic_hash": ""
   },
   "lib/syllabus.ts": {
-    "mtime": 1793090917.2374918,
-    "seen": 1793092773.7944481,
-    "ast_hash": "fa4de3e93cecccd5bac113c87a56b568",
+    "mtime": 1793094920.0808332,
+    "seen": 1793150312.6574104,
+    "ast_hash": "6aeae259c489a517d1b140338cf2f3c2",
     "semantic_hash": ""
   },
   "lib/validators/syllabus-reference.ts": {
@@ -2304,9 +2298,9 @@
     "semantic_hash": ""
   },
   "tests/api/syllabus/[id]/submit/route.test.ts": {
-    "mtime": 1793085688.839628,
-    "seen": 1793092773.7948015,
-    "ast_hash": "5287fa68b1472777a48e44ba18cb6eea",
+    "mtime": 1793094368.7095804,
+    "seen": 1793150312.6575944,
+    "ast_hash": "b57743a42acd8431df27ac8c9bdff8a4",
     "semantic_hash": ""
   },
   "tests/api/syllabus/[id]/version/[versionId]/file/route.test.ts": {
@@ -2328,9 +2322,9 @@
     "semantic_hash": ""
   },
   "tests/api/syllabus/route.test.ts": {
-    "mtime": 1793090914.3160152,
-    "seen": 1793092773.7948067,
-    "ast_hash": "b0ba2f306510e43f2d9bb9bbe021f92a",
+    "mtime": 1793094796.581849,
+    "seen": 1793150312.657601,
+    "ast_hash": "4c126e47d11e97bf272cd153c359d1d5",
     "semantic_hash": ""
   },
   "tests/lib/pdf.test.ts": {
@@ -2400,9 +2394,9 @@
     "semantic_hash": ""
   },
   "types/syllabus.ts": {
-    "mtime": 1793090985.2968476,
-    "seen": 1793092773.7949016,
-    "ast_hash": "bc60a07a5dd54c63433ad98b0f817801",
+    "mtime": 1793094919.154259,
+    "seen": 1793150312.6576998,
+    "ast_hash": "be59b3f349360e06374c0d7913f7d0a7",
     "semantic_hash": ""
   },
   "docs/specs/phase-2-syllabus-submission.md": {
@@ -2484,9 +2478,9 @@
     "semantic_hash": ""
   },
   "app/api/syllabus/[id]/resubmit/route.ts": {
-    "mtime": 1793088452.9893305,
-    "seen": 1793092773.7940466,
-    "ast_hash": "348f9dce212fc39011fb6ec534553c8d",
+    "mtime": 1793094393.7001164,
+    "seen": 1793150312.657151,
+    "ast_hash": "c0c75bc42192ee6d68bda045f5523c22",
     "semantic_hash": ""
   },
   "app/api/syllabus/[id]/review/route.ts": {
@@ -2502,15 +2496,15 @@
     "semantic_hash": ""
   },
   "app/api/syllabus/[id]/signed-copy/[copyId]/route.ts": {
-    "mtime": 1793090477.3643396,
-    "seen": 1793092773.7940538,
-    "ast_hash": "6b72c579af8f926fdf3500a7d0ca57ec",
+    "mtime": 1793094392.0199654,
+    "seen": 1793150312.6571565,
+    "ast_hash": "09e61d8e93c469952f7b1031178b1bb3",
     "semantic_hash": ""
   },
   "app/api/syllabus/[id]/signed-copy/route.ts": {
-    "mtime": 1793090476.427562,
-    "seen": 1793092773.7940552,
-    "ast_hash": "87f0c7e5918961e2e9d6452ded359a63",
+    "mtime": 1793094404.3777068,
+    "seen": 1793150312.657158,
+    "ast_hash": "94cfbc0fbfaeb914f7dc92564a30ec39",
     "semantic_hash": ""
   },
   "app/api/syllabus/[id]/stand-in-candidates/route.ts": {
@@ -2604,9 +2598,9 @@
     "semantic_hash": ""
   },
   "components/syllabus/form18-panel.tsx": {
-    "mtime": 1793088921.302709,
-    "seen": 1793092773.7942793,
-    "ast_hash": "50b30f4339f02a1962a27739e66b3280",
+    "mtime": 1793147980.6708121,
+    "seen": 1793150312.6572948,
+    "ast_hash": "14c408efe27cf338b99f98ec4c0c0750",
     "semantic_hash": ""
   },
   "components/syllabus/justification-panel.tsx": {
@@ -2670,9 +2664,9 @@
     "semantic_hash": ""
   },
   "lib/form18.ts": {
-    "mtime": 1793088425.8401015,
-    "seen": 1793092773.794369,
-    "ast_hash": "8993095af31188a542e6e0776e4500a2",
+    "mtime": 1793099103.003224,
+    "seen": 1793150312.6573567,
+    "ast_hash": "b747311eff8b43cdef19edc0f6534e69",
     "semantic_hash": ""
   },
   "lib/forms-export.ts": {
@@ -2742,9 +2736,9 @@
     "semantic_hash": ""
   },
   "lib/syllabus-decision.ts": {
-    "mtime": 1793088449.626503,
-    "seen": 1793092773.794431,
-    "ast_hash": "91045ab2d4dfae00a15f110cd009347f",
+    "mtime": 1793094299.7351162,
+    "seen": 1793150312.6573987,
+    "ast_hash": "1b2a2bbc33ab5e6b006180f4a4ccb2e4",
     "semantic_hash": ""
   },
   "lib/syllabus-justification.ts": {
@@ -2757,12 +2751,6 @@
     "mtime": 1793090873.0673034,
     "seen": 1793092773.7944338,
     "ast_hash": "6a941c100dd8935771a68ca88f4f5cfa",
-    "semantic_hash": ""
-  },
-  "lib/syllabus-queue.ts": {
-    "mtime": 1793086163.127732,
-    "seen": 1793092773.7944353,
-    "ast_hash": "db6ec2555ff4539e1628eb859536a18c",
     "semantic_hash": ""
   },
   "lib/syllabus-review.ts": {
@@ -2964,9 +2952,9 @@
     "semantic_hash": ""
   },
   "tests/api/syllabus/[id]/resubmit/route.test.ts": {
-    "mtime": 1793088527.3059123,
-    "seen": 1793092773.7947931,
-    "ast_hash": "89015aab8d339cbbf4d996a54fc89abf",
+    "mtime": 1793094434.6850917,
+    "seen": 1793150312.6575859,
+    "ast_hash": "48731987c1264e87fda7c85a9a1c80d9",
     "semantic_hash": ""
   },
   "tests/api/syllabus/[id]/review/route.test.ts": {
@@ -2982,15 +2970,15 @@
     "semantic_hash": ""
   },
   "tests/api/syllabus/[id]/signed-copy/[copyId]/route.test.ts": {
-    "mtime": 1793090617.662325,
-    "seen": 1793092773.7947977,
-    "ast_hash": "4d75fc24b0719e60c1ba34028ca5213e",
+    "mtime": 1793094444.266297,
+    "seen": 1793150312.65759,
+    "ast_hash": "2ecf86a1f16cd8d55a5ef1bc32e5d1f6",
     "semantic_hash": ""
   },
   "tests/api/syllabus/[id]/signed-copy/route.test.ts": {
-    "mtime": 1793090616.823249,
-    "seen": 1793092773.7947984,
-    "ast_hash": "bc367c46e77dcd6d62e8803feeb86f6a",
+    "mtime": 1793094465.2576165,
+    "seen": 1793150312.657591,
+    "ast_hash": "614052d44bfbf7b9ae2bb687d98ed0b6",
     "semantic_hash": ""
   },
   "tests/api/syllabus/[id]/stand-in-candidates/route.test.ts": {
@@ -3036,9 +3024,9 @@
     "semantic_hash": ""
   },
   "tests/lib/form18.test.ts": {
-    "mtime": 1793088563.2543297,
-    "seen": 1793092773.7948253,
-    "ast_hash": "c7a2a9047884cd4aa63bb014ca802211",
+    "mtime": 1793099131.1342025,
+    "seen": 1793150312.6576188,
+    "ast_hash": "0be58594ea3dfffc44cb319fcf5f077b",
     "semantic_hash": ""
   },
   "tests/lib/forms-export-builders.test.ts": {
@@ -3078,9 +3066,9 @@
     "semantic_hash": ""
   },
   "tests/lib/syllabus-decision.test.ts": {
-    "mtime": 1793088512.4632344,
-    "seen": 1793092773.7948437,
-    "ast_hash": "2479682fefe51b10d0c5a479c7d50a7f",
+    "mtime": 1793094311.7016342,
+    "seen": 1793150312.6576385,
+    "ast_hash": "ad29e2a08230e6ef7d7fef929e3b6eaa",
     "semantic_hash": ""
   },
   "tests/lib/syllabus-justification.test.ts": {
@@ -3093,12 +3081,6 @@
     "mtime": 1793090874.000251,
     "seen": 1793092773.7948453,
     "ast_hash": "229a74aae306cecab6c018f27225c335",
-    "semantic_hash": ""
-  },
-  "tests/lib/syllabus-queue.test.ts": {
-    "mtime": 1793086164.2860653,
-    "seen": 1793092773.7948465,
-    "ast_hash": "9d6413d7b6ea87b6d185388a8b3f25a3",
     "semantic_hash": ""
   },
   "tests/lib/syllabus-review.test.ts": {
@@ -3162,9 +3144,9 @@
     "semantic_hash": ""
   },
   "types/form18.ts": {
-    "mtime": 1793088422.876929,
-    "seen": 1793092773.7948847,
-    "ast_hash": "65139901853de6d11a92bb0841ef4451",
+    "mtime": 1793099101.288761,
+    "seen": 1793150312.6576793,
+    "ast_hash": "11b9d87957053e433b55b520443869dd",
     "semantic_hash": ""
   },
   "types/justification.ts": {
@@ -3231,6 +3213,162 @@
     "mtime": 1793092668.8339956,
     "seen": 1793092773.7949193,
     "ast_hash": "c6899de9646cfa2f7e0ab0d8a7f9429c",
+    "semantic_hash": ""
+  },
+  "app/api/review-queue/route.ts": {
+    "mtime": 1793094844.354306,
+    "seen": 1793150312.6571271,
+    "ast_hash": "ae50f381c461ae06d1fb7b426a393987",
+    "semantic_hash": ""
+  },
+  "app/api/syllabus/[id]/timeline/route.ts": {
+    "mtime": 1793098978.817706,
+    "seen": 1793150312.6571627,
+    "ast_hash": "8f511e15441aa4d662aef6b0c1d1d6b4",
+    "semantic_hash": ""
+  },
+  "app/review/page.tsx": {
+    "mtime": 1793094993.0011954,
+    "seen": 1793150312.6571994,
+    "ast_hash": "7ce931846292757f626d514690f3b9ac",
+    "semantic_hash": ""
+  },
+  "app/syllabus/[id]/review/page.tsx": {
+    "mtime": 1793146470.2100737,
+    "seen": 1793150312.6572063,
+    "ast_hash": "398d73f5727d87e1ad09b17ae36e87ef",
+    "semantic_hash": ""
+  },
+  "app/syllabus/[id]/revise/page.tsx": {
+    "mtime": 1793147936.0836842,
+    "seen": 1793150312.6572073,
+    "ast_hash": "e0a8798ad138877f7608f5b18f0cfa5f",
+    "semantic_hash": ""
+  },
+  "components/review-queue/program-filter-combobox.tsx": {
+    "mtime": 1793094939.635343,
+    "seen": 1793150312.6572783,
+    "ast_hash": "a972d775601ba306f8735ec8c3baa3e8",
+    "semantic_hash": ""
+  },
+  "components/review-queue/review-queue-manager.tsx": {
+    "mtime": 1793094981.6537492,
+    "seen": 1793150312.6572795,
+    "ast_hash": "8b667b430a245846c85f003c7c48367b",
+    "semantic_hash": ""
+  },
+  "components/syllabus/pdf-pane.tsx": {
+    "mtime": 1793146382.3156958,
+    "seen": 1793150312.6572971,
+    "ast_hash": "2017b5310b4d8fd22592cefc2bccefe4",
+    "semantic_hash": ""
+  },
+  "components/syllabus/review-points-history.tsx": {
+    "mtime": 1793099148.4077508,
+    "seen": 1793150312.6573005,
+    "ast_hash": "d604a036a6a4e1d0f8861d1a48ffe0fd",
+    "semantic_hash": ""
+  },
+  "components/syllabus/review-workspace.tsx": {
+    "mtime": 1793147980.7775767,
+    "seen": 1793150312.657302,
+    "ast_hash": "ad790a08c92c59686db1c2e708833346",
+    "semantic_hash": ""
+  },
+  "components/syllabus/revise-workspace.tsx": {
+    "mtime": 1793147954.8189292,
+    "seen": 1793150312.6573029,
+    "ast_hash": "cb2908137868d66623e0d8c57d27a31f",
+    "semantic_hash": ""
+  },
+  "components/syllabus/syllabus-timeline.tsx": {
+    "mtime": 1793099052.5054018,
+    "seen": 1793150312.657313,
+    "ast_hash": "fbc3761cf79f5b69f7a18e925260313d",
+    "semantic_hash": ""
+  },
+  "components/syllabus/use-syllabus-workspace.ts": {
+    "mtime": 1793146446.3642607,
+    "seen": 1793150312.6573172,
+    "ast_hash": "41ba36e05c1dae3483466156a0731077",
+    "semantic_hash": ""
+  },
+  "lib/review-queue-client.ts": {
+    "mtime": 1793094938.396935,
+    "seen": 1793150312.6573877,
+    "ast_hash": "5be9f5c2fe438b378302c8c4d8afd100",
+    "semantic_hash": ""
+  },
+  "lib/review-queue.ts": {
+    "mtime": 1793094736.156906,
+    "seen": 1793150312.6573887,
+    "ast_hash": "a0f7da5b0231ea21f9b9ef1c52d64f11",
+    "semantic_hash": ""
+  },
+  "lib/syllabus-events.ts": {
+    "mtime": 1793094274.0888553,
+    "seen": 1793150312.6573997,
+    "ast_hash": "d9065c45694f61a2779366ced6ee1c85",
+    "semantic_hash": ""
+  },
+  "lib/syllabus-timeline.ts": {
+    "mtime": 1793098977.9425635,
+    "seen": 1793150312.6574073,
+    "ast_hash": "3f57126d571a3d62e7a51f47b4cf673d",
+    "semantic_hash": ""
+  },
+  "pb_migrations/1793000024_created_syllabus_events.js": {
+    "mtime": 1793094151.2321682,
+    "seen": 1793150312.6575274,
+    "ast_hash": "476d23f1ffba9e0a96f784b9a2697075",
+    "semantic_hash": ""
+  },
+  "tests/api/review-queue/route.test.ts": {
+    "mtime": 1793094875.8760223,
+    "seen": 1793150312.6575668,
+    "ast_hash": "02aa70ae2931dcdf2a7ac323c91ed653",
+    "semantic_hash": ""
+  },
+  "tests/api/syllabus/[id]/timeline/route.test.ts": {
+    "mtime": 1793099011.196947,
+    "seen": 1793150312.6575954,
+    "ast_hash": "8d983b39736ede7955f526a1f3b4ed15",
+    "semantic_hash": ""
+  },
+  "tests/lib/review-queue.test.ts": {
+    "mtime": 1793094793.7548056,
+    "seen": 1793150312.657632,
+    "ast_hash": "68eb1fb387f7f5ee29759d896bea49d9",
+    "semantic_hash": ""
+  },
+  "tests/lib/syllabus-timeline.test.ts": {
+    "mtime": 1793099010.0259936,
+    "seen": 1793150312.6576455,
+    "ast_hash": "c239fbd5506a1e33fd43a721a4ce4ef3",
+    "semantic_hash": ""
+  },
+  "types/review-queue.ts": {
+    "mtime": 1793094680.8902726,
+    "seen": 1793150312.657689,
+    "ast_hash": "c8cbdf2494ea68907e65e1d2abd40820",
+    "semantic_hash": ""
+  },
+  "types/syllabus-event.ts": {
+    "mtime": 1793094165.3302877,
+    "seen": 1793150312.6576931,
+    "ast_hash": "35087fc249aa2258e9a013348471ce67",
+    "semantic_hash": ""
+  },
+  "types/syllabus-timeline.ts": {
+    "mtime": 1793098976.75208,
+    "seen": 1793150312.6576974,
+    "ast_hash": "d2b5b1e067ec73beace73ca19520056f",
+    "semantic_hash": ""
+  },
+  "docs/specs/phase-4-reviewer-experience.md": {
+    "mtime": 1793149318.7720325,
+    "seen": 1793150312.6577191,
+    "ast_hash": "883d739bc63b63896a96a58c23499879",
     "semantic_hash": ""
   }
 }

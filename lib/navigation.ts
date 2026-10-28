@@ -36,6 +36,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Faculty", href: "/faculty" },
   { label: "Join Requests", href: "/program-join-request" },
   { label: "Users", href: "/user", capability: "user.read" },
+  { label: "Audit Log", href: "/audit", capability: "audit.view" },
 ];
 
 export function getNavItems(roles: UserRoles): NavItem[] {

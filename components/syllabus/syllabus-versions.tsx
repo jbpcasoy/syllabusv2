@@ -133,7 +133,7 @@ export function SyllabusVersions({
                 <td className="hidden px-4 py-3 text-sm text-gray-500 md:table-cell">
                   {formatDate(version.created)}
                   {version.expand?.uploaded_by?.name && (
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-gray-500">
                       by {version.expand.uploaded_by.name}
                     </div>
                   )}

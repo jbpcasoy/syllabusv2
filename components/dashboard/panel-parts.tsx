@@ -31,16 +31,19 @@ export function Panel({
   );
 }
 
-/** "Export CSV" as a plain download link, so it works without script. */
-export function ExportLink({ href, label }: { href: string; label: string }) {
+/**
+ * "Export CSV" as a plain download link, so it works without script. The
+ * subject is read out after the visible text ("Export CSV of completion"),
+ * so the accessible name contains what sighted users see (WCAG 2.5.3).
+ */
+export function ExportLink({ href, subject }: { href: string; subject: string }) {
   return (
     <a
       href={href}
       download
-      aria-label={label}
       className="rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
     >
-      Export CSV
+      Export CSV<span className="sr-only"> of {subject}</span>
     </a>
   );
 }

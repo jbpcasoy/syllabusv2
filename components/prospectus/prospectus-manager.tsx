@@ -304,7 +304,7 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
               <tr key={row.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">
                   {row.expand?.program?.name || (
-                    <span className="text-gray-400">Unknown program</span>
+                    <span className="text-gray-500">Unknown program</span>
                   )}
                   {row.expand?.program?.code && (
                     <span className="ml-2 text-gray-500">
@@ -314,7 +314,7 @@ export function ProspectusManager({ canManage }: ProspectusManagerProps) {
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-500">
                   {row.expand?.school_year?.label || (
-                    <span className="text-gray-400">Unknown</span>
+                    <span className="text-gray-500">Unknown</span>
                   )}
                 </td>
                 <td className="hidden px-4 py-3 text-sm sm:table-cell">

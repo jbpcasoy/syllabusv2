@@ -2,6 +2,7 @@ import {
   CAPABILITIES,
   canAnywhere,
   evaluateCapability,
+  isAdminOverride,
   type Capability,
   type ScopeChain,
 } from "@/lib/capability-rules";
@@ -34,6 +35,7 @@ const ADMIN_ONLY: Capability[] = [
   "course.write",
   "prospectus.write",
   "prospectusItem.write",
+  "audit.view",
 ];
 const VPAA_GLOBAL: Capability[] = [
   "college.write",
@@ -64,6 +66,31 @@ describe("admin override", () => {
   it.each(CAPABILITIES)("admin passes %s, with or without scope", (cap) => {
     expect(can(admin, cap)).toBe(true);
     expect(can(admin, cap, { collegeId: OTHER.college })).toBe(true);
+  });
+});
+
+describe("isAdminOverride", () => {
+  const lead: Capability = "syllabus.transferLead";
+
+  it("is true for an admin the rule itself refuses", () => {
+    expect(isAdminOverride(admin, lead, SCOPE)).toBe(true);
+  });
+
+  it("is false for an admin who also holds the role in scope", () => {
+    expect(isAdminOverride({ ...chair, isAdmin: true }, lead, SCOPE)).toBe(false);
+  });
+
+  it("is true for an admin who holds the role elsewhere only", () => {
+    expect(
+      isAdminOverride({ ...chair, isAdmin: true }, lead, {
+        programId: OTHER.program,
+      }),
+    ).toBe(true);
+  });
+
+  it("is false for anyone who isn't admin, allowed or not", () => {
+    expect(isAdminOverride(chair, lead, SCOPE)).toBe(false);
+    expect(isAdminOverride(facultyOnly, lead, SCOPE)).toBe(false);
   });
 });
 

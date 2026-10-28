@@ -197,14 +197,16 @@ export function Form17Panel({ syllabusId, editable }: Form17PanelProps) {
                             setAnswer(criterion.key, { answer })
                           }
                           aria-label={`Answer for ${criterion.key}`}
-                          disabled={saving}
+                          // Until the saved answers load, a click would be
+                          // overwritten by them and silently lost.
+                          disabled={saving || !form}
                           className="flex shrink-0 gap-1"
                         >
                           {(["yes", "no"] as const).map((option) => (
                             <Radio
                               key={option}
                               value={option}
-                              className="cursor-pointer rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ring-gray-300 data-checked:text-white data-checked:ring-0 data-disabled:opacity-50 data-checked:data-[value=no]:bg-amber-600 data-checked:data-[value=yes]:bg-green-600"
+                              className="cursor-pointer rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ring-gray-300 data-checked:text-white data-checked:ring-0 data-disabled:opacity-50 data-checked:data-[value=no]:bg-amber-700 data-checked:data-[value=yes]:bg-green-700"
                               data-value={option}
                             >
                               {option === "yes" ? "Yes" : "No"}

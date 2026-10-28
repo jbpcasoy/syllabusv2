@@ -108,7 +108,7 @@ export function SummaryPanel({ params }: { params: DashboardParams }) {
       <Panel
         title="Completion"
         description="Filed syllabi out of the courses each program's published prospectus lists for the term. A reference to a filed syllabus counts as filed."
-        action={<ExportLink href={exportUrl("completion", params)} label="Export completion as CSV" />}
+        action={<ExportLink href={exportUrl("completion", params)} subject="completion" />}
       >
         <CompletionTable rows={data?.completion ?? []} loading={loading} />
       </Panel>

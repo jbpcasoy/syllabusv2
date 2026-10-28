@@ -254,7 +254,7 @@ export function ReferenceManager({ viewer, canRequest }: ReferenceManagerProps) 
                     </span>{" "}
                     → {source?.program?.code || "—"}
                     {source?.lead_name && (
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-gray-500">
                         led by {source.lead_name}
                       </div>
                     )}
@@ -274,7 +274,7 @@ export function ReferenceManager({ viewer, canRequest }: ReferenceManagerProps) 
                   <td className="hidden px-4 py-3 text-sm text-gray-500 md:table-cell">
                     {formatDate(row.created)}
                     {row.expand?.requested_by?.name && (
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-gray-500">
                         by {row.expand.requested_by.name}
                       </div>
                     )}

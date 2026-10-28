@@ -240,7 +240,7 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
           <div className="mt-4 flex flex-wrap gap-2 sm:mt-0">
             <Link
               href={`/syllabus/${syllabus.id}/revise`}
-              className="rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500"
+              className="rounded-md bg-amber-700 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600"
             >
               Open revision workspace
             </Link>

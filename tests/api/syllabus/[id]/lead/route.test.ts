@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getOne: vi.fn(),
-  update: vi.fn(),
+  batchOps: [] as unknown[][],
+  batchSend: vi.fn(),
   activeFacultyAmong: vi.fn(),
   resolveSyllabusAccess: vi.fn(),
   parseLeadTransfer: vi.fn(),
@@ -11,9 +12,17 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/pocketbase", async () => {
   const { NextResponse } = await import("next/server");
-  const collection = () => ({ getOne: mocks.getOne, update: mocks.update });
+  const collection = () => ({ getOne: mocks.getOne });
+  const createBatch = () => ({
+    collection: (name: string) => ({
+      create: (body: unknown) => mocks.batchOps.push(["create", name, body]),
+      update: (id: string, body: unknown) =>
+        mocks.batchOps.push(["update", name, id, body]),
+    }),
+    send: mocks.batchSend,
+  });
   return {
-    createAdminPb: vi.fn(async () => ({ collection })),
+    createAdminPb: vi.fn(async () => ({ collection, createBatch })),
     handlePbError: vi.fn((error: unknown) => {
       const status =
         typeof error === "object" && error && "status" in error
@@ -64,8 +73,16 @@ const syllabus = (extra: object = {}) => ({
   ...extra,
 });
 
-function put(lead = NEW, keep_previous = true) {
-  mocks.parseLeadTransfer.mockReturnValue({ ok: true, data: { lead, keep_previous } });
+const syllabusUpdate = () =>
+  mocks.batchOps.find((op) => op[0] === "update" && op[1] === "syllabi");
+const auditRow = () =>
+  mocks.batchOps.find((op) => op[1] === "audit_log")?.[2];
+
+function put(lead = NEW, keep_previous = true, reason?: string) {
+  mocks.parseLeadTransfer.mockReturnValue({
+    ok: true,
+    data: { lead, keep_previous, ...(reason && { reason }) },
+  });
   return PUT(
     new NextRequest(`http://localhost/api/syllabus/${ID}/lead`, {
       method: "PUT",
@@ -81,10 +98,8 @@ beforeEach(() => {
   mocks.getOne.mockResolvedValue(syllabus());
   mocks.activeFacultyAmong.mockResolvedValue(new Set([NEW]));
   mocks.resolveSyllabusAccess.mockResolvedValue(null);
-  mocks.update.mockImplementation(async (_id: string, data: object) => ({
-    ...syllabus(),
-    ...data,
-  }));
+  mocks.batchOps.length = 0;
+  mocks.batchSend.mockResolvedValue([]);
 });
 
 describe("PUT /api/syllabus/:id/lead", () => {
@@ -92,11 +107,28 @@ describe("PUT /api/syllabus/:id/lead", () => {
     const res = await put();
 
     expect(res.status).toBe(200);
-    expect(mocks.update).toHaveBeenCalledWith(
-      ID,
-      { lead: NEW, co_authors: [CO, OLD] },
-      { expand: "course,term.school_year,program,lead,co_authors" },
-    );
+    expect(mocks.batchOps).toEqual([
+      ["update", "syllabi", ID, { lead: NEW, co_authors: [CO, OLD] }],
+      [
+        "create",
+        "audit_log",
+        {
+          actor: "chairchairchair",
+          action: "lead.transferred",
+          target_collection: "syllabi",
+          target_id: ID,
+          syllabus: ID,
+          override: false,
+          reason: "",
+          data: { from_lead: OLD, to_lead: NEW, keep_previous: true },
+        },
+      ],
+    ]);
+    expect(mocks.batchSend).toHaveBeenCalledTimes(1);
+    expect(mocks.getOne).toHaveBeenLastCalledWith(ID, {
+      expand: "course,term.school_year,program,lead,co_authors",
+    });
+    expect(await res.json()).toMatchObject({ mapped: true });
     expect(canMock).toHaveBeenCalledWith(
       expect.objectContaining({ id: "chairchairchair" }),
       "syllabus.transferLead",
@@ -106,26 +138,68 @@ describe("PUT /api/syllabus/:id/lead", () => {
 
   it("drops the previous lead when asked", async () => {
     await put(NEW, false);
-    expect(mocks.update).toHaveBeenCalledWith(
+    expect(syllabusUpdate()).toEqual([
+      "update",
+      "syllabi",
       ID,
       { lead: NEW, co_authors: [CO] },
-      expect.anything(),
-    );
+    ]);
   });
 
   it("takes a co-author off the list when they become lead", async () => {
     mocks.activeFacultyAmong.mockResolvedValue(new Set([CO]));
     await put(CO);
-    expect(mocks.update).toHaveBeenCalledWith(
+    expect(syllabusUpdate()).toEqual([
+      "update",
+      "syllabi",
       ID,
       { lead: CO, co_authors: [OLD] },
-      expect.anything(),
-    );
+    ]);
   });
 
-  it("lets an admin transfer", async () => {
+  it("records a chair's optional reason without marking an override", async () => {
+    await put(NEW, true, "Moving to another course.");
+    expect(auditRow()).toMatchObject({
+      override: false,
+      reason: "Moving to another course.",
+    });
+  });
+
+  it("refuses an admin override without a reason, touching nothing", async () => {
     mockAuth({ id: "adminadminadmin", isAdmin: true });
+    const res = await put();
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "Give a reason for reassigning the lead.",
+    });
+    expect(mocks.batchSend).not.toHaveBeenCalled();
+  });
+
+  it("lets an admin override with a reason, marked in the audit row", async () => {
+    mockAuth({ id: "adminadminadmin", isAdmin: true });
+    expect((await put(NEW, true, "The chair is on leave.")).status).toBe(200);
+    expect(auditRow()).toMatchObject({
+      actor: "adminadminadmin",
+      action: "lead.transferred",
+      override: true,
+      reason: "The chair is on leave.",
+    });
+  });
+
+  it("needs no reason from an admin who also chairs the program", async () => {
+    mockAuth({
+      id: "adminadminadmin",
+      isAdmin: true,
+      roles: { chairOfPrograms: [PROGRAM] },
+      scope: SCOPE,
+    });
     expect((await put()).status).toBe(200);
+    expect(auditRow()).toMatchObject({ override: false });
+  });
+
+  it("delegates a failed batch to handlePbError", async () => {
+    mocks.batchSend.mockRejectedValue({ status: 500 });
+    expect((await put()).status).toBe(500);
   });
 
   it.each(["submitted", "returned", "approved"])("works while %s", async (status) => {
@@ -142,14 +216,14 @@ describe("PUT /api/syllabus/:id/lead", () => {
     const res = await put(label.includes("already") ? OLD : NEW);
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error });
-    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.batchSend).not.toHaveBeenCalled();
   });
 
   it("returns 403 to a chair of another program who can see it", async () => {
     mockAuth({ id: "chairchairchair", roles: { chairOfPrograms: ["otherotherother"] } });
     mocks.resolveSyllabusAccess.mockResolvedValue("referencer");
     expect((await put()).status).toBe(403);
-    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.batchSend).not.toHaveBeenCalled();
   });
 
   it("returns 403 to the lead", async () => {

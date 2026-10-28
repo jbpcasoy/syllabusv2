@@ -225,7 +225,7 @@ export function UserManager({ currentUserId }: UserManagerProps) {
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     {user.name || (
-                      <span className="text-gray-400">Unnamed</span>
+                      <span className="text-gray-500">Unnamed</span>
                     )}
                     {isSelf && (
                       <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">

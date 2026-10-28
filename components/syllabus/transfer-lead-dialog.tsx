@@ -19,7 +19,12 @@ import {
   DialogTitle,
   Field,
   Label,
+  Textarea,
 } from "@headlessui/react";
+import {
+  LEAD_REASON_MAX,
+  LEAD_REASON_MIN,
+} from "@/lib/validators/lead-transfer";
 import { useEffect, useState } from "react";
 
 type TransferLeadDialogProps = {
@@ -41,7 +46,11 @@ export function TransferLeadDialog({
   const [options, setOptions] = useState<CoAuthorCandidate[]>([]);
   const [selected, setSelected] = useState<CoAuthorCandidate | null>(null);
   const [keepPrevious, setKeepPrevious] = useState(true);
+  const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+  // An admin who isn't the chair overrides, and must say why.
+  const override = !!syllabus.lead_transfer_is_override;
+  const reasonTooShort = override && reason.trim().length < LEAD_REASON_MIN;
   const [error, setError] = useState<string | null>(null);
 
   // Debounce typing before hitting the server.
@@ -64,12 +73,18 @@ export function TransferLeadDialog({
 
   async function handleTransfer() {
     if (!selected) return setError("Choose the new lead.");
+    if (reasonTooShort) {
+      return setError(
+        `Give a reason of at least ${LEAD_REASON_MIN} characters.`,
+      );
+    }
     setSaving(true);
     setError(null);
     try {
       await transferLead(syllabus.id, {
         lead: selected.id,
         keep_previous: keepPrevious,
+        ...(reason.trim() && { reason: reason.trim() }),
       });
       onTransferred();
     } catch (err) {
@@ -165,6 +180,27 @@ export function TransferLeadDialog({
             </Label>
           </Field>
 
+          {override && (
+            <Field className="mt-4">
+              <Label className="block text-sm font-medium text-gray-900">
+                Reason (required)
+              </Label>
+              <Description className="mt-1 text-sm text-gray-600">
+                You are not this program&apos;s chair, so this is an admin
+                override. The reason is kept in the audit log.
+              </Description>
+              <Textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                disabled={saving}
+                required
+                rows={3}
+                maxLength={LEAD_REASON_MAX}
+                className="mt-1 block w-full rounded-md border-0 px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 disabled:bg-gray-50"
+              />
+            </Field>
+          )}
+
           {error && (
             <p role="alert" className="mt-3 text-sm text-red-600">
               {error}
@@ -183,7 +219,7 @@ export function TransferLeadDialog({
             <button
               type="button"
               onClick={handleTransfer}
-              disabled={saving || !selected}
+              disabled={saving || !selected || reasonTooShort}
               className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
             >
               {saving ? "Transferring…" : "Transfer"}

@@ -320,7 +320,7 @@ export function ProspectusItemManager({
               <tr key={row.id} className="hover:bg-gray-50">
                 <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
                   {row.expand?.course?.code || (
-                    <span className="text-gray-400">Unknown</span>
+                    <span className="text-gray-500">Unknown</span>
                   )}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900">
@@ -328,7 +328,7 @@ export function ProspectusItemManager({
                 </td>
                 <td className="hidden px-4 py-3 text-sm text-gray-500 sm:table-cell">
                   {row.year_level}
-                  <span className="block text-xs text-gray-400">
+                  <span className="block text-xs text-gray-500">
                     {row.semester}
                   </span>
                 </td>
@@ -336,7 +336,7 @@ export function ProspectusItemManager({
                   {row.expand?.prospectus ? (
                     itemProspectusLabel(row.expand.prospectus)
                   ) : (
-                    <span className="text-gray-400">Unknown prospectus</span>
+                    <span className="text-gray-500">Unknown prospectus</span>
                   )}
                 </td>
                 <td className="hidden px-4 py-3 text-sm text-gray-500 lg:table-cell">

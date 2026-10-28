@@ -179,6 +179,24 @@ describe("POST /api/syllabus/:id/submit", () => {
       ],
       [
         "create",
+        "audit_log",
+        {
+          actor: ME,
+          action: "submitted",
+          target_collection: "syllabi",
+          target_id: ID,
+          syllabus: ID,
+          override: false,
+          reason: "",
+          data: {
+            from: { status: "draft", stage: 0 },
+            to: { status: "submitted", stage: 1 },
+            version: VERSION,
+          },
+        },
+      ],
+      [
+        "create",
         "notifications",
         expect.objectContaining({
           user: REVIEWER,

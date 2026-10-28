@@ -119,12 +119,17 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     batch
       .collection("syllabi")
       .update(id, { ...result.next, status_changed_at: new Date().toISOString() });
-    addSyllabusEvent(batch, id, {
-      type: "resubmitted",
-      actor: me,
-      stage: result.next.stage,
-      version: version?.id,
-    });
+    addSyllabusEvent(
+      batch,
+      id,
+      {
+        type: "resubmitted",
+        actor: me,
+        stage: result.next.stage,
+        version: version?.id,
+      },
+      { from: syllabus, to: result.next },
+    );
     addNotifications(
       batch,
       id,

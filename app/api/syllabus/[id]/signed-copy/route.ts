@@ -11,6 +11,11 @@ import { getSyllabusAccess, resolveSyllabusAccess } from "@/lib/syllabus";
 import { hasNotUniqueError } from "@/lib/syllabus-decision";
 import { addSyllabusEvent } from "@/lib/syllabus-events";
 import { transition } from "@/lib/syllabus-workflow";
+import {
+  addUploadAudit,
+  checkUploadRate,
+  tooManyUploads,
+} from "@/lib/upload-limit";
 import type { SignedCopy } from "@/types/signed-copy";
 import type { Syllabus } from "@/types/syllabus";
 import { NextResponse, type NextRequest } from "next/server";
@@ -44,13 +49,20 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
 // POST /api/syllabus/:id/signed-copy  multipart: file=<PDF, max 20 MB>
 // Lead only, once approved. Stores the scan of the wet-signed syllabus and
-// files it (approved -> filed). One valid copy at a time.
+// files it (approved -> filed). One valid copy at a time. Rate-limited (429)
+// and audited as file.uploaded in the filing batch.
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
 
   try {
+    const me = auth.user.id;
+    const pb = await createAdminPb();
+    // Before reading the body, so a flood never buffers 20 MB files.
+    const rate = await checkUploadRate(pb, me);
+    if (!rate.ok) return tooManyUploads(rate.retryAfter);
+
     const form = await request.formData().catch(() => null);
     if (!form) {
       return NextResponse.json(
@@ -63,8 +75,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: pdf.error }, { status: 400 });
     }
 
-    const me = auth.user.id;
-    const pb = await createAdminPb();
     const [syllabus, roles] = await Promise.all([
       pb.collection("syllabi").getOne<Syllabus>(id),
       getUserRoles(me),
@@ -110,7 +120,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         ...result.next,
         status_changed_at: new Date().toISOString(),
       });
-      addSyllabusEvent(batch, id, { type: "filed", actor: me });
+      addSyllabusEvent(
+        batch,
+        id,
+        { type: "filed", actor: me },
+        { from: syllabus, to: result.next },
+      );
+      addUploadAudit(batch, me, id, "signed_copy", created.id);
       await batch.send();
     } catch (error) {
       await pb.collection("syllabus_signed_copies").delete(created.id);
