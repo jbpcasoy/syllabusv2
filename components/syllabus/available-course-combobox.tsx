@@ -12,6 +12,7 @@ import {
   ComboboxOptions,
 } from "@headlessui/react";
 import { useEffect, useState } from "react";
+import { submissionOverdueDays } from "./overdue-badge";
 
 type AvailableCourseComboboxProps = {
   term: string;
@@ -138,6 +139,10 @@ export function AvailableCourseCombobox({
                     : row.reference
                       ? `${row.reference.status === "pending" ? "Reference requested" : "Referenced"} from ${row.reference.source_program_code || "another program"}`
                       : row.year_level}
+                  {submissionOverdueDays(row.term, {
+                    syllabusStatus: row.syllabus?.status ?? null,
+                    hasReference: !!row.reference,
+                  }) > 0 && " · Past submission deadline"}
                 </span>
               </ComboboxOption>
             ))}

@@ -24,7 +24,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   }
 }
 
-// PATCH /api/term/:id  { "semester"?, "open"?: boolean, "submission_deadline"?: "2026-12-01" | null }
+// PATCH /api/term/:id  { "semester"?, "open"?: boolean, "submission_deadline"?: "2026-12-01" | null, "review_days"?: 0-90 }
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const auth = await requireUser("term.write");
   if (!auth.ok) return auth.response;

@@ -1,6 +1,11 @@
 import { form17Facts } from "@/lib/form17";
 import { pointFacts, type PointFacts } from "@/lib/form18-rules";
+import {
+  addNotifications,
+  type NotificationFacts,
+} from "@/lib/notifications";
 import { addSyllabusEvent } from "@/lib/syllabus-events";
+import type { NotificationTarget } from "@/types/notification";
 import type { Form18Point } from "@/types/form18";
 import type { ActingAs } from "@/lib/syllabus-review";
 import type { WorkflowState } from "@/lib/syllabus-workflow";
@@ -121,11 +126,13 @@ export interface DecisionInput {
   now: string;
   /** Unresolved points a return re-opens. */
   reopenPointIds?: string[];
+  /** From notificationRecipients() and notificationFacts(). */
+  notify?: { targets: NotificationTarget[]; facts: NotificationFacts };
 }
 
 /**
- * Writes the review row, the syllabus's next state, its timeline event and
- * any re-opened points in one batch. The
+ * Writes the review row, the syllabus's next state, its timeline event,
+ * its notifications and any re-opened points in one batch. The
  * unique index (version, stage) makes a second decision on the same stage
  * fail as a whole: "conflict".
  */
@@ -156,6 +163,15 @@ export async function recordDecision(
     version: input.versionId,
     approval_code: input.approvalCode,
   });
+  if (input.notify) {
+    addNotifications(
+      batch,
+      input.syllabusId,
+      input.reviewer,
+      input.notify.targets,
+      input.notify.facts,
+    );
+  }
   for (const pointId of input.reopenPointIds ?? []) {
     batch.collection("form18_points").update(pointId, { status: "open" });
   }

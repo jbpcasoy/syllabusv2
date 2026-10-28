@@ -65,7 +65,10 @@ vi.mock("@/lib/syllabus-decision", () => ({ ensureRefSeq: mocks.ensureRefSeq }))
 vi.mock("@/lib/syllabus-version", () => ({
   latestVersion: mocks.latestVersion,
 }));
-vi.mock("@/lib/syllabus-workflow", () => ({ transition: mocks.transition }));
+vi.mock("@/lib/syllabus-workflow", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  transition: mocks.transition,
+}));
 
 vi.mock("@/lib/auth", async () =>
   (await import("@/tests/helpers/mock-auth")).authModuleMock(),
@@ -97,6 +100,10 @@ const draft = {
   co_authors: [],
   status: "draft",
   stage: 0,
+  expand: {
+    course: { code: "IT 101", title: "Intro to Computing" },
+    program: { code: "BSIT" },
+  },
 };
 
 function post() {
@@ -115,7 +122,9 @@ beforeEach(() => {
   // The first load is the draft; the reload after the batch sees it submitted.
   mocks.syllabiGetOne.mockImplementation(
     async (_id: string, options?: { expand?: string }) =>
-      options?.expand ? { ...draft, status: "submitted", stage: 1 } : draft,
+      options?.expand === EXPAND
+        ? { ...draft, status: "submitted", stage: 1 }
+        : draft,
   );
   mocks.getSyllabusAccess.mockReturnValue("lead");
   mocks.termsGetOne.mockResolvedValue({ id: TERM, open: true });
@@ -168,8 +177,25 @@ describe("POST /api/syllabus/:id/submit", () => {
           reason: "",
         },
       ],
+      [
+        "create",
+        "notifications",
+        expect.objectContaining({
+          user: REVIEWER,
+          syllabus: ID,
+          kind: "review_requested",
+          stage: 1,
+          actor: ME,
+          title: "IT 101 (BSIT) is waiting for your review",
+          link: `/syllabus/${ID}/review`,
+          email_status: "pending",
+        }),
+      ],
     ]);
     expect(mocks.batchSend).toHaveBeenCalledTimes(1);
+    expect(mocks.syllabiGetOne).toHaveBeenNthCalledWith(1, ID, {
+      expand: "course,program",
+    });
     expect(mocks.syllabiGetOne).toHaveBeenLastCalledWith(ID, { expand: EXPAND });
     expect(await res.json()).toMatchObject({
       status: "submitted",
@@ -183,6 +209,24 @@ describe("POST /api/syllabus/:id/submit", () => {
     );
     expect(mocks.loadStandIns).toHaveBeenCalledWith(expect.anything(), ID);
     expect(mocks.missingChainRoles).toHaveBeenCalledWith(HOLDERS);
+  });
+
+  it("notifies the proxy instead of the program reviewer when one is set", async () => {
+    const PROXY = "proxyproxyproxy";
+    mocks.loadStandIns.mockResolvedValue([{ stage: 1, user: PROXY }]);
+
+    await POST(post(), ctx);
+
+    const notified = mocks.batchOps
+      .filter((op) => op[1] === "notifications")
+      .map((op) => (op[2] as { user: string }).user);
+    expect(notified).toEqual([PROXY]);
+  });
+
+  it("writes no notification when the workflow refuses", async () => {
+    mocks.transition.mockReturnValue({ ok: false, error: "nope" });
+    await POST(post(), ctx);
+    expect(mocks.batchOps).toEqual([]);
   });
 
   it("assigns the approval-code sequence before storing the new state", async () => {

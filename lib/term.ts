@@ -17,6 +17,7 @@ export function toTermResponse(record: Term): TermResponse {
     submission_deadline: record.submission_deadline
       ? record.submission_deadline.slice(0, 10)
       : "",
+    review_days: record.review_days ?? 0,
     created: record.created,
     updated: record.updated,
     expand: {

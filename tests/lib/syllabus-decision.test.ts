@@ -289,6 +289,48 @@ describe("recordDecision", () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  it("queues the notifications in the same batch, after the event", async () => {
+    await recordDecision(pb, {
+      ...input,
+      notify: {
+        targets: [
+          { user: "fdisfdisfdisfdi", kind: "review_requested", stage: 3 },
+          { user: "leadleadleadlea", kind: "approved", stage: 2 },
+        ],
+        facts: {
+          courseCode: "IT 101",
+          courseTitle: "Intro to Computing",
+          programCode: "BSIT",
+          actorName: "Dean Reyes",
+        },
+      },
+    });
+    expect(ops.slice(3)).toEqual([
+      [
+        "create",
+        "notifications",
+        expect.objectContaining({
+          user: "fdisfdisfdisfdi",
+          syllabus: ID,
+          kind: "review_requested",
+          stage: 3,
+          actor: "deandeandeandea",
+          email_status: "pending",
+        }),
+      ],
+      [
+        "create",
+        "notifications",
+        expect.objectContaining({
+          user: "leadleadleadlea",
+          kind: "approved",
+          title: "IT 101 (BSIT) was approved by the Dean",
+        }),
+      ],
+    ]);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
   it("reports a conflict when the unique index rejects the batch", async () => {
     send.mockRejectedValue(BATCH_NOT_UNIQUE);
     expect(await recordDecision(pb, input)).toBe("conflict");

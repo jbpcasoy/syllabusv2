@@ -106,6 +106,10 @@ const returned = {
   status: "returned",
   stage: 3,
   returned_at: RETURNED_AT,
+  expand: {
+    course: { code: "IT 101", title: "Intro to Computing" },
+    program: { code: "BSIT" },
+  },
 };
 
 const resubmit = () =>
@@ -123,7 +127,7 @@ const RETURNED_VERSION = "v2v2v2v2v2v2v2v";
 function loads(before: object, after: object = { ...before, reloaded: true }) {
   mocks.syllabiGetOne.mockImplementation(
     async (_id: string, options?: { expand?: string }) =>
-      options?.expand ? after : before,
+      options?.expand === "course,program" ? before : after,
   );
 }
 
@@ -172,6 +176,22 @@ describe("POST /api/syllabus/:id/resubmit", () => {
         approval_code: "",
         reason: "",
       },
+    ]);
+    // Only the returning stage's holder hears about it.
+    expect(mocks.batchOps.filter((op) => op[1] === "notifications")).toEqual([
+      [
+        "create",
+        "notifications",
+        expect.objectContaining({
+          user: "fdis",
+          syllabus: ID,
+          kind: "review_requested",
+          stage: 3,
+          actor: ME,
+          link: `/syllabus/${ID}/review`,
+          email_status: "pending",
+        }),
+      ],
     ]);
     expect(mocks.batchSend).toHaveBeenCalledTimes(1);
     expect(mocks.syllabiGetOne).toHaveBeenLastCalledWith(ID, {

@@ -32,7 +32,8 @@ export type Capability =
   | "syllabus.transferLead"
   | "signedCopy.return"
   | "justification.return"
-  | "reviewQueue.view";
+  | "reviewQueue.view"
+  | "dashboard.view";
 
 /** The org chain a target sits in, resolved program → department → college. */
 export type ScopeChain = {
@@ -107,6 +108,17 @@ const RULES: Record<Capability, Rule> = {
   // shows only the stages the user holds or stands in for.
   "reviewQueue.view": (r) =>
     r.reviewerOfPrograms.length > 0 ||
+    r.deanOfColleges.length > 0 ||
+    r.isFdisChair ||
+    r.isCitlDirector ||
+    r.isVpaa,
+  // Open the dashboard: any manager or chain role, anywhere. Global for the
+  // same reason as the queue; lib/dashboard-scope.ts limits what they see.
+  // Faculty alone don't get one (they have My syllabi).
+  "dashboard.view": (r) =>
+    r.reviewerOfPrograms.length > 0 ||
+    r.chairOfPrograms.length > 0 ||
+    r.headOfDepartments.length > 0 ||
     r.deanOfColleges.length > 0 ||
     r.isFdisChair ||
     r.isCitlDirector ||

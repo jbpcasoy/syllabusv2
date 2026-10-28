@@ -7,7 +7,7 @@ import {
   type TermResponse,
 } from "@/lib/term-client";
 import { isValidDate } from "@/lib/validators/term";
-import { SEMESTERS, type Semester } from "@/types/term";
+import { MAX_REVIEW_DAYS, SEMESTERS, type Semester } from "@/types/term";
 import {
   Checkbox,
   Description,
@@ -57,6 +57,7 @@ export function TermModal({
   );
   const [isOpen, setIsOpen] = useState(term?.open ?? false);
   const [deadline, setDeadline] = useState(term?.submission_deadline ?? "");
+  const [reviewDays, setReviewDays] = useState(String(term?.review_days ?? 0));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,6 +72,12 @@ export function TermModal({
     if (deadline && !isValidDate(deadline)) {
       return setError("Enter a valid submission deadline or leave it empty.");
     }
+    const days = reviewDays.trim() === "" ? 0 : Number(reviewDays);
+    if (!Number.isInteger(days) || days < 0 || days > MAX_REVIEW_DAYS) {
+      return setError(
+        `Enter a review limit from 0 to ${MAX_REVIEW_DAYS} whole days.`,
+      );
+    }
 
     setSaving(true);
     setError(null);
@@ -79,6 +86,7 @@ export function TermModal({
         semester,
         open: isOpen,
         submission_deadline: deadline || null,
+        review_days: days,
       };
       if (isEdit) {
         await updateTerm(term.id, fields);
@@ -170,7 +178,29 @@ export function TermModal({
                 className={inputClass}
               />
               <Description className="mt-1 text-xs text-gray-500">
-                Optional.
+                Optional. A syllabus not submitted by the end of this day
+                (Philippine time) is shown as overdue.
+              </Description>
+            </Field>
+
+            <Field>
+              <Label className="block text-sm font-medium text-gray-900">
+                Review limit (days per stage)
+              </Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={MAX_REVIEW_DAYS}
+                step={1}
+                value={reviewDays}
+                onChange={(e) => setReviewDays(e.target.value)}
+                disabled={saving}
+                className={inputClass}
+              />
+              <Description className="mt-1 text-xs text-gray-500">
+                A syllabus waiting longer than this at one stage is shown as
+                overdue. 0 means no limit. Nothing is ever blocked.
               </Description>
             </Field>
 

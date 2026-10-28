@@ -74,6 +74,8 @@ describe("toSyllabusResponse", () => {
           term: {
             id: "trm123trm123trm",
             semester: "First Semester",
+            submission_deadline: "2026-12-01 00:00:00.000Z",
+            review_days: 3,
             expand: { school_year: { label: "2026-2027" } },
           },
           program: { id: "prg123prg123prg", name: "BSIT", code: "IT" },
@@ -97,6 +99,9 @@ describe("toSyllabusResponse", () => {
         id: "trm123trm123trm",
         semester: "First Semester",
         school_year_label: "2026-2027",
+        // Only the day of the deadline, plus the review limit, for the badges.
+        submission_deadline: "2026-12-01",
+        review_days: 3,
       },
       program: { id: "prg123prg123prg", name: "BSIT", code: "IT" },
       lead: { id: LEAD, name: "Ana", email: "ana@buksu.edu.ph" },
@@ -498,6 +503,9 @@ describe("listAvailable", () => {
           id: term.id,
           semester: "First Semester",
           school_year_label: "2026-2027",
+          // A term with neither set reads as no deadline and no limit.
+          submission_deadline: "",
+          review_days: 0,
         },
         program: { id: PROG, name: "N", code: "C" },
         year_level: "First Year",
@@ -513,6 +521,8 @@ describe("listAvailable", () => {
           id: term.id,
           semester: "First Semester",
           school_year_label: "2026-2027",
+          submission_deadline: "",
+          review_days: 0,
         },
         program: { id: PROG, name: "N", code: "C" },
         year_level: "First Year",

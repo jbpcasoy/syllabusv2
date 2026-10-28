@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ListResult } from "pocketbase";
 import { useEffect, useState } from "react";
+import { SubmissionOverdueBadge } from "./overdue-badge";
 import { SyllabusModal, type ProgramOption } from "./syllabus-modal";
 import {
   ACCESS_LABELS,
@@ -306,6 +307,12 @@ export function SyllabusManager({ programs }: SyllabusManagerProps) {
                 </td>
                 <td className="px-4 py-3 text-sm">
                   <SyllabusStatusBadge status={row.status} />
+                  <div className="mt-1 empty:hidden">
+                    <SubmissionOverdueBadge
+                      term={row.expand?.term}
+                      slot={{ syllabusStatus: row.status, hasReference: false }}
+                    />
+                  </div>
                 </td>
                 <td className="hidden px-4 py-3 text-sm text-gray-500 md:table-cell">
                   {row.access ? ACCESS_LABELS[row.access] : "—"}

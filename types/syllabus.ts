@@ -57,6 +57,17 @@ export interface Syllabus extends RecordModel {
   };
 }
 
+/** The term facts every syllabus row carries, including its deadlines. */
+export interface TermSummary {
+  id: string;
+  semester: string;
+  school_year_label: string;
+  /** "YYYY-MM-DD" or "" when unset. */
+  submission_deadline: string;
+  /** Days per stage; 0 = no limit. */
+  review_days: number;
+}
+
 /** Body of POST /api/syllabus. The lead is always the caller. */
 export interface SyllabusInput {
   course: string;
@@ -83,7 +94,7 @@ export interface SyllabusUpdateInput {
  */
 export interface AvailableSyllabusRow {
   course: { id: string; code: string; title: string };
-  term: { id: string; semester: string; school_year_label: string };
+  term: TermSummary;
   program: { id: string; name: string; code: string };
   year_level: string;
   syllabus?: { id: string; status: SyllabusStatus; lead_name: string };
@@ -144,7 +155,7 @@ export interface SyllabusResponse {
   can_transfer_lead?: boolean;
   expand?: {
     course?: { id: string; code: string; title: string };
-    term?: { id: string; semester: string; school_year_label: string };
+    term?: TermSummary;
     program?: { id: string; name: string; code: string };
     lead?: { id: string; name: string; email: string };
     co_authors?: { id: string; name: string; email: string }[];

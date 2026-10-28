@@ -1,14 +1,30 @@
 import { getCurrentUser, toSessionUser } from "@/lib/auth";
 import { APP_NAME } from "@/lib/constants";
+import { countUnread } from "@/lib/notification";
+import { createAdminPb } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
 import Link from "next/link";
 import { HeaderAuth } from "./header-auth";
+import { NotificationBell } from "./notification-bell";
+
+/** The badge must never break the header; the bell refetches anyway. */
+async function unreadFor(userId: string): Promise<number> {
+  try {
+    return await countUnread(await createAdminPb(), userId);
+  } catch (error) {
+    console.error("Failed to count unread notifications", error);
+    return 0;
+  }
+}
 
 export async function AppHeader() {
   const user = await getCurrentUser();
-  const sessionUser = user
-    ? toSessionUser(user, await getUserRoles(user.id))
-    : null;
+  const [sessionUser, unread] = user
+    ? await Promise.all([
+        getUserRoles(user.id).then((roles) => toSessionUser(user, roles)),
+        unreadFor(user.id),
+      ])
+    : [null, 0];
 
   return (
     <header className="border-b border-gray-200 bg-white">
@@ -20,7 +36,10 @@ export async function AppHeader() {
           {APP_NAME}
         </Link>
 
-        <HeaderAuth user={sessionUser} />
+        <div className="flex items-center gap-2">
+          {sessionUser && <NotificationBell initialUnread={unread} />}
+          <HeaderAuth user={sessionUser} />
+        </div>
       </div>
     </header>
   );

@@ -93,6 +93,8 @@ const syllabus = (stage = 1, status = "submitted", extra: object = {}) => ({
       semester: "First Semester",
       expand: { school_year: { label: "2026-2027" } },
     },
+    course: { code: "IT 101", title: "Intro to Computing" },
+    program: { code: "BSIT" },
   },
   ...extra,
 });
@@ -122,7 +124,7 @@ function decide(decision: "approve" | "return") {
 function loads(before: object, after: object = { id: ID, reloaded: true }) {
   mocks.syllabiGetOne.mockImplementation(
     async (_id: string, options: { expand: string }) =>
-      options.expand === "term.school_year" ? before : after,
+      options.expand === "term.school_year,course,program" ? before : after,
   );
 }
 
@@ -158,6 +160,19 @@ describe("POST /api/syllabus/:id/review", () => {
         next: { status: "submitted", stage: 2 },
         now: NOW,
         reopenPointIds: [],
+        notify: {
+          targets: [
+            { user: DEAN, kind: "review_requested", stage: 2 },
+            { user: LEAD, kind: "approved", stage: 1 },
+          ],
+          facts: {
+            courseCode: "IT 101",
+            courseTitle: "Intro to Computing",
+            programCode: "BSIT",
+            // The mocked session user has no name.
+            actorName: "Someone",
+          },
+        },
       });
       expect(mocks.loadFormFacts).toHaveBeenCalledWith(expect.anything(), {
         syllabusId: ID,
@@ -203,6 +218,10 @@ describe("POST /api/syllabus/:id/review", () => {
           next: { status: "approved", stage: 5 },
         }),
       );
+      expect(mocks.recordDecision.mock.calls[0][1].notify.targets).toEqual([
+        { user: LEAD, kind: "final_approved", stage: 5 },
+        { user: CO, kind: "final_approved", stage: 5 },
+      ]);
     });
 
     it.each([
@@ -237,6 +256,10 @@ describe("POST /api/syllabus/:id/review", () => {
           now: NOW,
         }),
       );
+      expect(mocks.recordDecision.mock.calls[0][1].notify.targets).toEqual([
+        { user: LEAD, kind: "returned", stage: 2 },
+        { user: CO, kind: "returned", stage: 2 },
+      ]);
       expect(mocks.ensureRefSeq).not.toHaveBeenCalled();
     });
 
@@ -313,6 +336,18 @@ describe("POST /api/syllabus/:id/review", () => {
         expect.anything(),
         expect.objectContaining({ actingAs: "standIn", stage: 3 }),
       );
+    });
+
+    it("asks the next stage's stand-in instead of its holder", async () => {
+      loads(syllabus(2));
+      mocks.loadStandIns.mockResolvedValue([{ stage: 3, user: OTHER }]);
+      mockAuth({ id: DEAN });
+
+      await decide("approve");
+      expect(mocks.recordDecision.mock.calls[0][1].notify.targets).toEqual([
+        { user: OTHER, kind: "review_requested", stage: 3 },
+        { user: LEAD, kind: "approved", stage: 2 },
+      ]);
     });
   });
 

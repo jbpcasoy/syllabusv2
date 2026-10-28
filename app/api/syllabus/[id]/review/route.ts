@@ -1,5 +1,10 @@
 import { approvalCode } from "@/lib/approval-code";
 import { requireUser } from "@/lib/auth";
+import {
+  notificationFacts,
+  notificationRecipients,
+  NOTIFY_EXPAND,
+} from "@/lib/notifications";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
 import {
@@ -49,7 +54,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const [syllabus, roles] = await Promise.all([
       pb
         .collection("syllabi")
-        .getOne<Syllabus>(id, { expand: "term.school_year" }),
+        .getOne<Syllabus>(id, { expand: `term.school_year,${NOTIFY_EXPAND}` }),
       getUserRoles(me),
     ]);
     const [holders, standIns] = await Promise.all([
@@ -125,6 +130,19 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       next: result.next,
       now: new Date().toISOString(),
       reopenPointIds: decision === "return" ? facts.unresolvedIds : [],
+      notify: {
+        targets: notificationRecipients(
+          {
+            type: decision === "approve" ? "approved" : "returned",
+            stage: actor.stage,
+            actor: me,
+          },
+          syllabus,
+          holders,
+          standIns,
+        ),
+        facts: notificationFacts(syllabus, auth.user.name),
+      },
     });
     if (outcome === "conflict") {
       return conflict("Another decision on this stage finished first.");

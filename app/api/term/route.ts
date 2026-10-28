@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/term
-// { "school_year": "<id>", "semester": "First Semester", "open"?: boolean, "submission_deadline"?: "2026-12-01" | null }
+// { "school_year": "<id>", "semester": "First Semester", "open"?: boolean, "submission_deadline"?: "2026-12-01" | null, "review_days"?: 0-90 }
 export async function POST(request: NextRequest) {
   const auth = await requireUser("term.write");
   if (!auth.ok) return auth.response;

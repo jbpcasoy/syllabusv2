@@ -1,4 +1,10 @@
 import { requireUser } from "@/lib/auth";
+import {
+  addNotifications,
+  notificationFacts,
+  notificationRecipients,
+  NOTIFY_EXPAND,
+} from "@/lib/notifications";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
 import {
@@ -42,7 +48,7 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     const me = auth.user.id;
     const pb = await createAdminPb();
     const [syllabus, roles] = await Promise.all([
-      pb.collection("syllabi").getOne<Syllabus>(id),
+      pb.collection("syllabi").getOne<Syllabus>(id, { expand: NOTIFY_EXPAND }),
       getUserRoles(me),
     ]);
     const access = getSyllabusAccess(me, roles, syllabus);
@@ -119,6 +125,18 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
       stage: result.next.stage,
       version: version?.id,
     });
+    addNotifications(
+      batch,
+      id,
+      me,
+      notificationRecipients(
+        { type: "resubmitted", stage: result.next.stage, actor: me },
+        syllabus,
+        holders,
+        standIns,
+      ),
+      notificationFacts(syllabus, auth.user.name),
+    );
     await batch.send();
 
     const updated = await pb

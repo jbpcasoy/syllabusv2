@@ -20,7 +20,7 @@ Syllabus review system for Bukidnon State University. Faculty upload syllabi as 
 
 ## Hard rules
 
-- TypeScript only (`.ts` / `.tsx`). Never plain JavaScript.
+- TypeScript only (`.ts` / `.tsx`). Never plain JavaScript, except the files PocketBase runs itself: `pb_migrations/*.js` and `pb_hooks/*.pb.js`. Keep hooks as thin transport; logic stays in tested TypeScript.
 - Follow the Next.js rules block at the top of this file: read the relevant guide in `node_modules/next/dist/docs/` before writing Next.js code. Route `params` are `Promise`s and must be awaited. Request interception lives in `app/proxy.ts`.
 - UI is Headless UI + Tailwind only. No other component libraries.
 - PocketBase is the only data store. Server code uses `createAdminPb()` from `lib/pocketbase.ts`.
@@ -110,6 +110,7 @@ Vitest, one test file per route file, mirroring the `app/api` path under `tests/
 | signed copy (return as invalid)                           | Program Reviewer; Dean of its college; FDIS Chair; CITL Director; VPAA | Scoped |
 | syllabus lead (transfer)                                  | Program Chair of the syllabus's program                            | Scoped |
 | justification (return for revision)                      | Program Reviewer; Dean of its college; FDIS Chair; CITL Director; VPAA | Scoped |
+| dashboard (view, export)                                  | Program Reviewer, Program Chair, Department Head, Dean, FDIS Chair, CITL Director, VPAA; justification panel only for the justification roles | Scoped |
 
 Syllabus access (lead, co-author, admin) is a relationship to one record, not a role, so it is checked by `getSyllabusAccess()` in `lib/syllabus.ts`, not by a capability. The same goes for the source lead (or admin) deciding or revoking a reference.
 
@@ -160,9 +161,13 @@ Add every new check as a capability in `lib/capability-rules.ts`. Never branch o
 
 **Storage:** set `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET` and `S3_FORCE_PATH_STYLE` in PocketBase's environment before migrating to store files in S3. Unset means local disk.
 
+**Email:** `pb_hooks/notifications.pb.js` emails queued `notifications` every minute through PocketBase's mailer. Configure SMTP and the sender in PocketBase's Mail settings, and set `APP_URL` (the Next.js app's URL) in PocketBase's environment so links are absolute. Without SMTP, rows end `failed` and the in-app badge still works.
+
 **Phase 3:** `syllabi` gains statuses `returned`, `approved`, `filed` and fields `ref_seq`, `returned_at` (a returned syllabus keeps `stage` at the returning stage); `syllabus_stand_ins`; `syllabus_reviews` (one per version and stage); `program_reviewers` (user, program, active; unique (user, program) and one active per program); stage fields max 5; `form17_answers` (unique (version, criterion)), `form17_changes` (append-only), `syllabus_versions.form17_suggestions`; `form18_points` (open → responded → resolved | unresolved; a return re-opens unresolved); `syllabus_signed_copies` (protected PDF; one valid per syllabus; returned copies kept); `syllabi.based_on`; `syllabus_justifications` (one per syllabus; draft → submitted → returned). Form definitions: `lib/forms/`.
 
 **Phase 4:** `syllabus_events` (append-only, one row per workflow transition, written in the transition's batch by `addSyllabusEvent()` in `lib/syllabus-events.ts`; it feeds the timeline and is narrower than `audit_log`); `syllabi.status_changed_at` (set by every transition; the queue sorts on it). Queues: `lib/review-queue.ts`, `/review`. Workspaces: `/syllabus/[id]/review` (reviewer) and `/syllabus/[id]/revise` (lead); the syllabus page itself is read-only for review. Spec: `docs/specs/phase-4-reviewer-experience.md`.
+
+**Phase 5:** `notifications` (one row per recipient per submit, resubmit, approve or return, written in the transition's batch by `addNotifications()` in `lib/notifications.ts`, which also builds the title, body and link; it feeds the header badge and `/notifications` and is the email outbox that `pb_hooks/notifications.pb.js` drains every minute: `pending` → `sending` → `sent` | `failed` (3 attempts, 24 hours) | `skipped` (unverified)); `terms.review_days` (days per stage, 0 = no limit). Deadlines are indicators only (`lib/deadlines.ts`, Philippine time) and never block. Dashboards: `/dashboard`, `dashboard.view`, scope in `lib/dashboard-scope.ts` (justifications only through `justificationScope`, never department heads or program chairs), counts in `lib/dashboard-aggregate.ts`, CSV exports in `lib/dashboard-export.ts`. Spec: `docs/specs/phase-5-visibility.md`.
 
 **Planned collections:** `audit_log`.
 
@@ -178,7 +183,7 @@ Work in this order and do not start a phase before the previous one is done unle
 | 2     | Syllabus submission, PDF versions, co-authors, protected file route, syllabus references                    | Done        |
 | 3     | Review engine, Form 17, Form 18-1, proxy, approval references, signed scan                                  | Done        |
 | 4     | Reviewer queues, PDF viewer, timeline, faculty return view                                                  | Done        |
-| 5     | Notifications, deadlines, dashboards                                                                        | Not started |
+| 5     | Notifications, deadlines, dashboards                                                                        | Done        |
 | 6     | Audit trail, overrides, rate limits, end-to-end tests, accessibility                                        | Not started |
 
 Update the status column when a phase finishes.

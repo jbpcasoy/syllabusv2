@@ -11,6 +11,7 @@ import { listTerms, type TermResponse } from "@/lib/term-client";
 import { Select, Tab, TabGroup, TabList } from "@headlessui/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ReviewOverdueBadge } from "../syllabus/overdue-badge";
 import { SyllabusStatusBadge, termLabel } from "../syllabus/syllabus-status";
 import {
   ProgramFilterCombobox,
@@ -300,6 +301,11 @@ export function ReviewQueueManager() {
                 </td>
                 <td className="px-4 py-3 text-sm">
                   <SyllabusStatusBadge status={row.status} />
+                  {status === "waiting" && (
+                    <div className="mt-1">
+                      <ReviewOverdueBadge syllabus={row} term={row.expand?.term} />
+                    </div>
+                  )}
                   {status === "passed" && row.status !== "approved" && row.status !== "filed" && (
                     <div className="mt-1 text-xs text-gray-500">
                       at {stageLabel(row.stage)}

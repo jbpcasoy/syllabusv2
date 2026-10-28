@@ -17,6 +17,7 @@ import { CoAuthorsPanel } from "./co-authors-panel";
 import { DeleteSyllabusDialog } from "./delete-syllabus-dialog";
 import { Form17Panel } from "./form17-panel";
 import { JustificationPanel } from "./justification-panel";
+import { ReviewOverdueBadge, SubmissionOverdueBadge } from "./overdue-badge";
 import { ReviewPointsHistory } from "./review-points-history";
 import { SignedCopyPanel } from "./signed-copy-panel";
 import { TransferLeadDialog } from "./transfer-lead-dialog";
@@ -174,6 +175,11 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
           </h1>
           <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600">
             <SyllabusStatusBadge status={syllabus.status} />
+            <SubmissionOverdueBadge
+              term={syllabus.expand?.term}
+              slot={{ syllabusStatus: syllabus.status, hasReference: false }}
+            />
+            <ReviewOverdueBadge syllabus={syllabus} term={syllabus.expand?.term} />
             <span>{program ? `${program.name} (${program.code})` : "—"}</span>
             <span>{termLabel(syllabus.expand?.term)}</span>
           </p>

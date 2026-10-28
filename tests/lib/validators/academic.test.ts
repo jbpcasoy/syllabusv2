@@ -48,7 +48,7 @@ describe("school year", () => {
 });
 
 describe("term", () => {
-  it("defaults open to false and the deadline to null", () => {
+  it("defaults open to false, the deadline to null and the review limit to 0", () => {
     expect(
       parseTermInput({ school_year: SY, semester: "First Semester" }),
     ).toEqual({
@@ -58,9 +58,31 @@ describe("term", () => {
         semester: "First Semester",
         open: false,
         submission_deadline: null,
+        review_days: 0,
       },
     });
   });
+
+  it.each([0, 1, 90])("accepts a review limit of %i days", (days) => {
+    expect(
+      parseTermInput({ school_year: SY, semester: "Summer", review_days: days }),
+    ).toMatchObject({ ok: true, data: { review_days: days } });
+    expect(parseTermUpdate({ review_days: days })).toEqual({
+      ok: true,
+      data: { review_days: days },
+    });
+  });
+
+  it.each([-1, 91, 1.5, "3", null, Number.NaN])(
+    "rejects a review limit of %o",
+    (days) => {
+      const error = "`review_days` must be a whole number from 0 to 90";
+      expect(
+        parseTermInput({ school_year: SY, semester: "Summer", review_days: days }),
+      ).toEqual({ ok: false, error });
+      expect(parseTermUpdate({ review_days: days })).toEqual({ ok: false, error });
+    },
+  );
 
   it("accepts a real date and rejects an impossible one", () => {
     expect(isValidDate("2026-12-01")).toBe(true);

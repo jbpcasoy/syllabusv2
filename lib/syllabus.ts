@@ -8,6 +8,7 @@ import type {
   Syllabus,
   SyllabusAccess,
   SyllabusResponse,
+  TermSummary,
 } from "@/types/syllabus";
 import type { Faculty } from "@/types/faculty";
 import type { SyllabusReference } from "@/types/syllabus-reference";
@@ -18,6 +19,18 @@ import "server-only";
 /** Expand string used everywhere so responses can show names and codes. */
 export const SYLLABUS_EXPAND =
   "course,term.school_year,program,lead,co_authors";
+
+/** A term expanded with its school year, as rows show it. */
+export function toTermSummary(term: Term): TermSummary {
+  return {
+    id: term.id,
+    semester: term.semester,
+    school_year_label: term.expand?.school_year?.label ?? "",
+    // PocketBase stores "2026-12-01 00:00:00.000Z"; only the day counts.
+    submission_deadline: term.submission_deadline?.slice(0, 10) ?? "",
+    review_days: term.review_days ?? 0,
+  };
+}
 
 export function toSyllabusResponse(
   record: Syllabus,
@@ -48,13 +61,7 @@ export function toSyllabusResponse(
       ...(course && {
         course: { id: course.id, code: course.code, title: course.title },
       }),
-      ...(term && {
-        term: {
-          id: term.id,
-          semester: term.semester,
-          school_year_label: term.expand?.school_year?.label ?? "",
-        },
-      }),
+      ...(term && { term: toTermSummary(term) }),
       ...(program && {
         program: { id: program.id, name: program.name, code: program.code },
       }),
@@ -374,11 +381,7 @@ export async function listAvailable(
     const reference = referenceByKey.get(key(course.id, term.id, program.id));
     items.push({
       course: { id: course.id, code: course.code, title: course.title },
-      term: {
-        id: term.id,
-        semester: term.semester,
-        school_year_label: term.expand?.school_year?.label ?? "",
-      },
+      term: toTermSummary(term),
       program: { id: program.id, name: program.name, code: program.code },
       year_level: item.year_level,
       ...(syllabus && {

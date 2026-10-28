@@ -125,7 +125,7 @@ export function TermManager({ canManage, schoolYearsKey = 0 }: TermManagerProps)
   const totalPages = data?.totalPages ?? 1;
   const from = totalItems === 0 ? 0 : (page - 1) * PER_PAGE + 1;
   const to = Math.min(page * PER_PAGE, totalItems);
-  const colCount = 5;
+  const colCount = 6;
 
   return (
     <section>
@@ -222,6 +222,9 @@ export function TermManager({ canManage, schoolYearsKey = 0 }: TermManagerProps)
               <th scope="col" className={`hidden md:table-cell ${thClass}`}>
                 Submission deadline
               </th>
+              <th scope="col" className={`hidden lg:table-cell ${thClass}`}>
+                Review limit
+              </th>
               <th scope="col" className="px-4 py-3">
                 <span className="sr-only">Actions</span>
               </th>
@@ -255,6 +258,11 @@ export function TermManager({ canManage, schoolYearsKey = 0 }: TermManagerProps)
                 </td>
                 <td className="hidden px-4 py-3 text-sm text-gray-500 md:table-cell">
                   {row.submission_deadline || "—"}
+                </td>
+                <td className="hidden px-4 py-3 text-sm text-gray-500 lg:table-cell">
+                  {row.review_days > 0
+                    ? `${row.review_days} ${row.review_days === 1 ? "day" : "days"} per stage`
+                    : "No limit"}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
                   {canManage && (

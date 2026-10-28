@@ -1,4 +1,5 @@
 import {
+  MAX_REVIEW_DAYS,
   SEMESTERS,
   type Semester,
   type TermInput,
@@ -28,6 +29,17 @@ export function isValidDate(value: string): boolean {
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 }
 
+const REVIEW_DAYS_ERROR = `\`review_days\` must be a whole number from 0 to ${MAX_REVIEW_DAYS}`;
+
+function isReviewDays(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= MAX_REVIEW_DAYS
+  );
+}
+
 function parseDeadline(
   value: unknown,
 ): { ok: true; value: string | null } | { ok: false; error: string } {
@@ -43,10 +55,8 @@ export function parseTermInput(body: unknown): ParseResult<TermInput> {
     return { ok: false, error: "Body must be a JSON object" };
   }
 
-  const { school_year, semester, open, submission_deadline } = body as Record<
-    string,
-    unknown
-  >;
+  const { school_year, semester, open, submission_deadline, review_days } =
+    body as Record<string, unknown>;
 
   if (typeof school_year !== "string" || !PB_ID.test(school_year)) {
     return { ok: false, error: "`school_year` must be a valid school year id" };
@@ -57,6 +67,9 @@ export function parseTermInput(body: unknown): ParseResult<TermInput> {
   }
   const deadline = parseDeadline(submission_deadline ?? null);
   if (!deadline.ok) return deadline;
+  if (review_days !== undefined && !isReviewDays(review_days)) {
+    return { ok: false, error: REVIEW_DAYS_ERROR };
+  }
 
   return {
     ok: true,
@@ -65,6 +78,7 @@ export function parseTermInput(body: unknown): ParseResult<TermInput> {
       semester,
       open: open ?? false,
       submission_deadline: deadline.value,
+      review_days: review_days ?? 0,
     },
   };
 }
@@ -75,7 +89,7 @@ export function parseTermUpdate(body: unknown): ParseResult<TermUpdateInput> {
     return { ok: false, error: "Body must be a JSON object" };
   }
 
-  const { semester, open, submission_deadline } = body as Record<
+  const { semester, open, submission_deadline, review_days } = body as Record<
     string,
     unknown
   >;
@@ -96,11 +110,18 @@ export function parseTermUpdate(body: unknown): ParseResult<TermUpdateInput> {
     if (!deadline.ok) return deadline;
     data.submission_deadline = deadline.value;
   }
+  if (review_days !== undefined) {
+    if (!isReviewDays(review_days)) {
+      return { ok: false, error: REVIEW_DAYS_ERROR };
+    }
+    data.review_days = review_days;
+  }
 
   if (Object.keys(data).length === 0) {
     return {
       ok: false,
-      error: "Provide at least one of `semester`, `open`, `submission_deadline`",
+      error:
+        "Provide at least one of `semester`, `open`, `submission_deadline`, `review_days`",
     };
   }
 
