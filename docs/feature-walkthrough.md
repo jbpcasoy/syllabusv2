@@ -51,7 +51,7 @@ As `vpaa`:
 - [ ] **College** (`/college`): create *College of Technologies* (COT) on Main Campus, plus *College of Nursing* (CON).
 - [ ] **Dean** (`/dean`): assign `dean` to COT.
 - [ ] **FDIS Chair** (`/fdis-chair`) and **CITL Director** (`/citl-director`): assign `fdis` and `citl`.
-- [ ] Check that `vpaa` can't open admin-only pages such as `/user` or `/course`.
+- [ ] Check that `vpaa` can't reach admin-only features: `/user` is hidden from the menu and refused, and `/course` opens read-only with no create, edit or delete controls.
 
 As `dean`:
 - [ ] **Department** (`/department`): create *Dept. of IT* under COT. Try to create one under CON. It should be refused, because a dean manages only their own college.

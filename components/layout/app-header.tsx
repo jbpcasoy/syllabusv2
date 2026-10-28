@@ -38,7 +38,8 @@ export async function AppHeader() {
 
         <div className="flex items-center gap-2">
           {sessionUser && <NotificationBell initialUnread={unread} />}
-          <HeaderAuth user={sessionUser} />
+          {/* Keyed by user so sign-out state never carries over to the next sign-in. */}
+          <HeaderAuth key={sessionUser?.id ?? "anon"} user={sessionUser} />
         </div>
       </div>
     </header>
