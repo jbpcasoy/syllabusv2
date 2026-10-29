@@ -182,7 +182,7 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
             <SyllabusStatusBadge status={syllabus.status} />
             <SubmissionOverdueBadge
               term={syllabus.expand?.term}
-              slot={{ syllabusStatus: syllabus.status, hasReference: false }}
+              slot={{ syllabusStatus: syllabus.status, referenceStatus: null }}
             />
             <ReviewOverdueBadge syllabus={syllabus} term={syllabus.expand?.term} />
             <span>{program ? `${program.name} (${program.code})` : "—"}</span>

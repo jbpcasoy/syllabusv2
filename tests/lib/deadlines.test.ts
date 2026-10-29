@@ -66,7 +66,7 @@ describe("isSubmissionOverdue", () => {
   const term = { submission_deadline: "2026-12-01 00:00:00.000Z" };
   const before = at("2026-12-01T15:59:59.999Z"); // 23:59:59 PHT on the day
   const after = at("2026-12-01T16:00:00.000Z"); // 00:00 PHT the next day
-  const empty: SlotState = { syllabusStatus: null, hasReference: false };
+  const empty: SlotState = { syllabusStatus: null, referenceStatus: null };
 
   it("is on time until the end of the deadline day in PHT", () => {
     expect(isSubmissionOverdue(term, empty, before)).toBe(false);
@@ -78,7 +78,7 @@ describe("isSubmissionOverdue", () => {
 
   it("is overdue when only a draft exists", () => {
     expect(
-      isSubmissionOverdue(term, { syllabusStatus: "draft", hasReference: false }, after),
+      isSubmissionOverdue(term, { syllabusStatus: "draft", referenceStatus: null }, after),
     ).toBe(true);
   });
 
@@ -86,16 +86,25 @@ describe("isSubmissionOverdue", () => {
     "is not overdue once the syllabus is %s",
     (status) => {
       expect(
-        isSubmissionOverdue(term, { syllabusStatus: status, hasReference: false }, after),
+        isSubmissionOverdue(term, { syllabusStatus: status, referenceStatus: null }, after),
       ).toBe(false);
     },
   );
 
-  it("is not overdue with a pending or approved reference", () => {
+  it("is overdue when the referenced syllabus is only a draft", () => {
     expect(
-      isSubmissionOverdue(term, { syllabusStatus: null, hasReference: true }, after),
-    ).toBe(false);
+      isSubmissionOverdue(term, { syllabusStatus: null, referenceStatus: "draft" }, after),
+    ).toBe(true);
   });
+
+  it.each(SYLLABUS_STATUSES.filter((s) => s !== "draft"))(
+    "is not overdue once the referenced syllabus is %s",
+    (status) => {
+      expect(
+        isSubmissionOverdue(term, { syllabusStatus: null, referenceStatus: status }, after),
+      ).toBe(false);
+    },
+  );
 
   it("is never overdue without a deadline", () => {
     expect(

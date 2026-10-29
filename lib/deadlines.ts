@@ -46,21 +46,24 @@ export function daysOverdue(due: Date | null, now: Date): number {
 export interface SlotState {
   /** The slot's own syllabus, or null when there is none. */
   syllabusStatus: SyllabusStatus | null;
-  /** A pending or approved reference to another program's syllabus. */
-  hasReference: boolean;
+  /**
+   * The status of the syllabus a pending or approved reference points to, or
+   * null when the slot holds no reference.
+   */
+  referenceStatus: SyllabusStatus | null;
 }
 
 /**
- * Past the term's submission deadline with nothing submitted: no syllabus or
- * only a draft, and no pending or approved reference.
+ * Past the term's submission deadline with nothing submitted for review: no
+ * syllabus, or only a draft, whether the slot's own or the one it references.
  */
 export function isSubmissionOverdue(
   term: { submission_deadline: string },
   slot: SlotState,
   now: Date,
 ): boolean {
-  if (slot.hasReference) return false;
-  if (slot.syllabusStatus && slot.syllabusStatus !== "draft") return false;
+  const status = slot.syllabusStatus ?? slot.referenceStatus;
+  if (status && status !== "draft") return false;
   return daysOverdue(deadlineEnd(term.submission_deadline), now) > 0;
 }
 

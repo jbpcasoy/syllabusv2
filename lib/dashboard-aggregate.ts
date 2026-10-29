@@ -91,7 +91,7 @@ export function aggregate(
 
     const slotState = {
       syllabusStatus: syllabus?.status ?? null,
-      hasReference: !!reference,
+      referenceStatus: reference?.sourceStatus || null,
     };
     if (isSubmissionOverdue(term, slotState, now)) {
       counts.overdueSubmission++;

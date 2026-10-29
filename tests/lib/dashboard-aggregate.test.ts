@@ -130,18 +130,23 @@ describe("aggregate overdue", () => {
           { program: "pIT", course: "draft" },
           { program: "pIT", course: "submitted" },
           { program: "pIT", course: "referenced" },
+          { program: "pIT", course: "referenced-submitted" },
         ],
         syllabi: [
           syllabus("pIT", "draft", "draft"),
           syllabus("pIT", "submitted", "submitted", 1, "2026-12-09 00:00:00.000Z"),
         ],
-        references: [{ program: "pIT", course: "referenced", sourceStatus: "draft" }],
+        references: [
+          { program: "pIT", course: "referenced", sourceStatus: "draft" },
+          { program: "pIT", course: "referenced-submitted", sourceStatus: "submitted" },
+        ],
       }),
       term,
       NOW,
     );
-    expect(counts.overdueSubmission).toBe(2);
-    expect(completion.find((r) => r.id === "pIT")?.overdueSubmission).toBe(2);
+    // empty, draft, and the reference to a draft
+    expect(counts.overdueSubmission).toBe(3);
+    expect(completion.find((r) => r.id === "pIT")?.overdueSubmission).toBe(3);
   });
 
   it("counts nothing before the deadline ends in PHT", () => {

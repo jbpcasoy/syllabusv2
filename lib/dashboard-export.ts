@@ -81,7 +81,7 @@ export function syllabusOverdue(
       : 0;
   const submission = isSubmissionOverdue(
     term,
-    { syllabusStatus: row.status, hasReference: false },
+    { syllabusStatus: row.status, referenceStatus: null },
     now,
   )
     ? daysOverdue(deadlineEnd(term.submission_deadline), now)

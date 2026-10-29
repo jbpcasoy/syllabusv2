@@ -144,7 +144,7 @@ export function AvailableCourseCombobox({
                       : row.year_level}
                   {submissionOverdueDays(row.term, {
                     syllabusStatus: row.syllabus?.status ?? null,
-                    hasReference: !!row.reference,
+                    referenceStatus: row.reference?.source_status ?? null,
                   }) > 0 && " · Past submission deadline"}
                 </span>
               </ComboboxOption>

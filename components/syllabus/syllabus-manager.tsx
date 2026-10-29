@@ -310,7 +310,7 @@ export function SyllabusManager({ programs }: SyllabusManagerProps) {
                   <div className="mt-1 empty:hidden">
                     <SubmissionOverdueBadge
                       term={row.expand?.term}
-                      slot={{ syllabusStatus: row.status, hasReference: false }}
+                      slot={{ syllabusStatus: row.status, referenceStatus: null }}
                     />
                   </div>
                 </td>

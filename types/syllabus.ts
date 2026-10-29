@@ -111,6 +111,8 @@ export interface AvailableSyllabusRow {
     id: string;
     status: "pending" | "approved";
     source_program_code: string;
+    /** The referenced syllabus's status; drives the submission-overdue hint. */
+    source_status: SyllabusStatus | null;
   };
 }
 

@@ -2634,9 +2634,9 @@
     "semantic_hash": ""
   },
   "components/syllabus/transfer-lead-dialog.tsx": {
-    "mtime": 1793165552.7668478,
-    "seen": 1793171282.1192014,
-    "ast_hash": "ead68270bb261b4aa522549e4ab84568",
+    "mtime": 1793268851.1750088,
+    "seen": 1793269002.7354846,
+    "ast_hash": "bb06b1b02d4045caec37ac922e89db46",
     "semantic_hash": ""
   },
   "lib/approval-code.ts": {
@@ -3912,9 +3912,9 @@
     "semantic_hash": ""
   },
   "docs/feature-walkthrough.md": {
-    "mtime": 1793266730.0533412,
-    "seen": 1793268142.4000988,
-    "ast_hash": "0bc425a15b3d32d9058eeb11be608046",
+    "mtime": 1793268852.0731242,
+    "seen": 1793269002.736182,
+    "ast_hash": "0162998d7c6d4318dc20c4215e390554",
     "semantic_hash": ""
   },
   "pb_migrations/1793000027_updated_colleges_campus_required.js": {

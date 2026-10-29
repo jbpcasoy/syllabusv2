@@ -174,7 +174,9 @@ This round gives Part 5 a previous approved syllabus to build on.
 ## Part 9 — Visibility, deadlines, audit and limits
 
 **Deadlines:**
-- [ ] As `admin`: set *2026-2027 First Semester* **review days** to `1`. Submit something and leave it overnight. The next day, overdue badges appear on the syllabus, in the queue and on the dashboard. Overdue never blocks anything.
+- [ ] As `admin`: set *2026-2027 First Semester* **review days** to `1`. Submit something, then skip the wait: in the PocketBase dashboard (`http://127.0.0.1:8090/_/`), open that record in **syllabi** and set `status_changed_at` to two days ago. Reload: overdue badges appear on the syllabus, in the queue and on the dashboard. Overdue never blocks anything.
+- [ ] Submission deadline: set the same term's **submission deadline** to yesterday. Any course in the prospectus with no syllabus, only a draft, or a reference to a syllabus that is still a draft now counts as submission-overdue on the dashboard.
+- [ ] Clean up: set **review days** back to `0` and clear the deadline, or approve or return the backdated syllabus. Its next transition resets `status_changed_at`.
 
 **Dashboard** (`/dashboard`):
 - [ ] As `vpaa`: you see everything, including the justification panel. Click **Export CSV** on each panel.

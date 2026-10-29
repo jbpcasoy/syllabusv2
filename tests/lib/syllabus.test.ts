@@ -510,7 +510,7 @@ describe("listAvailable", () => {
         term: term.id,
         program: PROG,
         status: "pending",
-        expand: { syllabus: { expand: { program: { code: "NURS" } } } },
+        expand: { syllabus: { status: "draft", expand: { program: { code: "NURS" } } } },
       },
     ]);
     const pb = fakePb({
@@ -544,7 +544,7 @@ describe("listAvailable", () => {
     expect(referencesGetFullList).toHaveBeenCalledWith({
       expand: "syllabus.program",
       fields:
-        "id,course,term,program,status,expand.syllabus.expand.program.code",
+        "id,course,term,program,status,expand.syllabus.status,expand.syllabus.expand.program.code",
       filter: `(course = "crsAcrsAcrsAcrs" || course = "crsBcrsBcrsBcrs") && (term = "${term.id}") && (program = "${PROG}") && (status = 'pending' || status = 'approved')`,
     });
     expect(result.totalItems).toBe(2);
@@ -565,6 +565,7 @@ describe("listAvailable", () => {
           id: "refrefrefrefref",
           status: "pending",
           source_program_code: "NURS",
+          source_status: "draft",
         },
       },
       {

@@ -19,25 +19,25 @@ afterEach(() => {
 describe("submissionOverdueDays", () => {
   it("counts whole days past the deadline for a draft", () => {
     expect(
-      submissionOverdueDays(term, { syllabusStatus: "draft", hasReference: false }),
+      submissionOverdueDays(term, { syllabusStatus: "draft", referenceStatus: null }),
     ).toBe(2);
   });
 
   it("counts an empty slot", () => {
     expect(
-      submissionOverdueDays(term, { syllabusStatus: null, hasReference: false }),
+      submissionOverdueDays(term, { syllabusStatus: null, referenceStatus: null }),
     ).toBe(2);
   });
 
-  it("is 0 once submitted, with a reference, or without the term", () => {
+  it("is 0 once submitted, with a submitted reference, or without the term", () => {
     expect(
-      submissionOverdueDays(term, { syllabusStatus: "submitted", hasReference: false }),
+      submissionOverdueDays(term, { syllabusStatus: "submitted", referenceStatus: null }),
     ).toBe(0);
     expect(
-      submissionOverdueDays(term, { syllabusStatus: null, hasReference: true }),
+      submissionOverdueDays(term, { syllabusStatus: null, referenceStatus: "submitted" }),
     ).toBe(0);
     expect(
-      submissionOverdueDays(undefined, { syllabusStatus: null, hasReference: false }),
+      submissionOverdueDays(undefined, { syllabusStatus: null, referenceStatus: null }),
     ).toBe(0);
   });
 });

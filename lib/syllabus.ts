@@ -370,7 +370,7 @@ export async function listAvailable(
           pb.collection("syllabus_references").getFullList<SyllabusReference>({
             expand: "syllabus.program",
             fields:
-              "id,course,term,program,status,expand.syllabus.expand.program.code",
+              "id,course,term,program,status,expand.syllabus.status,expand.syllabus.expand.program.code",
             // Same as LIVE_REFERENCE_FILTER; not imported to avoid a cycle.
             filter: `${slotFilter} && (status = 'pending' || status = 'approved')`,
           }),
@@ -411,6 +411,7 @@ export async function listAvailable(
           status: reference.status as "pending" | "approved",
           source_program_code:
             reference.expand?.syllabus?.expand?.program?.code ?? "",
+          source_status: reference.expand?.syllabus?.status ?? null,
         },
       }),
     });
