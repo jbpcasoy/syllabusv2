@@ -161,7 +161,8 @@ This round gives Part 5 a previous approved syllabus to build on.
 - [ ] As `nchair`: go to `/syllabus-reference`, request a reference to that syllabus for BSN, and add a note.
 - [ ] Request again. It should be refused (one pending or approved reference per program, course and term).
 - [ ] Withdraw the request and request again.
-- [ ] As `ana` (the source lead): approve it from the syllabus's *References* panel.
+- [ ] As `ana` (the source lead): the header badge shows a new notification, "BSN asks to reference GE 101 (BSIT)". Open it. It links to the syllabus.
+- [ ] As `ana`: approve it from the syllabus's *References* panel.
 - [ ] As `nchair`: open the syllabus. A green banner says "Your program references this syllabus". The PDFs can be viewed, but there are no controls and no justification panel.
 - [ ] As `ana`: revoke the reference. As `nchair`: request again. As `admin`: reject it on the lead's behalf.
 

@@ -1,7 +1,13 @@
 import { authorize, requireUser } from "@/lib/auth";
+import {
+  addNotifications,
+  notificationFacts,
+  NOTIFY_EXPAND,
+} from "@/lib/notifications";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
-import { anyOf, isListedForProgram, isNotUniqueError } from "@/lib/syllabus";
+import { anyOf, isListedForProgram } from "@/lib/syllabus";
+import { hasNotUniqueError } from "@/lib/syllabus-decision";
 import {
   findLiveReference,
   REFERENCE_EXPAND,
@@ -13,6 +19,7 @@ import {
 } from "@/lib/validators/syllabus-reference";
 import type { Syllabus } from "@/types/syllabus";
 import type { SyllabusReference } from "@/types/syllabus-reference";
+import type { Program } from "@/types/program";
 import type { Term } from "@/types/term";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -86,6 +93,7 @@ export async function GET(request: NextRequest) {
 // Chair of `program`. The source must belong to another program, the course
 // must be in this program's published prospectus for the term, and the
 // program must have neither its own syllabus nor a live reference for it.
+// Notifies the source lead.
 export async function POST(request: NextRequest) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
@@ -107,7 +115,10 @@ export async function POST(request: NextRequest) {
     // 404 if the source doesn't exist.
     const source = await pb
       .collection("syllabi")
-      .getOne<Syllabus>(sourceId, { fields: "id,course,term,program" });
+      .getOne<Syllabus>(sourceId, {
+        fields: "id,course,term,program,lead,expand",
+        expand: NOTIFY_EXPAND,
+      });
     if (source.program === program) {
       return NextResponse.json(
         { error: "That syllabus already belongs to this program." },
@@ -119,7 +130,7 @@ export async function POST(request: NextRequest) {
     const term = await pb
       .collection("terms")
       .getOne<Term>(source.term, { fields: "id,school_year,semester" });
-    const [listed, own, live] = await Promise.all([
+    const [listed, own, live, referencing] = await Promise.all([
       isListedForProgram(pb, source.course, term, program),
       pb.collection("syllabi").getList(1, 1, {
         skipTotal: true,
@@ -130,6 +141,7 @@ export async function POST(request: NextRequest) {
         ),
       }),
       findLiveReference(pb, slot),
+      pb.collection("programs").getOne<Program>(program, { fields: "id,code" }),
     ]);
     if (!listed) {
       return NextResponse.json(
@@ -158,25 +170,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const me = auth.user.id;
+    const batch = pb.createBatch();
+    batch.collection("syllabus_references").create({
+      syllabus: sourceId,
+      ...slot,
+      requested_by: me,
+      note,
+      status: "pending",
+    });
+    // The source lead decides, so they hear about it in the same batch.
+    if (source.lead !== me) {
+      addNotifications(
+        batch,
+        sourceId,
+        me,
+        [{ user: source.lead, kind: "reference_requested", stage: 0 }],
+        {
+          ...notificationFacts(source, auth.user.name),
+          referencingProgramCode: referencing.code,
+        },
+      );
+    }
     // The partial unique index (program, course, term WHERE live) guards races.
+    let createdId: string;
     try {
-      const created = await pb
-        .collection("syllabus_references")
-        .create<SyllabusReference>(
-          {
-            syllabus: sourceId,
-            ...slot,
-            requested_by: auth.user.id,
-            note,
-            status: "pending",
-          },
-          { expand: REFERENCE_EXPAND },
-        );
-      return NextResponse.json(toSyllabusReferenceResponse(created), {
-        status: 201,
-      });
+      const [result] = await batch.send();
+      createdId = (result.body as { id: string }).id;
     } catch (error) {
-      if (isNotUniqueError(error, "program")) {
+      if (hasNotUniqueError(error)) {
         return NextResponse.json(
           {
             error:
@@ -187,6 +209,13 @@ export async function POST(request: NextRequest) {
       }
       throw error;
     }
+
+    const created = await pb
+      .collection("syllabus_references")
+      .getOne<SyllabusReference>(createdId, { expand: REFERENCE_EXPAND });
+    return NextResponse.json(toSyllabusReferenceResponse(created), {
+      status: 201,
+    });
   } catch (error) {
     return handlePbError(error);
   }

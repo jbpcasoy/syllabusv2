@@ -6,6 +6,7 @@ export const NOTIFICATION_KINDS = [
   "approved",
   "final_approved",
   "returned",
+  "reference_requested",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -30,7 +31,7 @@ export interface Notification extends RecordModel {
   /** ID of the syllabus. */
   syllabus: string;
   kind: NotificationKind;
-  /** 1 to 5: the stage the message is about. */
+  /** 1 to 5: the stage the message is about. 0 for reference_requested. */
   stage: number;
   /** ID of the user whose action caused it. */
   actor: string;

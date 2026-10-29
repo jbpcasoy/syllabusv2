@@ -278,6 +278,15 @@ describe("notificationText", () => {
     });
   });
 
+  it("asks the source lead to decide a reference request on the syllabus page", () => {
+    const facts = { ...FACTS, referencingProgramCode: "BSN" };
+    expect(notificationText("reference_requested", 0, SYLLABUS_ID, facts)).toEqual({
+      title: "BSN asks to reference IT 101 (BSIT)",
+      body: "Ana Cruz asked for BSN to use IT 101 Intro to Computing (BSIT) instead of writing its own. Approve or reject the request from the syllabus's References panel.",
+      link: `/syllabus/${SYLLABUS_ID}`,
+    });
+  });
+
   it("clips the title and body to the field limits", () => {
     const long = { ...FACTS, courseCode: "X".repeat(300), courseTitle: "Y".repeat(1200) };
     const text = notificationText("returned", 1, SYLLABUS_ID, long);

@@ -4,13 +4,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   referencesGetList: vi.fn(),
   referencesCreate: vi.fn(),
+  referencesGetOne: vi.fn(),
+  programsGetOne: vi.fn(),
+  notifications: [] as Record<string, unknown>[],
+  hasNotUniqueError: vi.fn(),
   syllabiGetOne: vi.fn(),
   syllabiGetList: vi.fn(),
   termsGetOne: vi.fn(),
   parseSyllabusReferenceInput: vi.fn(),
   isReferenceStatus: vi.fn((value: unknown) => value === "pending"),
   isListedForProgram: vi.fn(),
-  isNotUniqueError: vi.fn(),
   findLiveReference: vi.fn(),
   toSyllabusReferenceResponse: vi.fn((record: Record<string, unknown>) => ({
     ...record,
@@ -23,16 +26,37 @@ vi.mock("@/lib/pocketbase", async () => {
   const collections: Record<string, unknown> = {
     syllabus_references: {
       getList: mocks.referencesGetList,
-      create: mocks.referencesCreate,
+      getOne: mocks.referencesGetOne,
     },
     syllabi: { getOne: mocks.syllabiGetOne, getList: mocks.syllabiGetList },
     terms: { getOne: mocks.termsGetOne },
+    programs: { getOne: mocks.programsGetOne },
+  };
+  // Queued writes run on send(), so a rejected reference write fails the batch.
+  const createBatch = () => {
+    const queued: (() => unknown)[] = [];
+    return {
+      collection: (name: string) => ({
+        create: (body: Record<string, unknown>) =>
+          queued.push(() =>
+            name === "notifications"
+              ? mocks.notifications.push(body)
+              : mocks.referencesCreate(body),
+          ),
+      }),
+      send: async () => {
+        const results = [];
+        for (const op of queued) results.push({ status: 200, body: await op() });
+        return results;
+      },
+    };
   };
   return {
     createAdminPb: vi.fn(async () => ({
       filter: (expr: string, params: Record<string, unknown>) =>
         expr.replace(/\{:(\w+)\}/g, (_, key) => JSON.stringify(params[key])),
       collection: (name: string) => collections[name],
+      createBatch,
     })),
     handlePbError: vi.fn((error: unknown) => {
       const status =
@@ -52,7 +76,9 @@ vi.mock("@/lib/syllabus", () => ({
   anyOf: (_pb: unknown, field: string, values: string[]) =>
     `(${values.map((v) => `${field} = "${v}"`).join(" || ")})`,
   isListedForProgram: mocks.isListedForProgram,
-  isNotUniqueError: mocks.isNotUniqueError,
+}));
+vi.mock("@/lib/syllabus-decision", () => ({
+  hasNotUniqueError: mocks.hasNotUniqueError,
 }));
 vi.mock("@/lib/syllabus-reference", () => ({
   REFERENCE_EXPAND: "expand-all",
@@ -79,7 +105,18 @@ const COURSE = "crscrscrscrscrs";
 const TERM = "trmtrmtrmtrmtrm";
 const SCOPE = { programId: PROGRAM };
 const input = { syllabus: SOURCE, program: PROGRAM, note: "same" };
-const source = { id: SOURCE, course: COURSE, term: TERM, program: SOURCE_PROGRAM };
+const LEAD = "leadleadleadlea";
+const source = {
+  id: SOURCE,
+  course: COURSE,
+  term: TERM,
+  program: SOURCE_PROGRAM,
+  lead: LEAD,
+  expand: {
+    course: { code: "GE101", title: "Purposive Communication" },
+    program: { code: "BSED" },
+  },
+};
 const term = { id: TERM, school_year: "sy0sy0sy0sy0sy0", semester: "Summer" };
 
 function get(query = "") {
@@ -96,6 +133,7 @@ function post(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.notifications.length = 0;
   mockAuth({ id: ME, roles: { chairOfPrograms: [PROGRAM] }, scope: SCOPE });
 });
 
@@ -179,9 +217,14 @@ describe("POST /api/syllabus-reference", () => {
     mocks.isListedForProgram.mockResolvedValue(true);
     mocks.syllabiGetList.mockResolvedValue({ items: [] });
     mocks.findLiveReference.mockResolvedValue(null);
+    mocks.programsGetOne.mockResolvedValue({ id: PROGRAM, code: "BSIT" });
     mocks.referencesCreate.mockImplementation(async (data: object) => ({
       id: "newnewnewnewnew",
       ...data,
+    }));
+    mocks.referencesGetOne.mockImplementation(async (id: string) => ({
+      id,
+      status: "pending",
     }));
   });
 
@@ -189,18 +232,18 @@ describe("POST /api/syllabus-reference", () => {
     const res = await POST(post(input));
 
     expect(res.status).toBe(201);
-    expect(mocks.referencesCreate).toHaveBeenCalledWith(
-      {
-        syllabus: SOURCE,
-        program: PROGRAM,
-        course: COURSE,
-        term: TERM,
-        requested_by: ME,
-        note: "same",
-        status: "pending",
-      },
-      { expand: "expand-all" },
-    );
+    expect(mocks.referencesCreate).toHaveBeenCalledWith({
+      syllabus: SOURCE,
+      program: PROGRAM,
+      course: COURSE,
+      term: TERM,
+      requested_by: ME,
+      note: "same",
+      status: "pending",
+    });
+    expect(mocks.referencesGetOne).toHaveBeenCalledWith("newnewnewnewnew", {
+      expand: "expand-all",
+    });
     expect(await res.json()).toMatchObject({ id: "newnewnewnewnew", mapped: true });
     expect(mocks.isListedForProgram).toHaveBeenCalledWith(
       expect.anything(),
@@ -213,6 +256,30 @@ describe("POST /api/syllabus-reference", () => {
       course: COURSE,
       term: TERM,
     });
+  });
+
+  it("notifies the source lead in the same batch", async () => {
+    await POST(post(input));
+
+    expect(mocks.notifications).toEqual([
+      expect.objectContaining({
+        user: LEAD,
+        syllabus: SOURCE,
+        kind: "reference_requested",
+        stage: 0,
+        actor: ME,
+        title: "BSIT asks to reference GE101 (BSED)",
+        link: `/syllabus/${SOURCE}`,
+        email_status: "pending",
+      }),
+    ]);
+  });
+
+  it("doesn't notify a lead who made the request", async () => {
+    mocks.syllabiGetOne.mockResolvedValue({ ...source, lead: ME });
+    const res = await POST(post(input));
+    expect(res.status).toBe(201);
+    expect(mocks.notifications).toEqual([]);
   });
 
   it("returns 400 with the validator's error", async () => {
@@ -294,15 +361,16 @@ describe("POST /api/syllabus-reference", () => {
   it("returns 409 when the unique index catches a race", async () => {
     const race = { status: 400 };
     mocks.referencesCreate.mockRejectedValue(race);
-    mocks.isNotUniqueError.mockReturnValue(true);
+    mocks.hasNotUniqueError.mockReturnValue(true);
     const res = await POST(post(input));
     expect(res.status).toBe(409);
-    expect(mocks.isNotUniqueError).toHaveBeenCalledWith(race, "program");
+    expect(mocks.hasNotUniqueError).toHaveBeenCalledWith(race);
+    expect(mocks.notifications).toEqual([]);
   });
 
   it("delegates other create errors", async () => {
     mocks.referencesCreate.mockRejectedValue({ status: 400 });
-    mocks.isNotUniqueError.mockReturnValue(false);
+    mocks.hasNotUniqueError.mockReturnValue(false);
     const res = await POST(post(input));
     expect(res.status).toBe(400);
   });

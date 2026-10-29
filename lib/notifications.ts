@@ -25,6 +25,8 @@ export interface NotificationFacts {
   courseTitle: string;
   programCode: string;
   actorName: string;
+  /** For reference_requested: the program asking to reference it. */
+  referencingProgramCode?: string;
 }
 
 /** Add to the transition's syllabus read so notificationFacts() has names. */
@@ -160,6 +162,12 @@ export function notificationText(
       body = `${facts.actorName} returned ${full} as ${role}. Respond to each review point, upload a revised version, then resubmit.`;
       link = `/syllabus/${syllabusId}/revise`;
       break;
+    case "reference_requested": {
+      const referencing = facts.referencingProgramCode || "Another program";
+      title = `${referencing} asks to reference ${course}`;
+      body = `${facts.actorName} asked for ${referencing} to use ${full} instead of writing its own. Approve or reject the request from the syllabus's References panel.`;
+      break;
+    }
   }
   return { title: clip(title, TITLE_MAX), body: clip(body, BODY_MAX), link };
 }
