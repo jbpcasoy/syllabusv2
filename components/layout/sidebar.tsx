@@ -12,7 +12,7 @@ export function Sidebar({ items }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-40 shrink-0 border-r border-gray-200 bg-white sm:w-56">
+    <aside className="w-40 shrink-0 border-r border-gray-200 bg-white sm:w-56 print:hidden">
       <nav aria-label="Main navigation" className="sticky top-0 p-3 sm:p-4">
         <ul className="space-y-1">
           {items.map((item) => {

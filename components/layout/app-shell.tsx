@@ -22,7 +22,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
         {!hasAnyRole(roles) && (
           <div
             role="status"
-            className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:px-6 lg:px-8"
+            className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:px-6 lg:px-8 print:hidden"
           >
             Your account isn&apos;t assigned to a program or office yet. You
             can browse the university structure, but you can&apos;t submit or

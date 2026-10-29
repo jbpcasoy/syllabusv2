@@ -14,6 +14,7 @@ import {
 } from "@/lib/syllabus-client";
 import type { JustificationResponse } from "@/types/justification";
 import { Checkbox, Field, Input, Label, Textarea } from "@headlessui/react";
+import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 
 const STATUS_LABELS = {
@@ -239,6 +240,12 @@ export function JustificationPanel({ syllabusId }: { syllabusId: string }) {
           >
             Preview the letter
           </button>
+          <Link
+            href={`/syllabus/${syllabusId}/forms/justification`}
+            className={`${button} ml-3 inline-block bg-white text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50`}
+          >
+            Print the letter
+          </Link>
           {letter && (
             <div className="ring-1 ring-black/5">
               <JustificationLetterView data={letter} />
