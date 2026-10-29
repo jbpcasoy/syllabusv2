@@ -12,6 +12,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Dashboard", href: "/dashboard", capability: "dashboard.view" },
   { label: "My Syllabi", href: "/syllabus" },
   { label: "Notifications", href: "/notifications" },
+  { label: "Verify Approval", href: "/verify" },
   { label: "Review Queue", href: "/review", capability: "reviewQueue.view" },
   {
     label: "Syllabus References",

@@ -198,10 +198,10 @@
     "semantic_hash": "d67ec6be3a7fe629de413cdc5333065f"
   },
   "app/api/school-year/[id]/route.ts": {
-    "mtime": 1793000637.9228055,
-    "seen": 1793005117.8658788,
-    "ast_hash": "7bd024894bfa134f411d96f68b5ef9a7",
-    "semantic_hash": "7bd024894bfa134f411d96f68b5ef9a7"
+    "mtime": 1793192646.0683484,
+    "seen": 1793194576.335747,
+    "ast_hash": "019bc40932972d4422a714ed0fdc44ad",
+    "semantic_hash": ""
   },
   "app/api/school-year/route.ts": {
     "mtime": 1793000636.5424814,
@@ -210,9 +210,9 @@
     "semantic_hash": "83ff7e61f9d58a9af3c3dffce2eef810"
   },
   "app/api/term/[id]/route.ts": {
-    "mtime": 1793156109.9032059,
-    "seen": 1793159836.369349,
-    "ast_hash": "8044a067abff3c60e343809fdd84c7a5",
+    "mtime": 1793193114.0060768,
+    "seen": 1793194576.3358226,
+    "ast_hash": "20f6683486d0d649e5e9b35c4a3f8a3f",
     "semantic_hash": ""
   },
   "app/api/term/route.ts": {
@@ -954,10 +954,10 @@
     "semantic_hash": "183e39e7093ab664876cd5cfe2bd3d8c"
   },
   "lib/school-year.ts": {
-    "mtime": 1793000612.666334,
-    "seen": 1793005117.865982,
-    "ast_hash": "2da672a6c15dfac4c1ba81dd03aab3a3",
-    "semantic_hash": "2da672a6c15dfac4c1ba81dd03aab3a3"
+    "mtime": 1793192643.486974,
+    "seen": 1793194576.3363767,
+    "ast_hash": "677323ad1d9423111420476af73ce4ac",
+    "semantic_hash": ""
   },
   "lib/scope.ts": {
     "mtime": 1793084487.2692678,
@@ -972,9 +972,9 @@
     "semantic_hash": "9883eabbc6a3aa2b15ed847b648e5032"
   },
   "lib/term.ts": {
-    "mtime": 1793156028.9256308,
-    "seen": 1793159836.3696344,
-    "ast_hash": "d9e96fc83a9e1e54fb4a748f0afe4998",
+    "mtime": 1793193110.092055,
+    "seen": 1793194576.3364184,
+    "ast_hash": "3fcf078736679a1c84f98c1b0d6e8cce",
     "semantic_hash": ""
   },
   "lib/user-client.ts": {
@@ -1602,10 +1602,10 @@
     "semantic_hash": "ebd9c87b547e1b055ea43ccfcfb0e681"
   },
   "tests/api/school-year/[id]/route.test.ts": {
-    "mtime": 1793001962.8296485,
-    "seen": 1793005117.8660767,
-    "ast_hash": "48e8f3a47777bf77df857a2dca20097d",
-    "semantic_hash": "48e8f3a47777bf77df857a2dca20097d"
+    "mtime": 1793192661.404199,
+    "seen": 1793194576.336788,
+    "ast_hash": "582f45fe24822c91c54a6e4a46ec5cd2",
+    "semantic_hash": ""
   },
   "tests/api/school-year/route.test.ts": {
     "mtime": 1793001961.5105631,
@@ -1614,10 +1614,10 @@
     "semantic_hash": "09fdf071b3bbc81de40d3e310470dace"
   },
   "tests/api/term/[id]/route.test.ts": {
-    "mtime": 1793002013.3629696,
-    "seen": 1793005117.8660781,
-    "ast_hash": "c10b72b26ecbe260553f66c9fa3d8d90",
-    "semantic_hash": "c10b72b26ecbe260553f66c9fa3d8d90"
+    "mtime": 1793193137.6330295,
+    "seen": 1793194576.336854,
+    "ast_hash": "2fe9ea417437a98364e267cc122ec6de",
+    "semantic_hash": ""
   },
   "tests/api/term/route.test.ts": {
     "mtime": 1793002010.7501793,
@@ -1866,9 +1866,9 @@
     "semantic_hash": "83e2d3be1ab85b665abb9d8f763f222c"
   },
   "AGENTS.md": {
-    "mtime": 1793170785.3239634,
-    "seen": 1793171282.1198077,
-    "ast_hash": "e1e45b699c464ca0a7a48d651c73a23f",
+    "mtime": 1793193154.924753,
+    "seen": 1793194576.3370864,
+    "ast_hash": "bb68c40b0b91878ccea549a18ffc080a",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -2034,9 +2034,9 @@
     "semantic_hash": ""
   },
   "app/api/syllabus/[id]/route.ts": {
-    "mtime": 1793165521.3599234,
-    "seen": 1793171282.118973,
-    "ast_hash": "526635a4be70688e045fbdac2a6f684a",
+    "mtime": 1793182498.915898,
+    "seen": 1793194576.3357923,
+    "ast_hash": "86f63f596cf48fa46e24a62cc509d597",
     "semantic_hash": ""
   },
   "app/api/syllabus/[id]/submit/route.ts": {
@@ -2124,9 +2124,9 @@
     "semantic_hash": ""
   },
   "components/syllabus/co-authors-panel.tsx": {
-    "mtime": 1793012767.2980218,
-    "seen": 1793016863.2451465,
-    "ast_hash": "c6710885268812d6f4ef9be4e60d078f",
+    "mtime": 1793182515.1843324,
+    "seen": 1793194576.3361013,
+    "ast_hash": "723dd889c7d5d266c9b1b04cf67f2299",
     "semantic_hash": ""
   },
   "components/syllabus/delete-syllabus-dialog.tsx": {
@@ -2142,9 +2142,9 @@
     "semantic_hash": ""
   },
   "components/syllabus/syllabus-detail.tsx": {
-    "mtime": 1793170451.2333782,
-    "seen": 1793171282.1191916,
-    "ast_hash": "fa5faf2d8a934f7dd580dfef4d8f0995",
+    "mtime": 1793182513.9598875,
+    "seen": 1793194576.3361356,
+    "ast_hash": "bf85a819798e11b0c085bc3af136b155",
     "semantic_hash": ""
   },
   "components/syllabus/syllabus-manager.tsx": {
@@ -2190,9 +2190,9 @@
     "semantic_hash": ""
   },
   "lib/syllabus-chain.ts": {
-    "mtime": 1793084430.193712,
-    "seen": 1793092773.7944279,
-    "ast_hash": "248a5c9f723bbef89ab07a83b13c8077",
+    "mtime": 1793182478.8295481,
+    "seen": 1793194576.3363836,
+    "ast_hash": "cabbfaf8a2a84efb79d6ca85d973516c",
     "semantic_hash": ""
   },
   "lib/syllabus-client.ts": {
@@ -2292,9 +2292,9 @@
     "semantic_hash": ""
   },
   "tests/api/syllabus/[id]/route.test.ts": {
-    "mtime": 1793165529.8416529,
-    "seen": 1793171282.1196375,
-    "ast_hash": "cc4224cad28d7806f6ed9508ab528aba",
+    "mtime": 1793182534.5563285,
+    "seen": 1793194576.3368285,
+    "ast_hash": "77e2072843aae1f7623726169e5bd6d0",
     "semantic_hash": ""
   },
   "tests/api/syllabus/[id]/submit/route.test.ts": {
@@ -2400,9 +2400,9 @@
     "semantic_hash": ""
   },
   "docs/specs/phase-2-syllabus-submission.md": {
-    "mtime": 1793016661.451659,
-    "seen": 1793016863.245432,
-    "ast_hash": "fa7446531202c41a1128531868351976",
+    "mtime": 1793182564.4024796,
+    "seen": 1793194576.3371127,
+    "ast_hash": "5cdbd698839d7fb7376742d670571002",
     "semantic_hash": ""
   },
   "app/api/program-reviewer/[id]/route.ts": {
@@ -2484,9 +2484,9 @@
     "semantic_hash": ""
   },
   "app/api/syllabus/[id]/review/route.ts": {
-    "mtime": 1793153128.3281558,
-    "seen": 1793159836.3693306,
-    "ast_hash": "4aa5719c59f5337f01236cc9c3a4b61b",
+    "mtime": 1793191944.9617095,
+    "seen": 1793194576.3357904,
+    "ast_hash": "6c1057c75b9818ac0ae58220907f28bc",
     "semantic_hash": ""
   },
   "app/api/syllabus/[id]/signed-copy/[copyId]/file/route.ts": {
@@ -2736,9 +2736,9 @@
     "semantic_hash": ""
   },
   "lib/syllabus-decision.ts": {
-    "mtime": 1793164791.4621532,
-    "seen": 1793171282.1193688,
-    "ast_hash": "952380e695543dc7f4f5cf8b18a4da43",
+    "mtime": 1793191922.7504742,
+    "seen": 1793194576.3363879,
+    "ast_hash": "d0b2fa9ba8eda02cc9f2dab9859f7a80",
     "semantic_hash": ""
   },
   "lib/syllabus-justification.ts": {
@@ -2754,9 +2754,9 @@
     "semantic_hash": ""
   },
   "lib/syllabus-review.ts": {
-    "mtime": 1793086104.3469708,
-    "seen": 1793092773.7944412,
-    "ast_hash": "fda515e0f9afcd7a6cdf23ae403ffcea",
+    "mtime": 1793182482.9441102,
+    "seen": 1793194576.3364007,
+    "ast_hash": "bf5f40ae5e6c4097e8956dca6cdf429c",
     "semantic_hash": ""
   },
   "lib/syllabus-stand-in.ts": {
@@ -2958,9 +2958,9 @@
     "semantic_hash": ""
   },
   "tests/api/syllabus/[id]/review/route.test.ts": {
-    "mtime": 1793153211.3785112,
-    "seen": 1793159836.369835,
-    "ast_hash": "4dbe2d2a58e80cd6eddfbf70d17e89df",
+    "mtime": 1793191977.0495646,
+    "seen": 1793194576.3368266,
+    "ast_hash": "aeb2334cacf82c74f452d73bf53c916e",
     "semantic_hash": ""
   },
   "tests/api/syllabus/[id]/signed-copy/[copyId]/file/route.test.ts": {
@@ -3066,9 +3066,9 @@
     "semantic_hash": ""
   },
   "tests/lib/syllabus-decision.test.ts": {
-    "mtime": 1793164872.5420673,
-    "seen": 1793171282.119715,
-    "ast_hash": "6fb3b990869aa45b09426de6411e20b5",
+    "mtime": 1793192004.5806,
+    "seen": 1793194576.3369467,
+    "ast_hash": "11497a04fe66ab633b9057073a02908b",
     "semantic_hash": ""
   },
   "tests/lib/syllabus-justification.test.ts": {
@@ -3084,9 +3084,9 @@
     "semantic_hash": ""
   },
   "tests/lib/syllabus-review.test.ts": {
-    "mtime": 1793086106.3693354,
-    "seen": 1793092773.794849,
-    "ast_hash": "99f49e8668123996b4d15c0b2f511284",
+    "mtime": 1793182552.8885853,
+    "seen": 1793194576.3369544,
+    "ast_hash": "6d6b336e6a47974cf5912d4f2af12053",
     "semantic_hash": ""
   },
   "tests/lib/syllabus-stand-in.test.ts": {

@@ -1,3 +1,4 @@
+import { VerifyForm } from "@/components/verify/verify-form";
 import { findApproval } from "@/lib/approval-verify";
 import { getCurrentUser } from "@/lib/auth";
 import { formatDate } from "@/lib/format-date";
@@ -76,6 +77,10 @@ export default async function VerifyApprovalPage({ params }: PageProps) {
           <span className="text-gray-500">(if you have access to it)</span>
         </p>
       )}
+
+      <div className="mt-8 border-t border-gray-200 pt-6">
+        <VerifyForm initialCode={approval ? "" : code} />
+      </div>
     </main>
   );
 }

@@ -25,6 +25,10 @@ describe("getNavItems", () => {
     expect(hrefs(getNavItems(NO_ROLES))).toContain("/syllabus");
   });
 
+  it("shows Verify Approval to any signed-in user", () => {
+    expect(hrefs(getNavItems(NO_ROLES))).toContain("/verify");
+  });
+
   it("shows Syllabus References to program chairs only", () => {
     expect(
       hrefs(getNavItems({ ...NO_ROLES, chairOfPrograms: ["p"] })),

@@ -119,14 +119,16 @@ This round gives Part 5 a previous approved syllabus to build on.
 - [ ] Resubmit. The syllabus goes back to **stage 1**, not to the start of the chain.
 
 **Stages 1 to 5:**
-- [ ] As `rev`: mark one point resolved and one unresolved, fix the Form 17 "No" to Yes, and approve. The approve dialog shows a code like `SYL-…-S1`. **Copy it.**
+- [ ] As `rev`: mark one point resolved and one unresolved. Try **Approve**. It should be refused because a point at this stage is unresolved. Click **Return** (no new point is needed, because the unresolved one counts). The unresolved point is now **open** again.
+- [ ] As `ana`: only the re-opened point needs an answer. Answer it, upload a revision and resubmit. The syllabus resumes at **stage 1**.
+- [ ] As `rev`: mark the point resolved, fix the Form 17 "No" to Yes, and approve. The approve dialog shows a code like `SYL-…-S1`. **Copy it.**
 - [ ] As `dean`: change one Form 17 answer and save. The change is logged, so look for it in the Form 17 history. Then approve.
 - [ ] As `fdis`: add a **Part B** point with a legend code (for example `B.2`) and return.
-- [ ] As `ana`: answer the point and resubmit. The syllabus resumes at **stage 3**. Check that the unresolved point from stage 1 was re-opened if it was still unresolved.
+- [ ] As `ana`: answer the point and resubmit. The syllabus resumes at **stage 3**. The stage-1 points stay resolved, because a return only re-opens points from the stage that returned it.
 - [ ] As `fdis`, then `citl`, then `vpaa`: approve. The status becomes **Approved**.
 
 **After approval:**
-- [ ] **Verify** (any signed-in user): open `/verify/<the code you copied>`. It shows course, stage, reviewer and date. Try `/verify/SYL-FAKE`. It should say the code wasn't found.
+- [ ] **Verify** (any signed-in user): click **Verify Approval** in the navigation, paste the code you copied and click **Verify**. It shows course, stage, reviewer and date. Try `SYL-FAKE` in the form below the result. It should say the code wasn't found and keep the code in the field. (Opening `/verify/<code>` directly also works.)
 - [ ] **Review forms (print view)** (`/syllabus/<id>/forms`): Form 17 and Form 18-1, with reference codes and signature lines. Print to PDF.
 - [ ] **Timeline** on the syllabus page: every submit, return, resubmit and approve is listed, and each version shows its decisions ("S1 returned", "S2 approved").
 
