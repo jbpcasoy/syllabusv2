@@ -8,7 +8,7 @@ import type { AppUser } from "@/types/user";
 import type PocketBase from "pocketbase";
 import "server-only";
 
-/** Referencing programs never see the justification. */
+/** Referencing programs and program chairs never see the justification. */
 export function canViewJustification(access: SyllabusAccess | null): boolean {
   return (
     access === "lead" ||

@@ -14,6 +14,7 @@ export const MAX_CO_AUTHORS = 50;
 /**
  * How the caller relates to a syllabus. Callers with none get a 404.
  * `reviewer`: a chain holder or stand-in, once the syllabus leaves draft.
+ * `chair`: an active chair of its program, read-only (they transfer the lead).
  * `referencer`: active faculty or the chair of a program with an approved
  * reference to it.
  * `designator`: may name a draft's proxy (canDesignate for stage 1). Only
@@ -24,6 +25,7 @@ export type SyllabusAccess =
   | "coAuthor"
   | "admin"
   | "reviewer"
+  | "chair"
   | "referencer"
   | "designator";
 

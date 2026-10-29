@@ -45,6 +45,7 @@ describe("canViewJustification", () => {
     ["reviewer", true],
     ["admin", true],
     ["referencer", false],
+    ["chair", false],
     [null, false],
   ] as const)("%s → %s", (access, expected) => {
     expect(canViewJustification(access)).toBe(expected);

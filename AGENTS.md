@@ -113,7 +113,7 @@ Vitest, one test file per route file, mirroring the `app/api` path under `tests/
 | justification (return for revision)                      | Program Reviewer; Dean of its college; FDIS Chair; CITL Director; VPAA | Scoped |
 | dashboard (view, export)                                  | Program Reviewer, Program Chair, Department Head, Dean, FDIS Chair, CITL Director, VPAA; justification panel only for the justification roles | Scoped |
 
-Syllabus access (lead, co-author, admin) is a relationship to one record, not a role, so it is checked by `getSyllabusAccess()` in `lib/syllabus.ts`, not by a capability. The same goes for the source lead (or admin) deciding or revoking a reference.
+Syllabus access (lead, co-author, admin) is a relationship to one record, not a role, so it is checked by `getSyllabusAccess()` in `lib/syllabus.ts`, not by a capability. `resolveSyllabusAccess()` adds `reviewer`, then `chair` (read-only, for an active chair of the syllabus's program, so they can reach Transfer lead; never the justification), then `referencer`. The same goes for the source lead (or admin) deciding or revoking a reference.
 
 Add every new check as a capability in `lib/capability-rules.ts`. Never branch on role names in routes or components.
 

@@ -21,6 +21,7 @@ export const ACCESS_LABELS: Record<SyllabusAccess, string> = {
   coAuthor: "Co-author",
   admin: "Admin",
   reviewer: "Reviewer",
+  chair: "Program chair",
   referencer: "Referencing program",
   designator: "Can name the proxy",
 };

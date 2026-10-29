@@ -170,6 +170,25 @@ describe("GET /api/syllabus", () => {
     );
   });
 
+  it("also lists syllabi of programs the caller chairs, marked chair", async () => {
+    mockAuth({ id: ME, roles: { chairOfPrograms: [PROGRAM] } });
+    mocks.syllabiGetList.mockResolvedValue({
+      page: 1,
+      perPage: 30,
+      totalItems: 1,
+      totalPages: 1,
+      items: [{ id: "sylsylsylsylsyl", program: PROGRAM, lead: "other", co_authors: [] }],
+    });
+    mocks.getSyllabusAccess.mockReturnValue(null);
+
+    const res = await GET(get());
+
+    expect(mocks.syllabiGetList.mock.calls[0][2].filter).toBe(
+      `(lead = "${ME}" || co_authors ?= "${ME}" || (program = "${PROGRAM}"))`,
+    );
+    expect((await res.json()).items[0].access).toBe("chair");
+  });
+
   it("limits a non-admin to syllabi they lead or co-author", async () => {
     const res = await GET(get());
 

@@ -226,7 +226,7 @@ describe("resolveSyllabusAccess", () => {
     const pb = fakePb({ syllabus_references: { getList } });
     const chairAndHead = {
       ...NO_ROLES,
-      chairOfPrograms: ["prg123prg123prg"],
+      chairOfPrograms: ["prgBprgBprgBprg"],
       headOfDepartments: ["dep123dep123dep"],
     };
 
@@ -234,6 +234,35 @@ describe("resolveSyllabusAccess", () => {
       await resolveSyllabusAccess(pb, OTHER, chairAndHead, syllabus),
     ).toBeNull();
     expect(chain.loadChainHolders).not.toHaveBeenCalled();
+  });
+
+  it.each(["draft", "submitted", "filed"] as const)(
+    "grants chair to a chair of the syllabus's program (%s) without a query",
+    async (status) => {
+      const getList = vi.fn();
+      const pb = fakePb({ syllabus_references: { getList } });
+      const chair = { ...NO_ROLES, chairOfPrograms: ["prg123prg123prg"] };
+
+      expect(
+        await resolveSyllabusAccess(pb, OTHER, chair, { ...syllabus, status }),
+      ).toBe("chair");
+      expect(getList).not.toHaveBeenCalled();
+      expect(chain.loadChainHolders).not.toHaveBeenCalled();
+    },
+  );
+
+  it("prefers reviewer over chair", async () => {
+    chain.loadChainHolders.mockResolvedValue(HOLDERS);
+    const pb = fakePb({});
+    const both = {
+      ...NO_ROLES,
+      chairOfPrograms: ["prg123prg123prg"],
+      reviewerOfPrograms: ["prg123prg123prg"],
+    };
+
+    expect(await resolveSyllabusAccess(pb, OTHER, both, syllabus)).toBe(
+      "reviewer",
+    );
   });
 
   it("prefers reviewer over referencer", async () => {

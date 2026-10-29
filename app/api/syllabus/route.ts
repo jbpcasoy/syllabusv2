@@ -22,8 +22,8 @@ import type { Term } from "@/types/term";
 import { NextResponse, type NextRequest } from "next/server";
 
 // GET /api/syllabus?page=1&perPage=30&search=foo&term=<id>&program=<id>&status=<status>&scope=review
-// Syllabi the caller leads, co-authors, or their programs reference
-// (approved). Admin sees all. scope=review: only syllabi waiting on the
+// Syllabi the caller leads, co-authors, of programs they chair, or their
+// programs reference (approved). Admin sees all. scope=review: only syllabi waiting on the
 // caller's decision now, admin included.
 export async function GET(request: NextRequest) {
   const auth = await requireUser();
@@ -56,12 +56,14 @@ export async function GET(request: NextRequest) {
       const ids = await listAwaitingReviewIds(pb, me, roles);
       filters.push(anyOf(pb, "id", ids, "w"));
     } else if (!roles.isAdmin) {
-      const own = pb.filter("lead = {:me} || co_authors ?= {:me}", { me });
-      filters.push(
-        referenced.length > 0
-          ? `(${own} || ${anyOf(pb, "id", referenced, "r")})`
-          : `(${own})`,
-      );
+      const visible = [pb.filter("lead = {:me} || co_authors ?= {:me}", { me })];
+      if (roles.chairOfPrograms.length > 0) {
+        visible.push(anyOf(pb, "program", roles.chairOfPrograms, "c"));
+      }
+      if (referenced.length > 0) {
+        visible.push(anyOf(pb, "id", referenced, "r"));
+      }
+      filters.push(`(${visible.join(" || ")})`);
     }
     if (search) {
       filters.push(
@@ -93,9 +95,11 @@ export async function GET(request: NextRequest) {
           getSyllabusAccess(me, roles, record) ??
             (awaiting
               ? "reviewer"
-              : referenced.includes(record.id)
-                ? "referencer"
-                : undefined),
+              : roles.chairOfPrograms.includes(record.program)
+                ? "chair"
+                : referenced.includes(record.id)
+                  ? "referencer"
+                  : undefined),
         ),
       ),
     });

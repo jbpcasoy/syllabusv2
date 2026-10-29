@@ -116,8 +116,9 @@ function holdsChainRole(roles: UserRoles): boolean {
 }
 
 /**
- * getSyllabusAccess plus two fallbacks for callers with no direct access:
+ * getSyllabusAccess plus three fallbacks for callers with no direct access:
  * `reviewer` (lib/syllabus-review.ts isReviewer, once out of draft), then
+ * `chair` (an active chair of the syllabus's program, any status), then
  * `referencer` (active faculty or the chair of a program holding an approved
  * reference). Each query only runs when it could match.
  */
@@ -137,6 +138,8 @@ export async function resolveSyllabusAccess(
     ]);
     if (isReviewer(userId, syllabus, holders, standIns)) return "reviewer";
   }
+
+  if (roles.chairOfPrograms.includes(syllabus.program)) return "chair";
 
   const programs = referencingPrograms(roles);
   if (programs.length === 0) return null;

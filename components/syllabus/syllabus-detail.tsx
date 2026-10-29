@@ -384,7 +384,8 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
       )}
 
       {(syllabus.status === "approved" || syllabus.status === "filed") &&
-        syllabus.access !== "referencer" && (
+        syllabus.access !== "referencer" &&
+        syllabus.access !== "chair" && (
           <div className="mt-6">
             <JustificationPanel key={`justification-${reloadKey}`} syllabusId={syllabus.id} />
           </div>

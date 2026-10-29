@@ -20,7 +20,7 @@ Verification:
 - **Not done:**
   - The manual keyboard-only pass (focus traps, combobox and popover keyboard use, the PDF viewer). axe doesn't cover it, and it still needs a person at the keyboard.
   - Applying migration `1793000026` to the dev PocketBase. It applies on the next `npm run pb`.
-- **Found, out of scope:** a program chair can't open a syllabus page they don't author (`resolveSyllabusAccess` doesn't admit chairs), so the chair's Transfer lead button can't be reached in the UI. Only admin can transfer through the UI today. The route works for chairs, and its tests cover them.
+- **Found, fixed later:** a program chair couldn't open a syllabus page they didn't author, so the chair's Transfer lead button couldn't be reached in the UI. `resolveSyllabusAccess` now grants read-only `chair` access to an active chair of the syllabus's program (any status, no justification), and `GET /api/syllabus` lists the program's syllabi for its chairs.
 
 Source: roadmap in `AGENTS.md`: "Audit trail of every status change and admin overrides (reassign, force-return, stand-ins). Upload rate limits, optional virus scanning, retention policy for old versions. End-to-end tests of the full chain and an accessibility pass."
 
