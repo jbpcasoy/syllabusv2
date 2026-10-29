@@ -26,6 +26,12 @@ vi.mock("@/lib/pocketbase", () => ({
       return {
         getOne: mocks.getOne,
         getFullList: (options: unknown) => mocks.getFullList(name, options),
+        // Only syllabus_stand_ins is read with getList; same seeded rows.
+        getList: async (page: number, perPage: number, options: unknown) => ({
+          items: await mocks.getFullList(name, options),
+          page,
+          perPage,
+        }),
       };
     },
   })),
@@ -70,6 +76,7 @@ describe("getUserRoles", () => {
         "fdis_chairs",
         "program_chairs",
         "program_reviewers",
+        "syllabus_stand_ins",
         "users",
         "vpaas",
       ].sort(),
@@ -84,11 +91,29 @@ describe("getUserRoles", () => {
       "user = {:userId} && active = true",
       { userId: USER_ID },
     );
-    // 8 assignment collections, each with a filter
-    expect(mocks.filter).toHaveBeenCalledTimes(8);
-    for (const call of mocks.getFullList.mock.calls) {
-      expect((call[1] as { filter: string }).filter).toContain("active = true");
+    // 8 assignment collections plus stand-ins, each with a filter
+    expect(mocks.filter).toHaveBeenCalledTimes(9);
+    for (const [name, options] of mocks.getFullList.mock.calls) {
+      if (name === "syllabus_stand_ins") continue;
+      expect((options as { filter: string }).filter).toContain("active = true");
     }
+  });
+
+  it("flags a user who stands in on any syllabus, without a role label", async () => {
+    seed({ syllabus_stand_ins: [{ id: "s" }] });
+
+    const roles = await getUserRoles(USER_ID);
+
+    expect(roles.standsIn).toBe(true);
+    expect(roleLabels(roles)).toEqual([]);
+    expect(mocks.filter).toHaveBeenCalledWith("user = {:userId}", {
+      userId: USER_ID,
+    });
+    expect(mocks.getFullList).toHaveBeenCalledWith("syllabus_stand_ins", {
+      fields: "id",
+      skipTotal: true,
+      filter: `user = {:userId}|${JSON.stringify({ userId: USER_ID })}`,
+    });
   });
 
   it("maps scoped assignments to their target ids", async () => {

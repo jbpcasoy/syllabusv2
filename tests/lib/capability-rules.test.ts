@@ -296,6 +296,8 @@ describe("reviewQueue.view", () => {
     ["the CITL director", roles({ isCitlDirector: true })],
     ["the VPAA", vpaa],
     ["an admin", admin],
+    ["faculty who proxy on a syllabus", roles({ facultyOfPrograms: [OTHER.program], standsIn: true })],
+    ["a stand-in with no role", roles({ standsIn: true })],
   ])("passes for %s, without any scope", (_label, who) => {
     expect(can(who, "reviewQueue.view")).toBe(true);
     expect(canAnywhere(who, "reviewQueue.view")).toBe(true);

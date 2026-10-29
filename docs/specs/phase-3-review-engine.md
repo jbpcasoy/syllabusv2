@@ -23,7 +23,7 @@ Verification:
 | --- | --- | --- |
 | P1 | Statuses | Keep `draft` and `submitted` (shown as "In review"; no data migration) and add `returned`, `approved` and `filed`. |
 | P2 | Who acts at stage N | The active holder of the stage-N role in the target program's chain, unless a stand-in is set for that stage, in which case only the stand-in acts. The stage-1 stand-in is called the **proxy**. **Admin cannot review** (overrides are Phase 6). Nobody reviews a syllabus they lead or co-author. |
-| P3 | Proxy and stand-ins | **Who designates** a stand-in for stage N: an admin, or any active holder of a later stage in that syllabus's chain. For stage 1, the program reviewer also designates their own proxy. So a conflicted VPAA (stage 5) can only be covered by an admin. A stage-1 proxy must be active faculty of the program. No stand-in may lead or co-author the syllabus. **Readiness:** submit and resubmit return 409 while the program reviewer leads or co-authors and no proxy is set. A conflicted holder at stages 2 to 5 doesn't block submit. Their stage refuses action with "A stand-in must be assigned for this stage." |
+| P3 | Proxy and stand-ins | **Who designates** a stand-in for stage N: an admin, or any active holder of a later stage in that syllabus's chain. For stage 1, the program reviewer also designates their own proxy. So a conflicted VPAA (stage 5) can only be covered by an admin. A stage-1 proxy must be active faculty of the program. No stand-in may lead or co-author the syllabus. **Readiness:** a conflicted holder at any stage doesn't block submit or resubmit. (Changed 2026-10-29: submit used to return 409 while the program reviewer was an author with no proxy; an author could get around that by removing them.) Now the submit dialog warns the lead, the program reviewer is still notified at stage 1, and their workspace refuses them with "Name a proxy from the program's faculty to review it in your place." alongside the proxy picker. Stage 1 waits until a proxy is named (`proxyNeeded`). At stages 2 to 5 the refusal is "A stand-in must be assigned for this stage." |
 | P4 | Approval code | `SYL-<yy><yy>-<sem>-<seq>-S<stage>`, for example `SYL-2627-1-0042-S3`. `<sem>` is `1`, `2` or `M` (Summer). `<seq>` is a four-digit number per term, assigned to the syllabus at first submit (`syllabi.ref_seq`, unique per term, retried on collision). It is shared by all stage codes of that syllabus. |
 | P5 | Concurrency guard | Approve and return write the `syllabus_reviews` row and the syllabus update in **one PocketBase batch**. `UNIQUE (version, stage)` on reviews makes the second of two simultaneous decisions fail with a 409. |
 | P6 | Points across versions | A point belongs to the syllabus and stage and records the version it was raised on. Return needs at least one `open` point at the caller's stage. Resubmit needs a version uploaded after the return and every `open` point `responded`. Before deciding again, the returning reviewer marks each `responded` point `resolved` or `unresolved`. A later return re-opens `unresolved` points. Approve needs no `open`, `responded` or `unresolved` points at that stage. |
@@ -60,10 +60,10 @@ The events carry facts gathered by the route, and the machine never calls Pocket
 
 | Event | Facts | Allowed from |
 | --- | --- | --- |
-| `submit` | hasVersion, termOpen, missingRoles, proxyNeeded | `draft` |
+| `submit` | hasVersion, termOpen, missingRoles | `draft` |
 | `approve` | actorStage (stage the caller may act at, or null), form17Complete, form17HasNo, pendingPoints | `submitted@N`, actorStage = N |
 | `return` | actorStage, openPoints | `submitted@N`, actorStage = N |
-| `resubmit` | newVersionSinceReturn, unansweredPoints, termOpen, missingRoles, proxyNeeded | `returned@N` |
+| `resubmit` | newVersionSinceReturn, unansweredPoints, termOpen, missingRoles | `returned@N` |
 | `file` | hasScan | `approved` |
 | `rejectScan` | (none) | `filed` |
 

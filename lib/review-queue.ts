@@ -1,9 +1,14 @@
-import { anyOf, getSyllabusAccess, toSyllabusResponse } from "@/lib/syllabus";
+import {
+  anyOf,
+  getSyllabusAccess,
+  SYLLABUS_EXPAND,
+  toSyllabusResponse,
+} from "@/lib/syllabus";
 import { isAuthor, type StandIn } from "@/lib/syllabus-review";
 import { CHAIN_ROLES } from "@/lib/syllabus-workflow";
 import type { QueueStatus, ReviewQueueItem } from "@/types/review-queue";
 import type { UserRoles } from "@/types/roles";
-import type { Syllabus } from "@/types/syllabus";
+import type { Syllabus, SyllabusResponse } from "@/types/syllabus";
 import type { AppUser } from "@/types/user";
 import type PocketBase from "pocketbase";
 import "server-only";
@@ -287,4 +292,83 @@ export async function listAwaitingReviewIds(
       return cover ? cover.user === userId : true;
     })
     .map((syllabus) => syllabus.id);
+}
+
+type SyllabusAuthors = Pick<Syllabus, "id" | "program" | "lead" | "co_authors">;
+
+/** Syllabi whose stage 1 is still to be decided: drafts, or waiting at 1. */
+const STAGE_ONE_AHEAD =
+  "(status = 'draft' || ((status = 'submitted' || status = 'returned') && stage = 1))";
+
+/**
+ * Syllabi whose stage 1 can't be reviewed until someone names a proxy (the
+ * program reviewer leads or co-authors them and no stage-1 stand-in is set;
+ * proxyNeeded in lib/syllabus-review.ts). Drafts count, so it can be done
+ * early. Among those the user may name one for (canDesignate for stage 1):
+ * every program for an admin, FDIS chair, CITL director or VPAA, a dean's
+ * college, a program reviewer's own programs. Authors may name the proxy
+ * too, so the user's own syllabi stay (the conflicted reviewer's always
+ * are). Oldest first.
+ */
+export async function listNeedsProxy(
+  pb: PocketBase,
+  userId: string,
+  roles: UserRoles,
+): Promise<SyllabusResponse[]> {
+  const everywhere =
+    roles.isAdmin || roles.isFdisChair || roles.isCitlDirector || roles.isVpaa;
+  const scoped: string[] = [];
+  if (roles.deanOfColleges.length > 0) {
+    scoped.push(
+      anyOf(pb, "program.department.college", roles.deanOfColleges, "c"),
+    );
+  }
+  if (roles.reviewerOfPrograms.length > 0) {
+    scoped.push(anyOf(pb, "program", roles.reviewerOfPrograms, "p"));
+  }
+  if (!everywhere && scoped.length === 0) return [];
+  const scope = everywhere ? "" : ` && (${scoped.join(" || ")})`;
+
+  const [reviewers, candidates] = await Promise.all([
+    pb
+      .collection("program_reviewers")
+      .getFullList<{ user: string; program: string }>({
+        fields: "user,program",
+        filter: `active = true${scope}`,
+      }),
+    pb.collection("syllabi").getFullList<SyllabusAuthors>({
+      fields: "id,program,lead,co_authors",
+      filter: `${STAGE_ONE_AHEAD}${scope}`,
+    }),
+  ]);
+  const reviewerOf = new Map(reviewers.map((r) => [r.program, r.user]));
+  const conflicted = candidates
+    .filter((syllabus) => {
+      const reviewer = reviewerOf.get(syllabus.program);
+      return !!reviewer && isAuthor(reviewer, syllabus);
+    })
+    .map((syllabus) => syllabus.id);
+  if (conflicted.length === 0) return [];
+
+  const proxied = await pb
+    .collection("syllabus_stand_ins")
+    .getFullList<{ syllabus: string }>({
+      fields: "syllabus",
+      filter: `stage = 1 && ${anyOf(pb, "syllabus", conflicted, "y")}`,
+    });
+  const covered = new Set(proxied.map((p) => p.syllabus));
+  const open = conflicted.filter((id) => !covered.has(id));
+  if (open.length === 0) return [];
+
+  const records = await pb.collection("syllabi").getFullList<Syllabus>({
+    expand: SYLLABUS_EXPAND,
+    filter: anyOf(pb, "id", open, "s"),
+    sort: "created,id",
+  });
+  return records.map((record) =>
+    toSyllabusResponse(
+      record,
+      getSyllabusAccess(userId, roles, record) ?? "designator",
+    ),
+  );
 }

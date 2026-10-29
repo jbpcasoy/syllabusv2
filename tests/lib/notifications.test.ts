@@ -108,11 +108,26 @@ describe("notificationRecipients", () => {
       ]);
     });
 
-    it("never asks an author to review", () => {
+    it("never asks an author to review after stage 1", () => {
+      const holders: ChainHolders = [["r"], [CO]];
+      expect(
+        notificationRecipients(event(type, 2, LEAD), SYLLABUS, holders, []),
+      ).toEqual([]);
+    });
+
+    it("tells an authoring program reviewer at stage 1 so they name a proxy", () => {
       const holders: ChainHolders = [[CO]];
       expect(
         notificationRecipients(event(type, 1, LEAD), SYLLABUS, holders, []),
-      ).toEqual([]);
+      ).toEqual([{ user: CO, kind: "review_requested", stage: 1 }]);
+    });
+
+    it("asks only the proxy once one is set", () => {
+      const holders: ChainHolders = [[CO]];
+      const standIns: StandIn[] = [{ stage: 1, user: "proxyproxyproxy" }];
+      expect(
+        notificationRecipients(event(type, 1, LEAD), SYLLABUS, holders, standIns),
+      ).toEqual([{ user: "proxyproxyproxy", kind: "review_requested", stage: 1 }]);
     });
   });
 

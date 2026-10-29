@@ -61,7 +61,7 @@ export function resolveActor(
 /**
  * True when nobody may act at the stage because every holder is an author
  * and no stand-in is set. A stage with no holder at all is the missing-role
- * check's business, not this one's. Stage 1 feeds the workflow's proxyNeeded.
+ * check's business, not this one's. Stage 1 feeds proxyNeeded.
  */
 export function needsStandIn(
   stage: number,
@@ -137,6 +137,25 @@ export interface ReviewContext {
   actingAs: ActingAs | null;
   /** Stages whose stand-in the viewer may set or clear now. */
   designatableStages: number[];
+  /** Stage 1 lies ahead or waits, and nobody can decide it without a proxy. */
+  proxyNeeded: boolean;
+}
+
+/**
+ * True while stage 1 is still to be decided (a draft, or submitted or
+ * returned at stage 1) and the program reviewer writes the syllabus with no
+ * proxy set. Never blocks routing: stage 1 just waits for the proxy.
+ */
+export function proxyNeeded(
+  syllabus: Routed,
+  holders: ChainHolders,
+  standIns: readonly StandIn[],
+): boolean {
+  const stageOneAhead =
+    syllabus.status === "draft" ||
+    ((syllabus.status === "submitted" || syllabus.status === "returned") &&
+      syllabus.stage === 1);
+  return stageOneAhead && needsStandIn(1, syllabus, holders, standIns);
 }
 
 export function reviewContext(
@@ -160,6 +179,7 @@ export function reviewContext(
     actorStage: actor?.stage ?? null,
     actingAs: actor?.actingAs ?? null,
     designatableStages,
+    proxyNeeded: proxyNeeded(syllabus, holders, standIns),
   };
 }
 

@@ -6,6 +6,7 @@ import {
   heldStages,
   holdsStageFor,
   listAwaitingReviewIds,
+  listNeedsProxy,
   loadQueueExtras,
   queueFilter,
   queueSort,
@@ -377,5 +378,150 @@ describe("listAwaitingReviewIds", () => {
     expect(
       await listAwaitingReviewIds(fake, ME, roles({ isFdisChair: true })),
     ).toEqual(["s"]);
+  });
+});
+
+describe("listNeedsProxy", () => {
+  const REVIEWER = "revwrevwrevwrev";
+  // Drafts, plus syllabi waiting at or returned from stage 1.
+  const STAGE_ONE_AHEAD =
+    "(status = 'draft' || ((status = 'submitted' || status = 'returned') && stage = 1))";
+  type Draft = { id: string; program: string; lead: string; co_authors: string[] };
+  const draft = (id: string, extra: Partial<Draft> = {}): Draft => ({
+    id,
+    program: PROGRAM,
+    lead: "leadleadleadlea",
+    co_authors: [],
+    ...extra,
+  });
+
+  function needsProxyPb(drafts: Draft[], proxied: string[] = []) {
+    const reviewersList = vi.fn(async () => [{ user: REVIEWER, program: PROGRAM }]);
+    // The first syllabi call reads authors; the second loads the rows.
+    const syllabiList = vi.fn(async (options: { fields?: string; filter: string }) =>
+      options.fields
+        ? drafts
+        : drafts.filter((d) => options.filter.includes(`"${d.id}"`)),
+    );
+    const standInsList = vi.fn(async () => proxied.map((syllabus) => ({ syllabus })));
+    const fake = {
+      filter,
+      collection: (name: string) => ({
+        getFullList:
+          name === "program_reviewers"
+            ? reviewersList
+            : name === "syllabi"
+              ? syllabiList
+              : standInsList,
+      }),
+    } as unknown as PocketBase;
+    return { pb: fake, reviewersList, syllabiList, standInsList };
+  }
+
+  it("queries nothing for a user who can't name a proxy", async () => {
+    const { pb: fake, reviewersList } = needsProxyPb([]);
+    const none = roles({
+      chairOfPrograms: [PROGRAM],
+      headOfDepartments: ["deptdeptdeptdep"],
+      facultyOfPrograms: [PROGRAM],
+    });
+    expect(await listNeedsProxy(fake, ME, none)).toEqual([]);
+    expect(reviewersList).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "a dean to their college",
+      { deanOfColleges: [COLLEGE] },
+      `((program.department.college = "${COLLEGE}"))`,
+    ],
+    [
+      "a program reviewer to their programs",
+      { reviewerOfPrograms: [PROGRAM] },
+      `((program = "${PROGRAM}"))`,
+    ],
+    [
+      "a dean who also reviews to both",
+      { deanOfColleges: [COLLEGE], reviewerOfPrograms: [PROGRAM] },
+      `((program.department.college = "${COLLEGE}") || (program = "${PROGRAM}"))`,
+    ],
+  ])("scopes %s", async (_, overrides, scope) => {
+    const { pb: fake, reviewersList, syllabiList } = needsProxyPb([]);
+    await listNeedsProxy(fake, ME, roles(overrides));
+    expect(reviewersList).toHaveBeenCalledWith({
+      fields: "user,program",
+      filter: `active = true && ${scope}`,
+    });
+    expect(syllabiList).toHaveBeenCalledWith({
+      fields: "id,program,lead,co_authors",
+      filter: `${STAGE_ONE_AHEAD} && ${scope}`,
+    });
+  });
+
+  it("shows the conflicted program reviewer their own drafts", async () => {
+    const { pb: fake } = needsProxyPb([
+      draft("rev-co", { co_authors: [REVIEWER] }),
+      draft("no-conflict"),
+    ]);
+    const items = await listNeedsProxy(
+      fake,
+      REVIEWER,
+      roles({ reviewerOfPrograms: [PROGRAM] }),
+    );
+    expect(items.map((s) => [s.id, s.access])).toEqual([["rev-co", "coAuthor"]]);
+  });
+
+  it.each([
+    ["admin", { isAdmin: true }],
+    ["FDIS chair", { isFdisChair: true }],
+    ["CITL director", { isCitlDirector: true }],
+    ["VPAA", { isVpaa: true }],
+  ])("sees every program as %s", async (_, overrides) => {
+    const { pb: fake, syllabiList } = needsProxyPb([]);
+    await listNeedsProxy(fake, ME, roles(overrides));
+    expect(syllabiList).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: STAGE_ONE_AHEAD }),
+    );
+  });
+
+  it("keeps drafts the reviewer writes without a proxy, oldest first", async () => {
+    const { pb: fake, syllabiList, standInsList } = needsProxyPb(
+      [
+        draft("rev-leads", { lead: REVIEWER }),
+        draft("rev-co", { co_authors: [REVIEWER] }),
+        draft("has-proxy", { co_authors: [REVIEWER] }),
+        draft("no-conflict"),
+        draft("other-program", { program: "othrprogothrpro", lead: REVIEWER }),
+        draft("mine", { lead: ME, co_authors: [REVIEWER] }),
+      ],
+      ["has-proxy"],
+    );
+
+    const items = await listNeedsProxy(fake, ME, roles({ isVpaa: true }));
+
+    expect(items.map((s) => [s.id, s.access])).toEqual([
+      ["rev-leads", "designator"],
+      ["rev-co", "designator"],
+      ["mine", "lead"],
+    ]);
+    expect(standInsList).toHaveBeenCalledWith({
+      fields: "syllabus",
+      filter: `stage = 1 && (syllabus = "rev-leads" || syllabus = "rev-co" || syllabus = "has-proxy" || syllabus = "mine")`,
+    });
+    expect(syllabiList).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: "created,id" }),
+    );
+  });
+
+  it("labels an admin's rows as admin access", async () => {
+    const { pb: fake } = needsProxyPb([draft("a", { lead: REVIEWER })]);
+    const items = await listNeedsProxy(fake, ME, roles({ isAdmin: true }));
+    expect(items.map((s) => s.access)).toEqual(["admin"]);
+  });
+
+  it("skips the stand-in lookup when nothing is conflicted", async () => {
+    const { pb: fake, standInsList } = needsProxyPb([draft("a")]);
+    expect(await listNeedsProxy(fake, ME, roles({ isVpaa: true }))).toEqual([]);
+    expect(standInsList).not.toHaveBeenCalled();
   });
 });

@@ -17,6 +17,11 @@ export interface UserRoles {
   isFdisChair: boolean;
   isCitlDirector: boolean;
   isVpaa: boolean;
+  /**
+   * Stands in (or proxies) at some stage of at least one syllabus. Not a
+   * role, so it adds no label; it only opens the Review Queue.
+   */
+  standsIn: boolean;
 }
 
 export const NO_ROLES: UserRoles = {
@@ -29,6 +34,7 @@ export const NO_ROLES: UserRoles = {
   isFdisChair: false,
   isCitlDirector: false,
   isVpaa: false,
+  standsIn: false,
 };
 
 /** Labels for the header and the users list. Empty when the user is unassigned. */

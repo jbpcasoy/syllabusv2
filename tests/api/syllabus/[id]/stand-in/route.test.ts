@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   loadChainHolders: vi.fn(),
   listStandIns: vi.fn(),
   parseStandInInput: vi.fn(),
+  notifications: [] as Record<string, unknown>[],
 }));
 
 /** Substitutes params like the real SDK so assertions read naturally. */
@@ -29,8 +30,27 @@ vi.mock("@/lib/pocketbase", async () => {
           update: mocks.standInsUpdate,
           delete: mocks.standInsDelete,
         };
+  // Queued writes run on send(), so a rejected stand-in write fails the batch.
+  const createBatch = () => {
+    const queued: (() => unknown)[] = [];
+    return {
+      collection: (name: string) => ({
+        create: (body: Record<string, unknown>) =>
+          queued.push(() =>
+            name === "notifications"
+              ? mocks.notifications.push(body)
+              : mocks.standInsCreate(body),
+          ),
+        update: (id: string, body: unknown) =>
+          queued.push(() => mocks.standInsUpdate(id, body)),
+      }),
+      send: async () => {
+        for (const op of queued) await op();
+      },
+    };
+  };
   return {
-    createAdminPb: vi.fn(async () => ({ collection, filter })),
+    createAdminPb: vi.fn(async () => ({ collection, createBatch, filter })),
     handlePbError: vi.fn((error: unknown) => {
       const status =
         typeof error === "object" && error && "status" in error
@@ -44,9 +64,10 @@ vi.mock("@/lib/pocketbase", async () => {
 vi.mock("@/lib/syllabus", () => ({
   resolveSyllabusAccess: mocks.resolveSyllabusAccess,
   activeFacultyAmong: mocks.activeFacultyAmong,
-  isNotUniqueError: (error: unknown, field: string) =>
-    (error as { response?: { data?: Record<string, { code?: string }> } })
-      ?.response?.data?.[field]?.code === "validation_not_unique",
+}));
+vi.mock("@/lib/syllabus-decision", () => ({
+  hasNotUniqueError: (error: unknown) =>
+    JSON.stringify(error ?? null).includes("validation_not_unique"),
 }));
 vi.mock("@/lib/syllabus-chain", () => ({
   loadChainHolders: mocks.loadChainHolders,
@@ -90,6 +111,7 @@ const syllabus = (status = "submitted", stage = 1) => ({
   co_authors: [CO],
   status,
   stage,
+  expand: { course: { code: "IT 102", title: "Programming" }, program: { code: "BSIT" } },
 });
 
 function put(body: unknown) {
@@ -105,6 +127,7 @@ function setInput(stage: number, user: string | null = TARGET) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.notifications.length = 0;
   mockAuth({ id: DEAN });
   mocks.syllabiGetOne.mockResolvedValue(syllabus());
   mocks.loadChainHolders.mockResolvedValue(HOLDERS);
@@ -379,6 +402,69 @@ describe("PUT /api/syllabus/:id/stand-in", () => {
         PROGRAM,
         [TARGET],
       );
+    });
+  });
+
+  describe("waiting for your review", () => {
+    it("tells a new proxy the syllabus waits for them, in the change's batch", async () => {
+      const res = await PUT(put({}), ctx);
+
+      expect(res.status).toBe(200);
+      expect(mocks.notifications).toEqual([
+        expect.objectContaining({
+          user: TARGET,
+          syllabus: ID,
+          kind: "review_requested",
+          stage: 1,
+          actor: DEAN,
+          title: "IT 102 (BSIT) is waiting for your review",
+          link: `/syllabus/${ID}/review`,
+          email_status: "pending",
+        }),
+      ]);
+      expect(mocks.syllabiGetOne).toHaveBeenCalledWith(ID, {
+        expand: "course,program",
+      });
+    });
+
+    it("tells the replacement when the stand-in changes hands", async () => {
+      mocks.standInsGetList.mockResolvedValue({ items: [{ id: "old", user: OTHER }] });
+      await PUT(put({}), ctx);
+      expect(mocks.notifications.map((n) => n.user)).toEqual([TARGET]);
+    });
+
+    it("doesn't repeat itself when the same person is saved again", async () => {
+      mocks.standInsGetList.mockResolvedValue({ items: [{ id: "old", user: TARGET }] });
+      await PUT(put({}), ctx);
+      expect(mocks.notifications).toEqual([]);
+    });
+
+    it("doesn't tell a designator who names themselves", async () => {
+      setInput(1, DEAN);
+      mocks.activeFacultyAmong.mockResolvedValue(new Set([DEAN]));
+      const res = await PUT(put({}), ctx);
+      expect(res.status).toBe(200);
+      expect(mocks.notifications).toEqual([]);
+    });
+
+    it.each([
+      ["while drafting", syllabus("draft", 0), 1],
+      ["for a later stage not reached yet", syllabus("submitted", 1), 3],
+      ["while returned at the stage", syllabus("returned", 1), 1],
+    ])("stays quiet %s", async (_label, record, stage) => {
+      mockAuth({ id: VPAA });
+      mocks.syllabiGetOne.mockResolvedValue(record);
+      setInput(stage);
+
+      const res = await PUT(put({}), ctx);
+      expect(res.status).toBe(200);
+      expect(mocks.notifications).toEqual([]);
+    });
+
+    it("writes no notification when the stand-in write fails", async () => {
+      mocks.standInsCreate.mockRejectedValue({ status: 400 });
+      await PUT(put({}), ctx);
+      expect(mocks.notifications).toEqual([]);
     });
   });
 

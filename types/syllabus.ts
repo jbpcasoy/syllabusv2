@@ -15,13 +15,16 @@ export const MAX_CO_AUTHORS = 50;
  * How the caller relates to a syllabus. Callers with none get a 404.
  * `reviewer`: a chain holder or stand-in, once the syllabus leaves draft.
  * `referencer`: active faculty of a program with an approved reference to it.
+ * `designator`: may name a draft's proxy (canDesignate for stage 1). Only
+ * GET /api/syllabus/:id grants it; it opens no PDFs, forms or timeline.
  */
 export type SyllabusAccess =
   | "lead"
   | "coAuthor"
   | "admin"
   | "reviewer"
-  | "referencer";
+  | "referencer"
+  | "designator";
 
 export interface Syllabus extends RecordModel {
   /** ID of the course. */

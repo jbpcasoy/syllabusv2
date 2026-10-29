@@ -24,7 +24,6 @@ import {
   loadFormFacts,
 } from "@/lib/syllabus-decision";
 import { addSyllabusEvent } from "@/lib/syllabus-events";
-import { needsStandIn } from "@/lib/syllabus-review";
 import { latestVersion } from "@/lib/syllabus-version";
 import { transition } from "@/lib/syllabus-workflow";
 import type { Syllabus } from "@/types/syllabus";
@@ -37,8 +36,8 @@ type RouteContext = { params: Promise<{ id: string }> };
 // POST /api/syllabus/:id/resubmit  (no body)
 // Lead only, after a return. The workflow decides: open term, a version
 // uploaded since the return, every open review point answered, a complete
-// chain and a proxy when needed. Resumes at the stage that returned it, with
-// Form 17 copied forward from the returned version.
+// chain. Resumes at the stage that returned it, with Form 17 copied forward
+// from the returned version. A missing proxy doesn't block it.
 export async function POST(_request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
@@ -91,7 +90,6 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
         version.created > syllabus.returned_at,
       unansweredPoints: facts.unansweredPoints,
       missingRoles: missingChainRoles(holders),
-      proxyNeeded: needsStandIn(1, syllabus, holders, standIns),
     });
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 409 });

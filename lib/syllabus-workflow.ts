@@ -41,13 +41,14 @@ export interface WorkflowState {
 /** Every syllabus starts here. */
 export const INITIAL_STATE: WorkflowState = { status: "draft", stage: 0 };
 
-/** Facts shared by submit and resubmit. */
+/**
+ * Facts shared by submit and resubmit. A program reviewer who writes the
+ * syllabus doesn't block routing: stage 1 waits until a proxy is named.
+ */
 interface RoutingFacts {
   termOpen: boolean;
   /** Chain roles with no active holder for the syllabus's program. */
   missingRoles: ChainRole[];
-  /** The program reviewer leads or co-authors and no proxy is set. */
-  proxyNeeded: boolean;
 }
 
 export interface SubmitEvent extends RoutingFacts {
@@ -133,9 +134,6 @@ function routingError(event: RoutingFacts): string | null {
       .map((r) => r.label)
       .join(", ");
     return `The review chain is incomplete. No active ${missing}.`;
-  }
-  if (event.proxyNeeded) {
-    return "The program reviewer is an author of this syllabus. A proxy must be designated first.";
   }
   return null;
 }

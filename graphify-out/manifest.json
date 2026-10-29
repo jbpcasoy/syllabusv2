@@ -552,15 +552,15 @@
     "semantic_hash": ""
   },
   "components/layout/app-header.tsx": {
-    "mtime": 1793176808.049625,
-    "seen": 1793177407.9773052,
-    "ast_hash": "fa25032fe6f2676a2c4e079a2025f57f",
+    "mtime": 1793249049.5320468,
+    "seen": 1793249404.1847625,
+    "ast_hash": "ee9c658cc316f1f023dfb7699e73f547",
     "semantic_hash": ""
   },
   "components/layout/app-shell.tsx": {
-    "mtime": 1793006200.5045202,
-    "seen": 1793006747.6710875,
-    "ast_hash": "8f19e2ce8f5bf7259ebc9320958d42a5",
+    "mtime": 1793249049.615119,
+    "seen": 1793249404.1847632,
+    "ast_hash": "2b0eb6e7a7b546ae8739f626d3285a8c",
     "semantic_hash": ""
   },
   "components/layout/header-auth.tsx": {
@@ -570,10 +570,10 @@
     "semantic_hash": "b0ff55af75e95ac5af60fe1aed512b27"
   },
   "components/layout/sidebar.tsx": {
-    "mtime": 1792034657.2961981,
-    "seen": 1793005117.86593,
-    "ast_hash": "b4de0956f968b8773fa783461e895eb7",
-    "semantic_hash": "b4de0956f968b8773fa783461e895eb7"
+    "mtime": 1793249049.570045,
+    "seen": 1793249404.184767,
+    "ast_hash": "964b1ac8cf26bf03e46148832d56417a",
+    "semantic_hash": ""
   },
   "components/program-chair/delete-program-chair-dialog.tsx": {
     "mtime": 1792395334.046243,
@@ -2604,9 +2604,9 @@
     "semantic_hash": ""
   },
   "components/syllabus/justification-panel.tsx": {
-    "mtime": 1793091655.6718998,
-    "seen": 1793092773.794281,
-    "ast_hash": "810669ec82afb239a1edd3886aa818a6",
+    "mtime": 1793249017.9929287,
+    "seen": 1793249404.1848133,
+    "ast_hash": "fa0f18e858145412f06153a754d4050a",
     "semantic_hash": ""
   },
   "components/syllabus/resubmit-syllabus-dialog.tsx": {
@@ -3933,6 +3933,18 @@
     "mtime": 1793245076.0209196,
     "seen": 1793248307.6970916,
     "ast_hash": "f02d46cf9e5f74818754ceefc8689e82",
+    "semantic_hash": ""
+  },
+  "app/syllabus/[id]/forms/justification/page.tsx": {
+    "mtime": 1793249011.2957947,
+    "seen": 1793249404.1846976,
+    "ast_hash": "060c7c1ef8946002c9b03b8d36528853",
+    "semantic_hash": ""
+  },
+  "components/forms/printable-justification-letter.tsx": {
+    "mtime": 1793249159.7047982,
+    "seen": 1793249404.1847599,
+    "ast_hash": "e3fc9aa457a28c8d4429e3375acca236",
     "semantic_hash": ""
   }
 }

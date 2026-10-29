@@ -20,7 +20,6 @@ import {
 } from "@/lib/syllabus-chain";
 import { ensureRefSeq } from "@/lib/syllabus-decision";
 import { addSyllabusEvent } from "@/lib/syllabus-events";
-import { needsStandIn } from "@/lib/syllabus-review";
 import { latestVersion } from "@/lib/syllabus-version";
 import { transition } from "@/lib/syllabus-workflow";
 import type { Syllabus } from "@/types/syllabus";
@@ -31,8 +30,9 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 // POST /api/syllabus/:id/submit  (no body)
 // Lead only. The workflow decides: draft, open term, at least one version,
-// an active holder for every stage of the target program's chain, and a
-// proxy when the program reviewer is an author.
+// and an active holder for every stage of the target program's chain. A
+// program reviewer who is an author doesn't block it: stage 1 waits for a
+// proxy, and the submit dialog warns the lead.
 export async function POST(_request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
@@ -75,7 +75,6 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
       hasVersion: !!version,
       termOpen: term.open,
       missingRoles: missingChainRoles(holders),
-      proxyNeeded: needsStandIn(1, syllabus, holders, standIns),
     });
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 409 });

@@ -20,7 +20,7 @@ import {
   recordDecision,
   type DecisionConflict,
 } from "@/lib/syllabus-decision";
-import { isAuthor, resolveActor } from "@/lib/syllabus-review";
+import { isAuthor, proxyNeeded, resolveActor } from "@/lib/syllabus-review";
 import { latestVersion } from "@/lib/syllabus-version";
 import { transition, type WorkflowEvent } from "@/lib/syllabus-workflow";
 import { parseReviewInput } from "@/lib/validators/syllabus-review";
@@ -92,9 +92,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       if (syllabus.status === "submitted") {
         return NextResponse.json(
           {
-            error: isAuthor(me, syllabus)
-              ? "You can't review a syllabus you lead or co-author. A stand-in must be assigned for this stage."
-              : "You are not the reviewer at this stage.",
+            error: !isAuthor(me, syllabus)
+              ? "You are not the reviewer at this stage."
+              : proxyNeeded(syllabus, holders, standIns)
+                ? "You can't review a syllabus you lead or co-author. Name a proxy from the program's faculty to review it in your place."
+                : "You can't review a syllabus you lead or co-author. A stand-in must be assigned for this stage.",
           },
           { status: 403 },
         );

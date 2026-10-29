@@ -126,7 +126,12 @@ describe("GET /api/syllabus/:id", () => {
         can_return_signed_copy: false,
         can_transfer_lead: false,
         lead_transfer_is_override: false,
-        review: { actorStage: null, actingAs: null, designatableStages: [] },
+        review: {
+          actorStage: null,
+          actingAs: null,
+          designatableStages: [],
+          proxyNeeded: false,
+        },
       });
       expect(mocks.getOne).toHaveBeenCalledWith(ID, {
         expand: "course,term.school_year,program,lead,co_authors",
@@ -156,7 +161,20 @@ describe("GET /api/syllabus/:id", () => {
       actorStage: 1,
       actingAs: "holder",
       designatableStages: [1],
+      proxyNeeded: false,
     });
+  });
+
+  it("tells the page stage 1 needs a proxy when the program reviewer co-authors", async () => {
+    mocks.getOne.mockResolvedValue({
+      ...draft,
+      co_authors: ["revwrevwrevwrev"],
+      status: "submitted",
+      stage: 1,
+    });
+
+    const res = await GET(req("GET"), ctx);
+    expect((await res.json()).review.proxyNeeded).toBe(true);
   });
 
   it("tells a signedCopy.return holder in scope they may return the scan", async () => {
@@ -189,6 +207,7 @@ describe("GET /api/syllabus/:id", () => {
       actorStage: null,
       actingAs: null,
       designatableStages: [2, 3, 4, 5],
+      proxyNeeded: false,
     });
   });
 
@@ -197,6 +216,41 @@ describe("GET /api/syllabus/:id", () => {
     const res = await GET(req("GET"), ctx);
     expect(res.status).toBe(404);
     expect(mocks.toSyllabusResponse).not.toHaveBeenCalled();
+  });
+
+  // The stub's chain holders put "d" at stage 2 of the syllabus's program.
+  it("opens a draft to a later-stage holder so they can name the proxy", async () => {
+    mockAuth({ id: "d", roles: { deanOfColleges: ["colcolcolcolcol"] } });
+    mocks.getSyllabusAccess.mockReturnValue(null);
+
+    const res = await GET(req("GET"), ctx);
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.access).toBe("designator");
+    expect(body.review).toEqual({
+      actorStage: null,
+      actingAs: null,
+      designatableStages: [1],
+      proxyNeeded: false,
+    });
+  });
+
+  it("grants designator access only while a draft", async () => {
+    mockAuth({ id: "d", roles: { deanOfColleges: ["colcolcolcolcol"] } });
+    mocks.getSyllabusAccess.mockReturnValue(null);
+    mocks.getOne.mockResolvedValue({ ...draft, status: "submitted", stage: 1 });
+
+    const res = await GET(req("GET"), ctx);
+    expect(res.status).toBe(404);
+  });
+
+  it("keeps a draft closed to a holder in another program's chain", async () => {
+    mockAuth({ id: "strangerstrange", roles: { deanOfColleges: ["otherotherother"] } });
+    mocks.getSyllabusAccess.mockReturnValue(null);
+
+    const res = await GET(req("GET"), ctx);
+    expect(res.status).toBe(404);
   });
 
   it("returns 401 when signed out", async () => {

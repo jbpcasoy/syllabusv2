@@ -61,9 +61,19 @@ export function SubmitSyllabusDialog({
             <span className="font-medium text-gray-900">
               {syllabus.expand?.course?.code || "this syllabus"}
             </span>{" "}
-            to the program chair? Its latest PDF version is reviewed, and you
-            can&apos;t upload new versions or change co-authors afterwards.
+            to the program reviewer? Its latest PDF version is reviewed, and
+            you can&apos;t upload new versions or change co-authors afterwards.
           </Description>
+
+          {syllabus.review?.proxyNeeded && (
+            <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              The program reviewer leads or co-authors this syllabus, so they
+              can&apos;t review it. You can still submit, but stage 1 waits
+              until a proxy from the program&apos;s faculty is named. The
+              program reviewer, the dean or a later-stage reviewer can name
+              one.
+            </p>
+          )}
 
           {error && (
             <p role="alert" className="mt-3 text-sm text-red-600">

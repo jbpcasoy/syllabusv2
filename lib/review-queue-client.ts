@@ -3,6 +3,7 @@ import type {
   ReviewQueueItem,
   ReviewQueueResponse,
 } from "@/types/review-queue";
+import type { SyllabusResponse } from "@/types/syllabus";
 
 export { QUEUE_STATUSES } from "@/types/review-queue";
 export type { QueueStatus, ReviewQueueItem, ReviewQueueResponse };
@@ -51,4 +52,10 @@ export function listReviewQueue(
     if (value !== undefined && value !== "") qs.set(key, String(value));
   }
   return request<ReviewQueueResponse>(`/api/review-queue?${qs}`, { signal });
+}
+
+export function listNeedsProxy(signal?: AbortSignal) {
+  return request<{ items: SyllabusResponse[] }>("/api/review-queue/needs-proxy", {
+    signal,
+  });
 }

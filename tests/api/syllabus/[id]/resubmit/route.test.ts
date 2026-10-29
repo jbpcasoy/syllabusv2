@@ -288,12 +288,6 @@ describe("POST /api/syllabus/:id/resubmit", () => {
       () => mocks.loadChainHolders.mockResolvedValue([[REVIEWER], [], ["f"], ["c"], ["v"]]),
       "The review chain is incomplete. No active Dean.",
     ],
-    [
-      "a conflicted program reviewer without a proxy",
-      () =>
-        loads({ ...returned, co_authors: [REVIEWER] }),
-      "The program reviewer is an author of this syllabus. A proxy must be designated first.",
-    ],
   ])("returns 409 with %s", async (_label, arrange, error) => {
     arrange();
     const res = await resubmit();
@@ -301,6 +295,13 @@ describe("POST /api/syllabus/:id/resubmit", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error });
     expect(mocks.batchSend).not.toHaveBeenCalled();
+  });
+
+  it("resubmits with a conflicted program reviewer and no proxy", async () => {
+    loads({ ...returned, co_authors: [REVIEWER] });
+    const res = await resubmit();
+    expect(res.status).toBe(200);
+    expect(mocks.batchSend).toHaveBeenCalledTimes(1);
   });
 
   it("returns 409 for a syllabus that isn't returned", async () => {

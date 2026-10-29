@@ -22,6 +22,7 @@ export const ACCESS_LABELS: Record<SyllabusAccess, string> = {
   admin: "Admin",
   reviewer: "Reviewer",
   referencer: "Referencing program",
+  designator: "Can name the proxy",
 };
 
 export function SyllabusStatusBadge({ status }: { status: SyllabusStatus }) {

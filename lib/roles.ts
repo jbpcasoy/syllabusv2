@@ -12,7 +12,8 @@ function unique(values: string[]): string[] {
 }
 
 /**
- * Derives a user's roles from active assignment records.
+ * Derives a user's roles from active assignment records, plus whether they
+ * stand in (or proxy) on any syllabus.
  * Runs all queries in parallel and is cached per request (keyed by user id).
  * Never reads `users.role`.
  */
@@ -33,6 +34,7 @@ export const getUserRoles = cache(
       fdisChairs,
       citlDirectors,
       vpaas,
+      standIns,
     ] = await Promise.all([
       pb
         .collection("users")
@@ -69,6 +71,12 @@ export const getUserRoles = cache(
         fields: "id",
         filter: activeFor(),
       }),
+      // Not a role: a per-syllabus appointment, with no active flag.
+      pb.collection("syllabus_stand_ins").getList(1, 1, {
+        fields: "id",
+        skipTotal: true,
+        filter: pb.filter("user = {:userId}", { userId }),
+      }),
     ]);
 
     return {
@@ -81,6 +89,7 @@ export const getUserRoles = cache(
       isFdisChair: fdisChairs.length > 0,
       isCitlDirector: citlDirectors.length > 0,
       isVpaa: vpaas.length > 0,
+      standsIn: standIns.items.length > 0,
     };
   },
 );

@@ -384,7 +384,7 @@ describe("POST /api/syllabus/:id/review", () => {
     it.each([
       ["leads", { lead: REVIEWER }],
       ["co-authors", { co_authors: [REVIEWER] }],
-    ])("blocks a program reviewer who %s it", async (_label, authors) => {
+    ])("blocks a program reviewer who %s it and asks for a proxy", async (_label, authors) => {
       loads(syllabus(1, "submitted", authors));
       mocks.resolveSyllabusAccess.mockResolvedValue("lead");
 
@@ -392,9 +392,22 @@ describe("POST /api/syllabus/:id/review", () => {
       expect(res.status).toBe(403);
       expect(await res.json()).toEqual({
         error:
-          "You can't review a syllabus you lead or co-author. A stand-in must be assigned for this stage.",
+          "You can't review a syllabus you lead or co-author. Name a proxy from the program's faculty to review it in your place.",
       });
       expect(mocks.recordDecision).not.toHaveBeenCalled();
+    });
+
+    it("asks an authoring later-stage holder for a stand-in instead", async () => {
+      mockAuth({ id: DEAN });
+      loads(syllabus(2, "submitted", { co_authors: [DEAN] }));
+      mocks.resolveSyllabusAccess.mockResolvedValue("coAuthor");
+
+      const res = await decide("approve");
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual({
+        error:
+          "You can't review a syllabus you lead or co-author. A stand-in must be assigned for this stage.",
+      });
     });
 
     it.each([

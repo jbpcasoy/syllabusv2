@@ -10,6 +10,7 @@ import { Form17Panel } from "./form17-panel";
 import { Form18Panel } from "./form18-panel";
 import { PdfPane } from "./pdf-pane";
 import { ReviewDecisionDialog } from "./review-decision-dialog";
+import { StandInsPanel } from "./stand-ins-panel";
 import { termLabel } from "./syllabus-status";
 import { useSyllabusWorkspace } from "./use-syllabus-workspace";
 
@@ -85,7 +86,30 @@ export function ReviewWorkspace({ id }: { id: string }) {
         </p>
       </div>
 
-      {!actorStage ? (
+      {!actorStage && review?.proxyNeeded && syllabus.status === "submitted" ? (
+        <div className="mt-4">
+          <p
+            role="alert"
+            className="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          >
+            {syllabus.access === "lead" || syllabus.access === "coAuthor"
+              ? "You lead or co-author this syllabus, so you can't review it."
+              : "The program reviewer leads or co-authors this syllabus, so they can't review it."}{" "}
+            {review.designatableStages.includes(1)
+              ? "Name a proxy from the program's faculty below to review stage 1 in their place."
+              : "Stage 1 waits until the program reviewer, the dean or a later-stage reviewer names a proxy."}
+          </p>
+          {review.designatableStages.includes(1) && (
+            <div className="mt-4">
+              <StandInsPanel
+                syllabusId={id}
+                designatableStages={[1]}
+                onChanged={() => setReloadKey((k) => k + 1)}
+              />
+            </div>
+          )}
+        </div>
+      ) : !actorStage ? (
         <p className="mt-4 rounded-md bg-gray-50 px-4 py-3 text-sm text-gray-700">
           {syllabus.status === "submitted"
             ? `This syllabus is at stage ${syllabus.stage} (${stageLabel}) and isn't waiting on you. If a stand-in covers that stage, only they can decide.`

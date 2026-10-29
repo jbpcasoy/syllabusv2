@@ -150,7 +150,6 @@ describe("POST /api/syllabus/:id/submit", () => {
       hasVersion: true,
       termOpen: true,
       missingRoles: [],
-      proxyNeeded: false,
     });
     expect(mocks.batchOps).toEqual([
       [
@@ -262,33 +261,32 @@ describe("POST /api/syllabus/:id/submit", () => {
     expect(mocks.ensureRefSeq).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ["leads", { lead: REVIEWER }],
-    ["co-authors", { co_authors: [REVIEWER] }],
-  ])("needs a proxy when the program reviewer %s", async (_label, authors) => {
-    mockAuth({ id: REVIEWER, roles: { facultyOfPrograms: [PROGRAM] } });
-    const own = { ...draft, ...authors };
+  it("submits without a proxy and still tells a co-authoring program reviewer", async () => {
+    const own = { ...draft, co_authors: [REVIEWER] };
     mocks.syllabiGetOne.mockResolvedValue(own);
+
+    const res = await POST(post(), ctx);
+
+    expect(res.status).toBe(200);
+    expect(mocks.transition).toHaveBeenCalledWith(
+      own,
+      expect.not.objectContaining({ proxyNeeded: expect.anything() }),
+    );
+    // The link opens the workspace, which asks them to name a proxy.
+    const notified = mocks.batchOps
+      .filter((op) => op[1] === "notifications")
+      .map((op) => (op[2] as { user: string; link: string }).user);
+    expect(notified).toEqual([REVIEWER]);
+  });
+
+  it("doesn't notify a program reviewer who submits their own syllabus", async () => {
+    mockAuth({ id: REVIEWER, roles: { facultyOfPrograms: [PROGRAM] } });
+    mocks.syllabiGetOne.mockResolvedValue({ ...draft, lead: REVIEWER });
     mocks.activeFacultyAmong.mockResolvedValue(new Set([REVIEWER]));
 
     await POST(post(), ctx);
 
-    expect(mocks.transition).toHaveBeenCalledWith(
-      own,
-      expect.objectContaining({ proxyNeeded: true }),
-    );
-  });
-
-  it("needs no proxy once one is designated", async () => {
-    mocks.syllabiGetOne.mockResolvedValue({ ...draft, co_authors: [REVIEWER] });
-    mocks.loadStandIns.mockResolvedValue([{ stage: 1, user: "proxyproxyproxy" }]);
-
-    await POST(post(), ctx);
-
-    expect(mocks.transition).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ proxyNeeded: false }),
-    );
+    expect(mocks.batchOps.filter((op) => op[1] === "notifications")).toEqual([]);
   });
 
   it("passes the gathered facts to the workflow", async () => {
@@ -304,7 +302,6 @@ describe("POST /api/syllabus/:id/submit", () => {
       hasVersion: false,
       termOpen: false,
       missingRoles: ["dean", "vpaa"],
-      proxyNeeded: false,
     });
   });
 

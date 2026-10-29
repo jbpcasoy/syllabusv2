@@ -1,12 +1,14 @@
 import { requireUser } from "@/lib/auth";
+import {
+  addNotifications,
+  notificationFacts,
+  NOTIFY_EXPAND,
+} from "@/lib/notifications";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
-import {
-  activeFacultyAmong,
-  isNotUniqueError,
-  resolveSyllabusAccess,
-} from "@/lib/syllabus";
+import { activeFacultyAmong, resolveSyllabusAccess } from "@/lib/syllabus";
 import { loadChainHolders } from "@/lib/syllabus-chain";
+import { hasNotUniqueError } from "@/lib/syllabus-decision";
 import {
   canDesignate,
   isAuthor,
@@ -56,6 +58,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 // PUT /api/syllabus/:id/stand-in  { "stage": 1-5, "user": "<userId>" | null }
 // An admin or an active holder of a later stage; the program reviewer also
 // names their own proxy. Sets or clears the stage and returns every stand-in.
+// A new stand-in for the stage waiting now is told it waits for their review.
 export async function PUT(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
@@ -72,7 +75,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     const me = auth.user.id;
     const pb = await createAdminPb();
     const [syllabus, roles] = await Promise.all([
-      pb.collection("syllabi").getOne<Syllabus>(id),
+      pb.collection("syllabi").getOne<Syllabus>(id, { expand: NOTIFY_EXPAND }),
       getUserRoles(me),
     ]);
     const holders = await loadChainHolders(pb, syllabus.program);
@@ -118,17 +121,30 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     }
 
     const data = { user, assigned_by: me };
+    const batch = pb.createBatch();
+    const standIns = batch.collection("syllabus_stand_ins");
+    if (current) {
+      standIns.update(current.id, data);
+    } else {
+      standIns.create({ syllabus: id, stage, ...data });
+    }
+    // Their stage is waiting now, so they hear about it in the same batch.
+    // Nobody is told twice for the same appointment, or about their own.
+    const waiting = syllabus.status === "submitted" && syllabus.stage === stage;
+    if (waiting && user !== me && current?.user !== user) {
+      addNotifications(
+        batch,
+        id,
+        me,
+        [{ user, kind: "review_requested", stage }],
+        notificationFacts(syllabus, auth.user.name),
+      );
+    }
     try {
-      if (current) {
-        await pb.collection("syllabus_stand_ins").update(current.id, data);
-      } else {
-        await pb
-          .collection("syllabus_stand_ins")
-          .create({ syllabus: id, stage, ...data });
-      }
+      await batch.send();
     } catch (error) {
       // The unique index (syllabus, stage) rejects a concurrent create.
-      if (isNotUniqueError(error, "stage") || isNotUniqueError(error, "syllabus")) {
+      if (hasNotUniqueError(error)) {
         return conflict("Another change finished first. Please try again.");
       }
       throw error;

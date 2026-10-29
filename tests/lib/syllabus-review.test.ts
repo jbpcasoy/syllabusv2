@@ -4,6 +4,7 @@ import {
   isPersonalReviewer,
   isReviewer,
   needsStandIn,
+  proxyNeeded,
   resolveActor,
   reviewContext,
   standInWindowError,
@@ -222,12 +223,50 @@ describe("standInWindowError", () => {
   });
 });
 
+describe("proxyNeeded", () => {
+  const conflicted = (stage: number, status: Parameters<typeof syllabus>[1]) =>
+    syllabus(stage, status, [PROGRAM_REVIEWER]);
+
+  it.each([
+    ["a draft", conflicted(0, "draft")],
+    ["waiting at stage 1", conflicted(1, "submitted")],
+    ["returned at stage 1", conflicted(1, "returned")],
+  ])("is true for %s the program reviewer writes", (_, routed) => {
+    expect(proxyNeeded(routed, HOLDERS, [])).toBe(true);
+  });
+
+  it("is true when the program reviewer leads", () => {
+    const led = syllabus(1, "submitted", [], PROGRAM_REVIEWER);
+    expect(proxyNeeded(led, HOLDERS, [])).toBe(true);
+  });
+
+  it.each([
+    ["past stage 1", conflicted(2, "submitted")],
+    ["returned later", conflicted(3, "returned")],
+    ["approved", conflicted(5, "approved")],
+    ["filed", conflicted(5, "filed")],
+  ])("is false once stage 1 is decided: %s", (_, routed) => {
+    expect(proxyNeeded(routed, HOLDERS, [])).toBe(false);
+  });
+
+  it("is false once a proxy is set", () => {
+    expect(
+      proxyNeeded(conflicted(1, "submitted"), HOLDERS, [{ stage: 1, user: PROXY }]),
+    ).toBe(false);
+  });
+
+  it("is false when the program reviewer isn't an author", () => {
+    expect(proxyNeeded(syllabus(1), HOLDERS, [])).toBe(false);
+  });
+});
+
 describe("reviewContext", () => {
   it("tells the current reviewer they may decide", () => {
     expect(reviewContext(DEAN, false, syllabus(2), HOLDERS, [])).toEqual({
       actorStage: 2,
       actingAs: "holder",
       designatableStages: [],
+      proxyNeeded: false,
     });
   });
 
@@ -236,6 +275,7 @@ describe("reviewContext", () => {
       actorStage: null,
       actingAs: null,
       designatableStages: [3, 4],
+      proxyNeeded: false,
     });
   });
 
@@ -244,15 +284,27 @@ describe("reviewContext", () => {
       actorStage: null,
       actingAs: null,
       designatableStages: [1, 2, 3, 4, 5],
+      proxyNeeded: false,
     });
   });
 
-  it("offers only the proxy while drafting", () => {
+  it("offers only the proxy while drafting, and says one is needed", () => {
     const draft = syllabus(0, "draft", [PROGRAM_REVIEWER]);
     expect(reviewContext(PROGRAM_REVIEWER, false, draft, HOLDERS, [])).toEqual({
       actorStage: null,
       actingAs: null,
       designatableStages: [1],
+      proxyNeeded: true,
+    });
+  });
+
+  it("refuses the authoring program reviewer at stage 1 and says a proxy is needed", () => {
+    const routed = syllabus(1, "submitted", [PROGRAM_REVIEWER]);
+    expect(reviewContext(PROGRAM_REVIEWER, false, routed, HOLDERS, [])).toEqual({
+      actorStage: null,
+      actingAs: null,
+      designatableStages: [1],
+      proxyNeeded: true,
     });
   });
 

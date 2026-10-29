@@ -146,9 +146,12 @@ This round gives Part 5 a previous approved syllabus to build on.
 ## Part 6 — Proxy and stand-ins (IT 102)
 
 - [ ] As `ana`: create an IT 102 draft, upload a PDF, and add **`rev`** as co-author. The program reviewer is now conflicted.
-- [ ] Click **Submit for review**. It should be **blocked**, because no proxy is set.
-- [ ] As `rev` (who can name their own proxy), or as `dean` or `admin`: under *Proxy and stand-ins*, designate a proxy for stage 1. Try `nchair` first. It should be refused, because a proxy must be active BSIT faculty. Then try `ana`. It should be refused, because a stand-in can't lead or co-author. Then pick `ben`.
-- [ ] As `ana`: submit. As `ben`: the syllabus appears in `ben`'s `/review` queue as *"as proxy"*. Approve it.
+- [ ] (Optional, before submitting) As `dean`: open `/review`. The draft is listed under *Needs a proxy*. **Name a proxy** opens it showing only the header, co-authors and *Proxy and stand-ins* (no PDFs or timeline), with stage 1 editable. Leave it unset.
+- [ ] As `ana`: click **Submit for review**. The dialog warns that the program reviewer co-authors it and stage 1 waits for a proxy. Submit anyway. It goes through, and the page shows *Waiting for a proxy*.
+- [ ] As `rev`: the bell has *"IT 102 (BSIT) is waiting for your review"*. Open it. The review workspace refuses (*"You lead or co-author this syllabus, so you can't review it."*) and shows the stage-1 proxy picker instead of the forms. `/review` also lists it under *Needs a proxy*.
+- [ ] As `dean`: `/review` lists it under *Needs a proxy* too.
+- [ ] As `rev` (in the workspace), or as `dean` or `admin` (under *Proxy and stand-ins*): designate a proxy for stage 1. Try `nchair` first. It should be refused, because a proxy must be active BSIT faculty. Then try `ana`. It should be refused, because a stand-in can't lead or co-author. Then pick `ben`. The *Needs a proxy* entries disappear.
+- [ ] As `ben`: the bell has *"IT 102 (BSIT) is waiting for your review"*, and the syllabus appears in `ben`'s `/review` queue as *"as proxy"*. Approve it.
 - [ ] As `rev`: the queue doesn't offer it, because nobody reviews their own syllabus.
 - [ ] (Optional) Have `admin` act on the review workspace. Admin never reviews.
 

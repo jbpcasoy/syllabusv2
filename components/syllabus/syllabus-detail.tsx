@@ -88,8 +88,13 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
     return () => controller.abort();
   }, [id, reloadKey]);
 
+  // A designator may only name the proxy; the timeline would answer 404.
+  // Unknown on first load, so that fetch runs alongside the syllabus's.
+  const designatorOnly = syllabus?.access === "designator";
+
   // Uploads and transitions both add rows, so refetch on either.
   useEffect(() => {
+    if (designatorOnly) return;
     const controller = new AbortController();
     setTimelineError(null);
 
@@ -101,7 +106,7 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
       });
 
     return () => controller.abort();
-  }, [id, reloadKey, versionsKey, timelineRetry]);
+  }, [id, reloadKey, versionsKey, timelineRetry, designatorOnly]);
 
   if (!syllabus) {
     return (
@@ -277,10 +282,25 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
         </p>
       )}
 
+      {designatorOnly && (
+        <p className="mt-4 rounded-md bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+          You can name this draft&apos;s proxy below. Its PDFs and history stay
+          private to its authors until it is submitted.
+        </p>
+      )}
+
       {syllabus.status === "submitted" && (
         <p className="mt-4 rounded-md bg-blue-50 px-4 py-3 text-sm text-blue-800">
           In review at stage {syllabus.stage} ({stageLabel}). It is read-only
           while it goes through the review chain.
+        </p>
+      )}
+
+      {syllabus.status === "submitted" && review?.proxyNeeded && (
+        <p className="mt-4 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Waiting for a proxy: the program reviewer leads or co-authors this
+          syllabus, so stage 1 can&apos;t be reviewed until someone from the
+          program&apos;s faculty is named under <em>Proxy and stand-ins</em>.
         </p>
       )}
 
@@ -325,26 +345,30 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
         </section>
       )}
 
-      <div className="mt-6">
-        <SyllabusTimeline
-          syllabus={syllabus}
-          entries={timeline}
-          error={timelineError}
-          onRetry={() => setTimelineRetry((k) => k + 1)}
-        />
-      </div>
+      {!designatorOnly && (
+        <>
+          <div className="mt-6">
+            <SyllabusTimeline
+              syllabus={syllabus}
+              entries={timeline}
+              error={timelineError}
+              onRetry={() => setTimelineRetry((k) => k + 1)}
+            />
+          </div>
 
-      <section className="mt-6">
-        <h2 className="mb-2 text-base font-semibold text-gray-900">
-          PDF versions
-        </h2>
-        <SyllabusVersions
-          syllabusId={syllabus.id}
-          reloadKey={versionsKey}
-          onCountChange={setVersionCount}
-          decisions={decisionsByVersion(timeline)}
-        />
-      </section>
+          <section className="mt-6">
+            <h2 className="mb-2 text-base font-semibold text-gray-900">
+              PDF versions
+            </h2>
+            <SyllabusVersions
+              syllabusId={syllabus.id}
+              reloadKey={versionsKey}
+              onCountChange={setVersionCount}
+              decisions={decisionsByVersion(timeline)}
+            />
+          </section>
+        </>
+      )}
 
       {(syllabus.status === "approved" || syllabus.status === "filed") && (
         <div className="mt-6">

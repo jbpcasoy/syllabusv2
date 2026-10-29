@@ -116,15 +116,17 @@ const RULES: Record<Capability, Rule> = {
   // Return a justification scan for revision: the program reviewer or any
   // higher role in the chain.
   "justification.return": anyOf(programReviewer, dean, fdisChair, citlDirector, vpaa),
-  // Open the Review Queue: holds a chain role anywhere. Global on purpose,
-  // since canAnywhere has no program-reviewer scopes; the queue route still
-  // shows only the stages the user holds or stands in for.
+  // Open the Review Queue: holds a chain role anywhere, or stands in (or
+  // proxies) on some syllabus. Global on purpose, since canAnywhere has no
+  // program-reviewer scopes; the queue route still shows only the stages
+  // the user holds or stands in for.
   "reviewQueue.view": (r) =>
     r.reviewerOfPrograms.length > 0 ||
     r.deanOfColleges.length > 0 ||
     r.isFdisChair ||
     r.isCitlDirector ||
-    r.isVpaa,
+    r.isVpaa ||
+    r.standsIn,
   // Open the dashboard: any manager or chain role, anywhere. Global for the
   // same reason as the queue; lib/dashboard-scope.ts limits what they see.
   // Faculty alone don't get one (they have My syllabi).

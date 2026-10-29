@@ -16,7 +16,11 @@ import {
   loadStandIns,
 } from "@/lib/syllabus-chain";
 import { hasLiveReferenceTo } from "@/lib/syllabus-reference";
-import { isPersonalReviewer, reviewContext } from "@/lib/syllabus-review";
+import {
+  canDesignate,
+  isPersonalReviewer,
+  reviewContext,
+} from "@/lib/syllabus-review";
 import { parseSyllabusUpdateInput } from "@/lib/validators/syllabus";
 import type { Syllabus } from "@/types/syllabus";
 import { NextResponse, type NextRequest } from "next/server";
@@ -47,30 +51,34 @@ function notEditable() {
 
 // GET /api/syllabus/:id
 // Lead, co-authors, admin, reviewers, and faculty of programs referencing
-// it. `review` says what the caller may do in review right now.
+// it; a draft also opens to whoever may name its proxy (`designator`).
+// `review` says what the caller may do in review right now.
 export async function GET(_request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
 
   try {
+    const me = auth.user.id;
     const pb = await createAdminPb();
     const [syllabus, roles] = await Promise.all([
       pb.collection("syllabi").getOne<Syllabus>(id, { expand: SYLLABUS_EXPAND }),
-      getUserRoles(auth.user.id),
+      getUserRoles(me),
     ]);
-    const access = await resolveSyllabusAccess(
-      pb,
-      auth.user.id,
-      roles,
-      syllabus,
-    );
+    const [resolved, holders] = await Promise.all([
+      resolveSyllabusAccess(pb, me, roles, syllabus),
+      loadChainHolders(pb, syllabus.program),
+    ]);
+    const access =
+      resolved ??
+      (syllabus.status === "draft" && canDesignate(me, roles.isAdmin, 1, holders)
+        ? "designator"
+        : null);
     if (!access) return notFound();
 
     const target = { program: syllabus.program };
-    const [holders, standIns, canReturnSignedCopy, canTransferLead] =
+    const [standIns, canReturnSignedCopy, canTransferLead] =
       await Promise.all([
-        loadChainHolders(pb, syllabus.program),
         loadStandIns(pb, syllabus.id),
         can(auth.user, "signedCopy.return", target),
         can(auth.user, "syllabus.transferLead", target),

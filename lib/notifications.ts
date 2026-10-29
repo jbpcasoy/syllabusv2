@@ -73,7 +73,9 @@ export function stageActors(
 /**
  * Who hears about a transition, and as what. Pure: callers pass the chain
  * holders and stand-ins they already loaded for the transition. The actor
- * is never notified, and each user appears once.
+ * is never notified, and each user appears once. With no proxy set, a
+ * program reviewer who writes the syllabus still hears at stage 1: the
+ * review workspace then asks them to name a proxy.
  */
 export function notificationRecipients(
   event: NotifyEvent,
@@ -82,7 +84,10 @@ export function notificationRecipients(
   standIns: readonly StandIn[],
 ): NotificationTarget[] {
   const reviewers = (stage: number): NotificationTarget[] =>
-    stageActors(stage, syllabus, holders, standIns).map((user) => ({
+    (stage === 1 && !standIns.some((s) => s.stage === 1)
+      ? (holders[0] ?? [])
+      : stageActors(stage, syllabus, holders, standIns)
+    ).map((user) => ({
       user,
       kind: "review_requested",
       stage,

@@ -21,7 +21,6 @@ const READY: SubmitEvent = {
   hasVersion: true,
   termOpen: true,
   missingRoles: [],
-  proxyNeeded: false,
 };
 
 const inReview = (stage: number): WorkflowState => ({ status: "submitted", stage });
@@ -48,14 +47,11 @@ const RESUBMIT: ResubmitEvent = {
   unansweredPoints: 0,
   termOpen: true,
   missingRoles: [],
-  proxyNeeded: false,
 };
 const FILE: FileEvent = { type: "file", hasScan: true };
 const REJECT_SCAN: RejectScanEvent = { type: "rejectScan" };
 
 const STAGES = [1, 2, 3, 4, 5];
-const PROXY_NEEDED =
-  "The program reviewer is an author of this syllabus. A proxy must be designated first.";
 
 function expectError(result: ReturnType<typeof transition>, error: string) {
   expect(result).toEqual({ ok: false, error });
@@ -100,30 +96,15 @@ describe("transition: submit", () => {
     );
   });
 
-  it("requires a proxy when the program reviewer is an author", () => {
-    expectError(transition(DRAFT, { ...READY, proxyNeeded: true }), PROXY_NEEDED);
-  });
-
   it("reports the status problem before any other", () => {
     const result = transition(inReview(1), {
       type: "submit",
       hasVersion: false,
       termOpen: false,
       missingRoles: ["vpaa"],
-      proxyNeeded: true,
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/Only a draft/);
-  });
-
-  it("reports the missing chain before the missing proxy", () => {
-    const result = transition(DRAFT, {
-      ...READY,
-      missingRoles: ["dean"],
-      proxyNeeded: true,
-    });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toMatch(/chain is incomplete/);
   });
 
   it("does not mutate its input", () => {
@@ -303,13 +284,6 @@ describe("transition: resubmit", () => {
     expectError(
       transition(returnedAt(4), { ...RESUBMIT, missingRoles: ["fdisChair"] }),
       "The review chain is incomplete. No active FDIS Chair.",
-    );
-  });
-
-  it("requires a proxy when the program reviewer is an author", () => {
-    expectError(
-      transition(returnedAt(1), { ...RESUBMIT, proxyNeeded: true }),
-      PROXY_NEEDED,
     );
   });
 });
