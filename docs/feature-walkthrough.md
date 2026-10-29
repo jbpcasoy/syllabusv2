@@ -169,7 +169,7 @@ This round gives Part 5 a previous approved syllabus to build on.
 ## Part 8 — Lead transfer and admin override
 
 - [ ] As `chair`: on IT 102, click **Transfer lead** and move it from `ana` to `ben`. Now only `ben` can edit it.
-- [ ] As `admin` (not the chair): transfer it back. A reason is **required**. The transfer is recorded as an override.
+- [ ] As `admin` (not the chair): transfer it back. A reason of at least 10 characters is **required**; **Transfer** stays disabled until then. The transfer is recorded as an override.
 
 ## Part 9 — Visibility, deadlines, audit and limits
 

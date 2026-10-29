@@ -187,7 +187,9 @@ export function TransferLeadDialog({
               </Label>
               <Description className="mt-1 text-sm text-gray-600">
                 You are not this program&apos;s chair, so this is an admin
-                override. The reason is kept in the audit log.
+                override. The reason is kept in the audit log. At least{" "}
+                {LEAD_REASON_MIN} characters ({reason.trim().length}/
+                {LEAD_REASON_MIN}).
               </Description>
               <Textarea
                 value={reason}
