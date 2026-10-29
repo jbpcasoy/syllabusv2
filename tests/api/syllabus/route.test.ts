@@ -61,6 +61,10 @@ vi.mock("@/lib/syllabus", () => ({
   isListedForProgram: mocks.isListedForProgram,
   isNotUniqueError: mocks.isNotUniqueError,
   listReferencedSyllabusIds: mocks.listReferencedSyllabusIds,
+  referencingPrograms: (roles: {
+    facultyOfPrograms: string[];
+    chairOfPrograms: string[];
+  }) => [...new Set([...roles.facultyOfPrograms, ...roles.chairOfPrograms])],
   anyOf: (_pb: unknown, field: string, values: string[]) =>
     `(${values.map((v) => `${field} = "${v}"`).join(" || ")})`,
   getSyllabusAccess: mocks.getSyllabusAccess,
@@ -153,6 +157,17 @@ describe("GET /api/syllabus", () => {
       `(lead = "${ME}" || co_authors ?= "${ME}" || (id = "refrefrefrefref"))`,
     );
     expect((await res.json()).items[0].access).toBe("referencer");
+  });
+
+  it("also looks up references for the programs the caller chairs", async () => {
+    mockAuth({ id: ME, roles: { chairOfPrograms: ["chrchrchrchrchr"] } });
+
+    await GET(get());
+
+    expect(mocks.listReferencedSyllabusIds).toHaveBeenCalledWith(
+      expect.anything(),
+      ["chrchrchrchrchr"],
+    );
   });
 
   it("limits a non-admin to syllabi they lead or co-author", async () => {

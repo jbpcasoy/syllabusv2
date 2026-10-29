@@ -30,6 +30,14 @@ const ACTION_LABELS: Record<DialogAction, string> = {
   withdraw: "Withdraw",
 };
 
+/** Ending an approved reference isn't cancelling a request, so say so. */
+function actionLabel(action: DialogAction, row: SyllabusReferenceResponse) {
+  if (action === "withdraw" && row.status === "approved") {
+    return "Stop referencing";
+  }
+  return ACTION_LABELS[action];
+}
+
 /** The buttons a viewer gets for one reference. Approve runs inline. */
 export function ReferenceRowActions({
   row,
@@ -84,7 +92,7 @@ export function ReferenceRowActions({
               disabled={approving}
               className="font-medium text-red-600 hover:text-red-500 disabled:opacity-50"
             >
-              {ACTION_LABELS[action]}
+              {actionLabel(action, row)}
             </button>
           ))}
       </div>

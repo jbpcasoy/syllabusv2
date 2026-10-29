@@ -8,6 +8,7 @@ import {
   isListedForProgram,
   isNotUniqueError,
   listReferencedSyllabusIds,
+  referencingPrograms,
   SYLLABUS_EXPAND,
   toSyllabusResponse,
 } from "@/lib/syllabus";
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     const referenced =
       roles.isAdmin || awaiting
         ? []
-        : await listReferencedSyllabusIds(pb, roles.facultyOfPrograms);
+        : await listReferencedSyllabusIds(pb, referencingPrograms(roles));
 
     // pb.filter() safely binds params to prevent filter injection
     const filters: string[] = [];

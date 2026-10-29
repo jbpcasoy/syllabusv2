@@ -222,7 +222,8 @@ describe("resolveSyllabusAccess", () => {
   });
 
   it("skips the chain query for a program chair or department head", async () => {
-    const pb = fakePb({});
+    const getList = vi.fn(async () => ({ items: [] }));
+    const pb = fakePb({ syllabus_references: { getList } });
     const chairAndHead = {
       ...NO_ROLES,
       chairOfPrograms: ["prg123prg123prg"],
@@ -267,6 +268,28 @@ describe("resolveSyllabusAccess", () => {
       });
     },
   );
+
+  it("grants referencer to the chair of a referencing program", async () => {
+    const getList = vi.fn(async () => ({ items: [{ id: "x" }] }));
+    const pb = fakePb({ syllabus_references: { getList } });
+    const chair = {
+      ...faculty,
+      chairOfPrograms: ["prgBprgBprgBprg", "prgAprgAprgAprg"],
+    };
+
+    expect(await resolveSyllabusAccess(pb, OTHER, chair, syllabus)).toBe(
+      "referencer",
+    );
+    expect(getList).toHaveBeenCalledWith(
+      1,
+      1,
+      expect.objectContaining({
+        filter: expect.stringContaining(
+          '(program = "prgAprgAprgAprg" || program = "prgBprgBprgBprg")',
+        ),
+      }),
+    );
+  });
 });
 
 describe("listReferencedSyllabusIds", () => {

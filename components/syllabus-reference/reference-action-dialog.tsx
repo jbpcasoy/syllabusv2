@@ -45,11 +45,19 @@ const COPY: Record<
     body: "The program loses access to your syllabus and will need its own or another reference.",
   },
   withdraw: {
-    title: "Withdraw reference",
+    title: "Withdraw reference request",
     confirm: "Withdraw",
     busy: "Withdrawing…",
-    body: "Your program will stop using this syllabus. You can then write your own or reference another.",
+    body: "Your request is cancelled. You can then write your own or reference another.",
   },
+};
+
+/** Withdrawing an approved reference ends it rather than cancelling a request. */
+const STOP_REFERENCING_COPY = {
+  title: "Stop referencing",
+  confirm: "Stop referencing",
+  busy: "Stopping…",
+  body: "Your program will stop using this syllabus. You can then write your own or reference another.",
 };
 
 export function ReferenceActionDialog({
@@ -63,7 +71,10 @@ export function ReferenceActionDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const needsReason = action !== "withdraw";
-  const copy = COPY[action];
+  const copy =
+    action === "withdraw" && reference?.status === "approved"
+      ? STOP_REFERENCING_COPY
+      : COPY[action];
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

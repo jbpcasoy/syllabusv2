@@ -118,8 +118,8 @@ function holdsChainRole(roles: UserRoles): boolean {
 /**
  * getSyllabusAccess plus two fallbacks for callers with no direct access:
  * `reviewer` (lib/syllabus-review.ts isReviewer, once out of draft), then
- * `referencer` (active faculty of a program holding an approved reference).
- * Each query only runs when it could match.
+ * `referencer` (active faculty or the chair of a program holding an approved
+ * reference). Each query only runs when it could match.
  */
 export async function resolveSyllabusAccess(
   pb: PocketBase,
@@ -138,16 +138,27 @@ export async function resolveSyllabusAccess(
     if (isReviewer(userId, syllabus, holders, standIns)) return "reviewer";
   }
 
-  if (roles.facultyOfPrograms.length === 0) return null;
+  const programs = referencingPrograms(roles);
+  if (programs.length === 0) return null;
 
   const result = await pb.collection("syllabus_references").getList(1, 1, {
     skipTotal: true,
     fields: "id",
     filter: `${pb.filter("syllabus = {:id} && status = 'approved'", {
       id: syllabus.id,
-    })} && ${anyOf(pb, "program", roles.facultyOfPrograms, "p")}`,
+    })} && ${anyOf(pb, "program", programs, "p")}`,
   });
   return result.items.length > 0 ? "referencer" : null;
+}
+
+/**
+ * Programs whose approved references the user reads through: those they
+ * teach in and those they chair (the chair requests the reference).
+ */
+export function referencingPrograms(
+  roles: Pick<UserRoles, "facultyOfPrograms" | "chairOfPrograms">,
+): string[] {
+  return [...new Set([...roles.facultyOfPrograms, ...roles.chairOfPrograms])];
 }
 
 /** Syllabi the programs hold an approved reference to. */
