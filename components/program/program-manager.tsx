@@ -1,6 +1,11 @@
 "use client";
 
 import {
+  canAnywhere,
+  evaluateCapability,
+  type ScopeChain,
+} from "@/lib/capability-rules";
+import {
   listDepartments,
   type DepartmentRecord,
 } from "@/lib/department-client";
@@ -8,11 +13,20 @@ import { formatDate } from "@/lib/format-date";
 import { listPrograms, type ProgramRecord } from "@/lib/program-client";
 import { Select } from "@headlessui/react";
 import type { ListResult } from "pocketbase";
+import type { UserRoles } from "@/types/roles";
 import { useEffect, useState } from "react";
 import { DeleteProgramDialog } from "./delete-program-dialog";
 import { ProgramModal, type ProgramModalMode } from "./program-modal";
 
 const PER_PAGE = 10;
+
+function programScope(program: ProgramRecord): ScopeChain {
+  return {
+    programId: program.id,
+    departmentId: program.department,
+    collegeId: program.expand?.department?.college,
+  };
+}
 
 type ModalState = {
   open: boolean;
@@ -21,7 +35,18 @@ type ModalState = {
   key: number; // bumps on each open so the form state resets
 };
 
-export function ProgramManager() {
+type ProgramManagerProps = {
+  /** The signed-in user's own roles; writes are decided per row. */
+  roles: UserRoles;
+};
+
+export function ProgramManager({ roles }: ProgramManagerProps) {
+  const canCreate = canAnywhere(roles, "program.create");
+  const canUpdate = (program: ProgramRecord) =>
+    evaluateCapability(roles, "program.update", programScope(program));
+  const canDelete = (program: ProgramRecord) =>
+    evaluateCapability(roles, "program.delete", programScope(program));
+
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
@@ -115,13 +140,15 @@ export function ProgramManager() {
             Browse, search, and manage programs.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => openModal("create")}
-          className="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:mt-0"
-        >
-          New program
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            onClick={() => openModal("create")}
+            className="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:mt-0"
+          >
+            New program
+          </button>
+        )}
       </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -239,26 +266,30 @@ export function ProgramManager() {
                   >
                     View
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => openModal("edit", program)}
-                    className="ml-4 font-medium text-indigo-600 hover:text-indigo-500"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDeleteState((prev) => ({
-                        open: true,
-                        program,
-                        key: prev.key + 1,
-                      }))
-                    }
-                    className="ml-4 font-medium text-red-600 hover:text-red-500"
-                  >
-                    Delete
-                  </button>
+                  {canUpdate(program) && (
+                    <button
+                      type="button"
+                      onClick={() => openModal("edit", program)}
+                      className="ml-4 font-medium text-indigo-600 hover:text-indigo-500"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {canDelete(program) && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDeleteState((prev) => ({
+                          open: true,
+                          program,
+                          key: prev.key + 1,
+                        }))
+                      }
+                      className="ml-4 font-medium text-red-600 hover:text-red-500"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -334,6 +365,7 @@ export function ProgramManager() {
         mode={modal.mode}
         program={modal.program}
         departments={departments}
+        canEdit={!!modal.program && canUpdate(modal.program)}
         onModeChange={(mode) => setModal((prev) => ({ ...prev, mode }))}
         onClose={() => setModal((prev) => ({ ...prev, open: false }))}
         onSaved={() => {

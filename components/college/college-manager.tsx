@@ -18,7 +18,11 @@ type ModalState = {
   key: number; // bumps on each open so the form state resets
 };
 
-export function CollegeManager() {
+type CollegeManagerProps = {
+  canManage: boolean;
+};
+
+export function CollegeManager({ canManage }: CollegeManagerProps) {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [campusFilter, setCampusFilter] = useState("");
@@ -112,13 +116,15 @@ export function CollegeManager() {
             Browse, search, and manage colleges.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => openModal("create")}
-          className="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:mt-0"
-        >
-          New college
-        </button>
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => openModal("create")}
+            className="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:mt-0"
+          >
+            New college
+          </button>
+        )}
       </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -236,26 +242,30 @@ export function CollegeManager() {
                   >
                     View
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => openModal("edit", college)}
-                    className="ml-4 font-medium text-indigo-600 hover:text-indigo-500"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDeleteState((prev) => ({
-                        open: true,
-                        college,
-                        key: prev.key + 1,
-                      }))
-                    }
-                    className="ml-4 font-medium text-red-600 hover:text-red-500"
-                  >
-                    Delete
-                  </button>
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => openModal("edit", college)}
+                      className="ml-4 font-medium text-indigo-600 hover:text-indigo-500"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDeleteState((prev) => ({
+                          open: true,
+                          college,
+                          key: prev.key + 1,
+                        }))
+                      }
+                      className="ml-4 font-medium text-red-600 hover:text-red-500"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -331,6 +341,7 @@ export function CollegeManager() {
         mode={modal.mode}
         college={modal.college}
         campuses={campuses}
+        canEdit={canManage}
         onModeChange={(mode) => setModal((prev) => ({ ...prev, mode }))}
         onClose={() => setModal((prev) => ({ ...prev, open: false }))}
         onSaved={() => {

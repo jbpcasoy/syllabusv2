@@ -22,6 +22,8 @@ type CampusModalProps = {
   campus: CampusRecord | null;
   onClose: () => void;
   onSaved: () => void;
+  /** Shows the Edit button in view mode. */
+  canEdit: boolean;
   onModeChange: (mode: CampusModalMode) => void;
 };
 
@@ -37,6 +39,7 @@ export function CampusModal({
   campus,
   onClose,
   onSaved,
+  canEdit,
   onModeChange,
 }: CampusModalProps) {
   const [name, setName] = useState(campus?.name ?? "");
@@ -103,13 +106,15 @@ export function CampusModal({
                 >
                   Close
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onModeChange("edit")}
-                  className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                >
-                  Edit
-                </button>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => onModeChange("edit")}
+                    className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                  >
+                    Edit
+                  </button>
+                )}
               </div>
             </>
           ) : (

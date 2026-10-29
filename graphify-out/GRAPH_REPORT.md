@@ -1,7 +1,7 @@
 # Graph Report - syllabusv2  (2026-10-29)
 
 ## Corpus Check
-- 665 files · ~308,722 words
+- 665 files · ~308,941 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 4, .ico 1, .css 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `55495339`
+- Built from commit: `0f601f33`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -165,16 +165,16 @@
 10. `@headlessui/react` - 95 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `Proposals (accept or amend before task 1)` --references--> `justificationScope()`  [INFERRED]
+  docs/specs/phase-5-visibility.md → lib/dashboard-scope.ts
+- `Deadlines` --references--> `ReviewQueueItem`  [INFERRED]
+  docs/specs/phase-5-visibility.md → types/review-queue.ts
 - `Definitions` --references--> `getSyllabusAccess()`  [INFERRED]
   docs/specs/phase-2-syllabus-submission.md → lib/syllabus.ts
 - `Timeline` --references--> `resolveSyllabusAccess()`  [INFERRED]
   docs/specs/phase-4-reviewer-experience.md → lib/syllabus.ts
-- `Deadlines` --references--> `ReviewQueueItem`  [INFERRED]
-  docs/specs/phase-5-visibility.md → types/review-queue.ts
 - `Hub (`/syllabus/[id]`)` --references--> `SyllabusVersions()`  [INFERRED]
   docs/specs/phase-4-reviewer-experience.md → components/syllabus/syllabus-versions.tsx
-- `Proposals (accept or amend before task 1)` --references--> `justificationScope()`  [INFERRED]
-  docs/specs/phase-5-visibility.md → lib/dashboard-scope.ts
 
 ## Import Cycles
 - None detected.
@@ -344,7 +344,7 @@ Nodes (24): Task plan (one reviewable change each, lint and tests green after ea
 
 ### Community 39 - "types/syllabus.ts"
 Cohesion: 0.08
-Nodes (51): GET(), RouteContext, GET(), RouteContext, GET(), RouteContext, conflict(), GET() (+43 more)
+Nodes (50): GET(), RouteContext, GET(), RouteContext, GET(), RouteContext, conflict(), GET() (+42 more)
 
 ### Community 40 - "syllabus-decision.ts"
 Cohesion: 0.16
@@ -708,7 +708,7 @@ Nodes (4): ctx, mocks, syllabus, version
 
 ### Community 203 - "summary/route.ts"
 Cohesion: 0.13
-Nodes (16): addTally(), aggregate(), blankTally(), byName(), completionRows(), row(), Tally, withRate() (+8 more)
+Nodes (17): addTally(), aggregate(), blankTally(), byName(), completionRows(), row(), Tally, withRate() (+9 more)
 
 ### Community 204 - "syllabus/route.test.ts"
 Cohesion: 0.33
@@ -726,16 +726,16 @@ Nodes (5): candidates, ctx, get(), mocks, syllabus
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `pocketbase` connect `pocketbase` to `reference-manager.tsx`, `types/college.ts`, `react`, `college-manager.tsx`, `version/route.ts`, `react`, `dependencies`, `course-modal.tsx`, `Package & Tooling Config`, `export/form18/route.ts`, `program-join-request/[id]/route.ts`, `next`, `signed-copy/route.ts`, `react`, `timeline/route.ts`, `lib/form18.ts`, `Faculty UI`, `program-join-request-manager.tsx`, `lib/prospectus-duplicate.ts`, `next`, `types/term.ts`, `VPAA UI`, `academic.test.ts`, `Program Chair UI`, `dean-manager.tsx`, `types/form18.ts`, `getUserRoles`, `department-head/route.ts`, `approval-verify.ts`, `audit-log.ts`, `lib/dashboard.ts`, `types/syllabus.ts`, `types/notification.ts`, `program-reviewer-manager.tsx`, `syllabus-decision.ts`, `syllabus-client.ts`, `notifications.ts`, `syllabus-reference/route.ts`, `helpers.ts`, `fdis-chair/route.ts`, `dashboard-manager.tsx`, `types/faculty.ts`, `lib/review-queue.ts`, `signed-copy/route.test.ts`, `citl-director/route.ts`, `types/signed-copy.ts`, `AppUser`, `prospectus-client.ts`, `types/prospectus-item.ts`, `program-reviewer/route.ts`, `syllabus-manager.tsx`, `validators/user.ts`, `audit-phase-a.ts`, `types/justification.ts`, `lib/form17.ts`, `types/term.ts`, `user-manager.tsx`, `Program`, `dean/[id]/route.ts`, `types/form17.ts`, `types/prospectus-item.ts`, `05-a11y.spec.ts`, `dean-manager.tsx`?**
-  _High betweenness centrality (0.175) - this node is a cross-community bridge._
+- **Why does `next` connect `next` to `reference-manager.tsx`, `dashboard-scope.ts`, `react`, `college-manager.tsx`, `lib/syllabus-review.ts`, `authorize`, `Package & Tooling Config`, `createAdminPb`, `program-join-request/[id]/route.ts`, `getCurrentUser`, `mockAuth`, `signed-copy/route.ts`, `react`, `vpaa/route.test.ts`, `mock-auth.ts`, `org-visibility.ts`, `lib/prospectus-duplicate.ts`, `export/route.ts`, `notification-bell.tsx`, `dean-manager.tsx`, `getUserRoles`, `department-head/route.ts`, `pocketbase`, `types/notification.ts`, `types/syllabus.ts`, `syllabus-reference/route.ts`, `course/route.test.ts`, `fdis-chair/route.ts`, `dashboard-manager.tsx`, `lib/review-queue.ts`, `signed-copy/route.test.ts`, `vitest`, `prospectus-client.ts`, `types/prospectus-item.ts`, `syllabus-detail.tsx`, `program-reviewer/route.ts`, `syllabus-manager.tsx`, `user-manager.tsx`, `Program`, `users.ts`, `[code]/page.tsx`, `dean/[id]/route.ts`, `forms/justification.ts`, `capability-rules.ts`, `dean-manager.tsx`, `justifications/route.test.ts`, `dependencies`, `version/route.ts`, `react`, `export/route.test.ts`, `[id]/form17/route.test.ts`, `next`, `app-header.tsx`, `app-shell.tsx`, `types/term.ts`, `review/route.test.ts`, `[pointId]/route.test.ts`, `dean/route.test.ts`, `faculty/route.test.ts`, `fdis-chair/route.test.ts`, `program-chair/route.test.ts`, `audit-log.ts`, `types/faculty.ts`, `stand-in/route.test.ts`, `syllabus-client.ts`, `prospectus-item/route.test.ts`, `form17-view.tsx`, `[id]/form18/route.test.ts`, `syllabus-reference/route.test.ts`, `term/route.test.ts`, `resubmit/route.test.ts`, `stand-in-candidates/route.test.ts`, `user/route.test.ts`, `college/route.test.ts`, `export/form18/route.test.ts`, `submit/route.test.ts`, `validators/user.ts`, `[versionId]/file/route.test.ts`, `syllabus/route.test.ts`, `lead-candidates/route.test.ts`?**
+  _High betweenness centrality (0.169) - this node is a cross-community bridge._
 - **Are the 80 inferred relationships involving `createAdminPb()` (e.g. with `audit/route.test.ts` and `register/route.test.ts`) actually correct?**
   _`createAdminPb()` has 80 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `RFC-4180`, `Org chain (campus, college, department, program)`, `Scoped list visibility (lib/org-visibility.ts)` to the rest of the system?**
   _10 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `reference-manager.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.05970149253731343 - nodes in this community are weakly interconnected._
-- **Why does `next` connect `next` to `reference-manager.tsx`, `dashboard-scope.ts`, `react`, `college-manager.tsx`, `lib/syllabus-review.ts`, `authorize`, `Package & Tooling Config`, `createAdminPb`, `program-join-request/[id]/route.ts`, `getCurrentUser`, `mockAuth`, `signed-copy/route.ts`, `react`, `vpaa/route.test.ts`, `mock-auth.ts`, `org-visibility.ts`, `lib/prospectus-duplicate.ts`, `export/route.ts`, `notification-bell.tsx`, `dean-manager.tsx`, `getUserRoles`, `department-head/route.ts`, `pocketbase`, `types/notification.ts`, `types/syllabus.ts`, `syllabus-reference/route.ts`, `course/route.test.ts`, `fdis-chair/route.ts`, `dashboard-manager.tsx`, `lib/review-queue.ts`, `signed-copy/route.test.ts`, `vitest`, `prospectus-client.ts`, `types/prospectus-item.ts`, `syllabus-detail.tsx`, `program-reviewer/route.ts`, `syllabus-manager.tsx`, `user-manager.tsx`, `Program`, `users.ts`, `[code]/page.tsx`, `dean/[id]/route.ts`, `forms/justification.ts`, `capability-rules.ts`, `dean-manager.tsx`, `justifications/route.test.ts`, `dependencies`, `version/route.ts`, `react`, `export/route.test.ts`, `[id]/form17/route.test.ts`, `next`, `app-header.tsx`, `app-shell.tsx`, `types/term.ts`, `review/route.test.ts`, `[pointId]/route.test.ts`, `dean/route.test.ts`, `faculty/route.test.ts`, `fdis-chair/route.test.ts`, `program-chair/route.test.ts`, `audit-log.ts`, `types/faculty.ts`, `stand-in/route.test.ts`, `syllabus-client.ts`, `prospectus-item/route.test.ts`, `form17-view.tsx`, `[id]/form18/route.test.ts`, `syllabus-reference/route.test.ts`, `term/route.test.ts`, `resubmit/route.test.ts`, `stand-in-candidates/route.test.ts`, `user/route.test.ts`, `college/route.test.ts`, `export/form18/route.test.ts`, `submit/route.test.ts`, `validators/user.ts`, `[versionId]/file/route.test.ts`, `syllabus/route.test.ts`, `lead-candidates/route.test.ts`?**
-  _High betweenness centrality (0.140) - this node is a cross-community bridge._
+- **Why does `pocketbase` connect `pocketbase` to `reference-manager.tsx`, `types/college.ts`, `react`, `college-manager.tsx`, `version/route.ts`, `react`, `dependencies`, `course-modal.tsx`, `Package & Tooling Config`, `export/form18/route.ts`, `program-join-request/[id]/route.ts`, `next`, `signed-copy/route.ts`, `react`, `timeline/route.ts`, `lib/form18.ts`, `Faculty UI`, `program-join-request-manager.tsx`, `lib/prospectus-duplicate.ts`, `next`, `types/term.ts`, `VPAA UI`, `academic.test.ts`, `Program Chair UI`, `dean-manager.tsx`, `types/form18.ts`, `getUserRoles`, `department-head/route.ts`, `approval-verify.ts`, `audit-log.ts`, `lib/dashboard.ts`, `types/syllabus.ts`, `types/notification.ts`, `program-reviewer-manager.tsx`, `syllabus-decision.ts`, `syllabus-client.ts`, `notifications.ts`, `syllabus-reference/route.ts`, `helpers.ts`, `fdis-chair/route.ts`, `dashboard-manager.tsx`, `types/faculty.ts`, `lib/review-queue.ts`, `signed-copy/route.test.ts`, `citl-director/route.ts`, `types/signed-copy.ts`, `AppUser`, `prospectus-client.ts`, `types/prospectus-item.ts`, `program-reviewer/route.ts`, `syllabus-manager.tsx`, `validators/user.ts`, `audit-phase-a.ts`, `types/justification.ts`, `lib/form17.ts`, `types/term.ts`, `user-manager.tsx`, `Program`, `dean/[id]/route.ts`, `types/form17.ts`, `types/prospectus-item.ts`, `05-a11y.spec.ts`, `dean-manager.tsx`?**
+  _High betweenness centrality (0.162) - this node is a cross-community bridge._
 - **Are the 21 inferred relationships involving `handlePbError()` (e.g. with `Testing` and `Testing`) actually correct?**
   _`handlePbError()` has 21 INFERRED edges - model-reasoned connections that need verification._
 - **Should `dashboard-scope.ts` be split into smaller, more focused modules?**

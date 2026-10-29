@@ -2118,9 +2118,9 @@
     "semantic_hash": ""
   },
   "components/syllabus/available-course-combobox.tsx": {
-    "mtime": 1793170046.7199025,
-    "seen": 1793171282.1191685,
-    "ast_hash": "6c269c5c9d2e5a2a3b9463e486df4855",
+    "mtime": 1793270370.7467213,
+    "seen": 1793270511.9257674,
+    "ast_hash": "16c2a31650b45ba0cbb724b95f27bf57",
     "semantic_hash": ""
   },
   "components/syllabus/co-authors-panel.tsx": {
@@ -2142,15 +2142,15 @@
     "semantic_hash": ""
   },
   "components/syllabus/syllabus-detail.tsx": {
-    "mtime": 1793268341.8219855,
-    "seen": 1793268747.7247624,
-    "ast_hash": "9780c45e5e118997efb665cc6c5fb6b3",
+    "mtime": 1793270358.6135416,
+    "seen": 1793270511.925787,
+    "ast_hash": "9a3ecfd8b2d33bf27c4a05ebdc7ea61d",
     "semantic_hash": ""
   },
   "components/syllabus/syllabus-manager.tsx": {
-    "mtime": 1793156513.0613892,
-    "seen": 1793159836.3695138,
-    "ast_hash": "4e86e175d81cdfd7e0c1e76f62b78d86",
+    "mtime": 1793270357.740599,
+    "seen": 1793270511.9257882,
+    "ast_hash": "8bf0490474848c2b295a1243c8c2bad8",
     "semantic_hash": ""
   },
   "components/syllabus/syllabus-modal.tsx": {
@@ -2226,9 +2226,9 @@
     "semantic_hash": ""
   },
   "lib/syllabus.ts": {
-    "mtime": 1793268340.1241553,
-    "seen": 1793268747.7249036,
-    "ast_hash": "eeef45aff1531f9ab0e57a8b02765f80",
+    "mtime": 1793270369.0961387,
+    "seen": 1793270511.925986,
+    "ast_hash": "89b6392a3805fad999c939fd660ea016",
     "semantic_hash": ""
   },
   "lib/validators/syllabus-reference.ts": {
@@ -2364,9 +2364,9 @@
     "semantic_hash": ""
   },
   "tests/lib/syllabus.test.ts": {
-    "mtime": 1793268372.3749635,
-    "seen": 1793268747.7252028,
-    "ast_hash": "9614144995e4dd23a498211ba65693c9",
+    "mtime": 1793270387.7184405,
+    "seen": 1793270511.9262984,
+    "ast_hash": "fe4d8e16ce50dc9da0a5de3b60079b1f",
     "semantic_hash": ""
   },
   "tests/lib/validators/syllabus-reference.test.ts": {
@@ -2394,9 +2394,9 @@
     "semantic_hash": ""
   },
   "types/syllabus.ts": {
-    "mtime": 1793268338.4282298,
-    "seen": 1793268747.7252657,
-    "ast_hash": "3807133f66f44183259d5d6a9b022058",
+    "mtime": 1793270369.9229083,
+    "seen": 1793270511.926374,
+    "ast_hash": "da8041e3f1132a3ed36b1f0d045ec585",
     "semantic_hash": ""
   },
   "docs/specs/phase-2-syllabus-submission.md": {
@@ -3492,9 +3492,9 @@
     "semantic_hash": ""
   },
   "lib/dashboard-aggregate.ts": {
-    "mtime": 1793156796.7190182,
-    "seen": 1793159836.3695533,
-    "ast_hash": "3f649b3aec9edbc232241c915210201e",
+    "mtime": 1793270356.0200298,
+    "seen": 1793270511.9258668,
+    "ast_hash": "ac0ed602a29b5c46837f54a92359544e",
     "semantic_hash": ""
   },
   "lib/dashboard-client.ts": {
@@ -3504,9 +3504,9 @@
     "semantic_hash": ""
   },
   "lib/dashboard-export.ts": {
-    "mtime": 1793157936.676001,
-    "seen": 1793159836.3695552,
-    "ast_hash": "c7f7f0aa95afe8ff625a0844ad3d599b",
+    "mtime": 1793270356.8586688,
+    "seen": 1793270511.9258711,
+    "ast_hash": "d07e8eddd664ef004379d497d3f4392a",
     "semantic_hash": ""
   },
   "lib/dashboard-scope.ts": {
@@ -3522,9 +3522,9 @@
     "semantic_hash": ""
   },
   "lib/deadlines.ts": {
-    "mtime": 1793159302.0596735,
-    "seen": 1793159836.3695583,
-    "ast_hash": "a3e9628e8cd6f106284b7cd233719cd7",
+    "mtime": 1793270354.8356519,
+    "seen": 1793270511.9258764,
+    "ast_hash": "57722c6794073450af5a8175ed827240",
     "semantic_hash": ""
   },
   "lib/notification-client.ts": {
@@ -3624,9 +3624,9 @@
     "semantic_hash": ""
   },
   "tests/lib/dashboard-aggregate.test.ts": {
-    "mtime": 1793156871.251232,
-    "seen": 1793159836.3698685,
-    "ast_hash": "c54cc09facce7ac0b65d9381353fefa9",
+    "mtime": 1793270402.5915134,
+    "seen": 1793270511.9262538,
+    "ast_hash": "fdf4138e072e4f707977ee45793df076",
     "semantic_hash": ""
   },
   "tests/lib/dashboard-export.test.ts": {
@@ -3648,9 +3648,9 @@
     "semantic_hash": ""
   },
   "tests/lib/deadlines.test.ts": {
-    "mtime": 1793159317.928557,
-    "seen": 1793159836.3698723,
-    "ast_hash": "cdb32fb3773b33842c09ca54e8d7cf0f",
+    "mtime": 1793270393.727351,
+    "seen": 1793270511.926258,
+    "ast_hash": "2d07a545270740200b93e158b7640462",
     "semantic_hash": ""
   },
   "tests/lib/notification.test.ts": {
@@ -3666,9 +3666,9 @@
     "semantic_hash": ""
   },
   "tests/lib/overdue-badge.test.ts": {
-    "mtime": 1793156565.1498187,
-    "seen": 1793159836.3698883,
-    "ast_hash": "85cc5d26135de4708ffc0268a357cb4a",
+    "mtime": 1793270401.6593466,
+    "seen": 1793270511.9262748,
+    "ast_hash": "1bdf451230fa32bbe05c6dd950ac3ffd",
     "semantic_hash": ""
   },
   "tests/lib/term.test.ts": {
@@ -3702,9 +3702,9 @@
     "semantic_hash": ""
   },
   "docs/specs/phase-5-visibility.md": {
-    "mtime": 1793159635.8237565,
-    "seen": 1793159836.3699925,
-    "ast_hash": "4258f60571fd493e35b8095cc7785afc",
+    "mtime": 1793270407.5283012,
+    "seen": 1793270511.9263983,
+    "ast_hash": "9f150129efd1bd9243921dfd8b3af707",
     "semantic_hash": ""
   },
   "app/api/audit/route.ts": {
@@ -3912,9 +3912,9 @@
     "semantic_hash": ""
   },
   "docs/feature-walkthrough.md": {
-    "mtime": 1793268852.0731242,
-    "seen": 1793269002.736182,
-    "ast_hash": "0162998d7c6d4318dc20c4215e390554",
+    "mtime": 1793270407.5987854,
+    "seen": 1793270511.9263873,
+    "ast_hash": "5238a7ec7d49af674914cc6f6703b798",
     "semantic_hash": ""
   },
   "pb_migrations/1793000027_updated_colleges_campus_required.js": {

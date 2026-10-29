@@ -22,7 +22,11 @@ export function formatDate(value?: string) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
-export function CampusManager() {
+type CampusManagerProps = {
+  canManage: boolean;
+};
+
+export function CampusManager({ canManage }: CampusManagerProps) {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -98,13 +102,15 @@ export function CampusManager() {
             Browse, search, and manage campuses.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => openModal("create")}
-          className="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:mt-0"
-        >
-          New campus
-        </button>
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => openModal("create")}
+            className="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:mt-0"
+          >
+            New campus
+          </button>
+        )}
       </div>
       <div className="mt-6">
         <label htmlFor="search" className="sr-only">
@@ -187,26 +193,30 @@ export function CampusManager() {
                   >
                     View
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => openModal("edit", campus)}
-                    className="ml-4 font-medium text-indigo-600 hover:text-indigo-500"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDeleteState((prev) => ({
-                        open: true,
-                        campus,
-                        key: prev.key + 1,
-                      }))
-                    }
-                    className="ml-4 font-medium text-red-600 hover:text-red-500"
-                  >
-                    Delete
-                  </button>
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => openModal("edit", campus)}
+                      className="ml-4 font-medium text-indigo-600 hover:text-indigo-500"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDeleteState((prev) => ({
+                          open: true,
+                          campus,
+                          key: prev.key + 1,
+                        }))
+                      }
+                      className="ml-4 font-medium text-red-600 hover:text-red-500"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -280,6 +290,7 @@ export function CampusManager() {
         open={modal.open}
         mode={modal.mode}
         campus={modal.campus}
+        canEdit={canManage}
         onModeChange={(mode) => setModal((prev) => ({ ...prev, mode }))}
         onClose={() => setModal((prev) => ({ ...prev, open: false }))}
         onSaved={() => {
