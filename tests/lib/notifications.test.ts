@@ -287,6 +287,42 @@ describe("notificationText", () => {
     });
   });
 
+  it("tells the referencing chair a reference was approved, linking to the syllabus", () => {
+    const facts = { ...FACTS, referencingProgramCode: "BSN" };
+    expect(notificationText("reference_approved", 0, SYLLABUS_ID, facts)).toEqual({
+      title: "BSN's reference to IT 101 (BSIT) was approved",
+      body: "Ana Cruz approved BSN's request to reference IT 101 Intro to Computing (BSIT). Its chairs and active faculty can now view it read-only.",
+      link: `/syllabus/${SYLLABUS_ID}`,
+    });
+  });
+
+  it("tells the referencing chair a reference was revoked, linking to their references", () => {
+    const facts = { ...FACTS, referencingProgramCode: "BSN", reason: "Outdated" };
+    expect(notificationText("reference_revoked", 0, SYLLABUS_ID, facts)).toEqual({
+      title: "BSN's reference to IT 101 (BSIT) was revoked",
+      body: 'Ana Cruz revoked BSN\'s reference to IT 101 Intro to Computing (BSIT). Reason: "Outdated". Request another reference or write your own syllabus for this course and term.',
+      link: "/syllabus-reference",
+    });
+  });
+
+  it("tells the source lead a pending request was withdrawn", () => {
+    const facts = { ...FACTS, referencingProgramCode: "BSN" };
+    expect(notificationText("reference_withdrawn", 0, SYLLABUS_ID, facts)).toEqual({
+      title: "BSN withdrew its request to reference IT 101 (BSIT)",
+      body: "Ana Cruz withdrew BSN's request to reference IT 101 Intro to Computing (BSIT). No decision is needed.",
+      link: `/syllabus/${SYLLABUS_ID}`,
+    });
+  });
+
+  it("tells the source lead a program stopped referencing the syllabus", () => {
+    const facts = { ...FACTS, referencingProgramCode: "BSN" };
+    expect(notificationText("reference_stopped", 0, SYLLABUS_ID, facts)).toEqual({
+      title: "BSN stopped referencing IT 101 (BSIT)",
+      body: "Ana Cruz ended BSN's reference to IT 101 Intro to Computing (BSIT). Its chairs and faculty can no longer view it.",
+      link: `/syllabus/${SYLLABUS_ID}`,
+    });
+  });
+
   it("clips the title and body to the field limits", () => {
     const long = { ...FACTS, courseCode: "X".repeat(300), courseTitle: "Y".repeat(1200) };
     const text = notificationText("returned", 1, SYLLABUS_ID, long);

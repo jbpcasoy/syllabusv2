@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getOne: vi.fn(),
   update: vi.fn(),
+  chairsGetFullList: vi.fn(),
+  notifications: [] as Record<string, unknown>[],
   parseReferenceActionInput: vi.fn(),
   referenceTransition: vi.fn(),
   toSyllabusReferenceResponse: vi.fn((record: Record<string, unknown>) => ({
@@ -14,9 +16,34 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/pocketbase", async () => {
   const { NextResponse } = await import("next/server");
-  const collection = () => ({ getOne: mocks.getOne, update: mocks.update });
+  const collection = (name: string) =>
+    name === "program_chairs"
+      ? { getFullList: mocks.chairsGetFullList }
+      : { getOne: mocks.getOne };
+  // Queued writes run on send(), so a rejected update fails the batch.
+  const createBatch = () => {
+    const queued: (() => unknown)[] = [];
+    return {
+      collection: (name: string) => ({
+        update: (id: string, body: Record<string, unknown>) =>
+          queued.push(() => mocks.update(id, body)),
+        create: (body: Record<string, unknown>) =>
+          queued.push(() => {
+            if (name === "notifications") mocks.notifications.push(body);
+          }),
+      }),
+      send: async () => {
+        for (const op of queued) await op();
+      },
+    };
+  };
   return {
-    createAdminPb: vi.fn(async () => ({ collection })),
+    createAdminPb: vi.fn(async () => ({
+      filter: (expr: string, params: Record<string, unknown>) =>
+        expr.replace(/\{:(\w+)\}/g, (_, key) => JSON.stringify(params[key])),
+      collection,
+      createBatch,
+    })),
     handlePbError: vi.fn((error: unknown) => {
       const status =
         typeof error === "object" && error && "status" in error
@@ -56,12 +83,37 @@ const PROGRAM = "prgBprgBprgBprg";
 const SCOPE = { programId: PROGRAM };
 const ctx = { params: Promise.resolve({ id: ID }) };
 
+const SOURCE = "srcsrcsrcsrcsrc";
+const CHAIR = "chairchairchair";
+
 const pending = {
   id: ID,
+  syllabus: SOURCE,
   program: PROGRAM,
   status: "pending",
-  expand: { syllabus: { lead: ME } },
+  expand: {
+    syllabus: {
+      lead: ME,
+      expand: {
+        course: { code: "GE101", title: "Purposive Communication" },
+        program: { code: "BSED" },
+      },
+    },
+    program: { code: "BSIT" },
+  },
 };
+
+function asRevoke() {
+  mocks.parseReferenceActionInput.mockReturnValue({
+    ok: true,
+    data: { action: "revoke", reason: "Outdated" },
+  });
+  mocks.referenceTransition.mockReturnValue({
+    ok: true,
+    next: "revoked",
+    stamp: "ended",
+  });
+}
 
 function patch(body: unknown) {
   return new NextRequest(`http://localhost/api/syllabus-reference/${ID}`, {
@@ -76,7 +128,14 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-10-26T08:00:00.000Z"));
   mockAuth({ id: ME });
-  mocks.getOne.mockResolvedValue(pending);
+  mocks.notifications.length = 0;
+  // getOne serves the record as the batch left it.
+  let stored: Record<string, unknown> = pending;
+  mocks.getOne.mockImplementation(async () => stored);
+  mocks.update.mockImplementation(async (_id: string, data: object) => {
+    stored = { ...stored, ...data };
+  });
+  mocks.chairsGetFullList.mockResolvedValue([{ user: CHAIR }]);
   mocks.parseReferenceActionInput.mockReturnValue({
     ok: true,
     data: { action: "approve" },
@@ -86,10 +145,6 @@ beforeEach(() => {
     next: "approved",
     stamp: "decided",
   });
-  mocks.update.mockImplementation(async (_id: string, data: object) => ({
-    ...pending,
-    ...data,
-  }));
 });
 
 describe("PATCH /api/syllabus-reference/:id", () => {
@@ -97,7 +152,9 @@ describe("PATCH /api/syllabus-reference/:id", () => {
     const res = await PATCH(patch({ action: "approve" }), ctx);
 
     expect(res.status).toBe(200);
-    expect(mocks.getOne).toHaveBeenCalledWith(ID, { expand: "syllabus" });
+    expect(mocks.getOne).toHaveBeenCalledWith(ID, {
+      expand: "syllabus.course,syllabus.program,program",
+    });
     expect(mocks.referenceTransition).toHaveBeenCalledWith(
       "pending",
       "approve",
@@ -110,21 +167,123 @@ describe("PATCH /api/syllabus-reference/:id", () => {
         decided_by: ME,
         decided_at: "2026-10-26T08:00:00.000Z",
       },
-      { expand: "expand-all" },
     );
+    expect(mocks.getOne).toHaveBeenLastCalledWith(ID, { expand: "expand-all" });
     expect(await res.json()).toMatchObject({ status: "approved", mapped: true });
   });
 
-  it("stores the reason and ended stamps on a revoke", async () => {
-    mocks.parseReferenceActionInput.mockReturnValue({
-      ok: true,
-      data: { action: "revoke", reason: "Outdated" },
+  it("notifies the referencing program's active chairs on an approval", async () => {
+    const res = await PATCH(patch({ action: "approve" }), ctx);
+
+    expect(res.status).toBe(200);
+    expect(mocks.chairsGetFullList).toHaveBeenCalledWith({
+      fields: "user",
+      filter: `program = "${PROGRAM}" && active = true`,
     });
+    expect(mocks.notifications).toEqual([
+      expect.objectContaining({
+        user: CHAIR,
+        syllabus: SOURCE,
+        kind: "reference_approved",
+        stage: 0,
+        actor: ME,
+        title: "BSIT's reference to GE101 (BSED) was approved",
+        link: `/syllabus/${SOURCE}`,
+        email_status: "pending",
+      }),
+    ]);
+  });
+
+  it("doesn't write the approval when the notice can't be queued", async () => {
+    mocks.chairsGetFullList.mockRejectedValue({ status: 500 });
+
+    const res = await PATCH(patch({ action: "approve" }), ctx);
+
+    expect(res.status).toBe(500);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("doesn't notify on a reject", async () => {
+    const data = { action: "reject", reason: "No" };
+    mocks.parseReferenceActionInput.mockReturnValue({ ok: true, data });
     mocks.referenceTransition.mockReturnValue({
       ok: true,
-      next: "revoked",
-      stamp: "ended",
+      next: "rejected",
+      stamp: "decided",
     });
+
+    const res = await PATCH(patch(data), ctx);
+
+    expect(res.status).toBe(200);
+    expect(mocks.chairsGetFullList).not.toHaveBeenCalled();
+    expect(mocks.notifications).toEqual([]);
+  });
+
+  describe("withdraw", () => {
+    const LEAD = "leadleadleadlea";
+    const withSourceLead = (status: string, lead = LEAD) => {
+      mocks.getOne.mockResolvedValue({
+        ...pending,
+        status,
+        expand: {
+          ...pending.expand,
+          syllabus: { ...pending.expand.syllabus, lead },
+        },
+      });
+    };
+
+    beforeEach(() => {
+      mockAuth({ id: ME, roles: { chairOfPrograms: [PROGRAM] }, scope: SCOPE });
+      mocks.parseReferenceActionInput.mockReturnValue({
+        ok: true,
+        data: { action: "withdraw" },
+      });
+      mocks.referenceTransition.mockReturnValue({
+        ok: true,
+        next: "withdrawn",
+        stamp: "ended",
+      });
+    });
+
+    it.each([
+      ["pending", "reference_withdrawn", "BSIT withdrew its request to reference GE101 (BSED)"],
+      ["approved", "reference_stopped", "BSIT stopped referencing GE101 (BSED)"],
+    ])(
+      "notifies the source lead when a %s reference is withdrawn",
+      async (status, kind, title) => {
+        withSourceLead(status);
+
+        const res = await PATCH(patch({ action: "withdraw" }), ctx);
+
+        expect(res.status).toBe(200);
+        expect(mocks.chairsGetFullList).not.toHaveBeenCalled();
+        expect(mocks.notifications).toEqual([
+          expect.objectContaining({
+            user: LEAD,
+            syllabus: SOURCE,
+            kind,
+            stage: 0,
+            actor: ME,
+            title,
+            link: `/syllabus/${SOURCE}`,
+            email_status: "pending",
+          }),
+        ]);
+      },
+    );
+
+    it("doesn't notify a chair who also leads the source", async () => {
+      withSourceLead("approved", ME);
+
+      const res = await PATCH(patch({ action: "withdraw" }), ctx);
+
+      expect(res.status).toBe(200);
+      expect(mocks.notifications).toEqual([]);
+    });
+  });
+
+  it("stores the reason and ended stamps on a revoke", async () => {
+    asRevoke();
 
     await PATCH(patch({ action: "revoke", reason: "Outdated" }), ctx);
 
@@ -136,8 +295,66 @@ describe("PATCH /api/syllabus-reference/:id", () => {
         ended_by: ME,
         ended_at: "2026-10-26T08:00:00.000Z",
       },
-      { expand: "expand-all" },
     );
+  });
+
+  it("notifies the referencing program's active chairs on a revoke", async () => {
+    asRevoke();
+
+    const res = await PATCH(patch({ action: "revoke", reason: "Outdated" }), ctx);
+
+    expect(res.status).toBe(200);
+    expect(mocks.chairsGetFullList).toHaveBeenCalledWith({
+      fields: "user",
+      filter: `program = "${PROGRAM}" && active = true`,
+    });
+    expect(mocks.notifications).toEqual([
+      expect.objectContaining({
+        user: CHAIR,
+        syllabus: SOURCE,
+        kind: "reference_revoked",
+        stage: 0,
+        actor: ME,
+        title: "BSIT's reference to GE101 (BSED) was revoked",
+        link: "/syllabus-reference",
+        email_status: "pending",
+      }),
+    ]);
+    expect(mocks.notifications[0].body).toContain('Reason: "Outdated".');
+  });
+
+  it("doesn't notify the revoker and notifies each chair once", async () => {
+    asRevoke();
+    mocks.chairsGetFullList.mockResolvedValue([
+      { user: ME },
+      { user: CHAIR },
+      { user: CHAIR },
+    ]);
+
+    await PATCH(patch({ action: "revoke", reason: "Outdated" }), ctx);
+
+    expect(mocks.notifications.map((n) => n.user)).toEqual([CHAIR]);
+  });
+
+  it("revokes without a notice when the program has no active chair", async () => {
+    asRevoke();
+    mocks.chairsGetFullList.mockResolvedValue([]);
+
+    const res = await PATCH(patch({ action: "revoke", reason: "Outdated" }), ctx);
+
+    expect(res.status).toBe(200);
+    expect(mocks.update).toHaveBeenCalled();
+    expect(mocks.notifications).toEqual([]);
+  });
+
+  it("doesn't write the revoke when the notice can't be queued", async () => {
+    asRevoke();
+    mocks.chairsGetFullList.mockRejectedValue({ status: 500 });
+
+    const res = await PATCH(patch({ action: "revoke", reason: "Outdated" }), ctx);
+
+    expect(res.status).toBe(500);
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 
   it("checks the request capability against the referencing program", async () => {

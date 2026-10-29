@@ -25,8 +25,10 @@ export interface NotificationFacts {
   courseTitle: string;
   programCode: string;
   actorName: string;
-  /** For reference_requested: the program asking to reference it. */
+  /** For the reference kinds: the program asking to reference it. */
   referencingProgramCode?: string;
+  /** For reference_revoked: the lead's (or admin's) reason. */
+  reason?: string;
 }
 
 /** Add to the transition's syllabus read so notificationFacts() has names. */
@@ -166,6 +168,36 @@ export function notificationText(
       const referencing = facts.referencingProgramCode || "Another program";
       title = `${referencing} asks to reference ${course}`;
       body = `${facts.actorName} asked for ${referencing} to use ${full} instead of writing its own. Approve or reject the request from the syllabus's References panel.`;
+      break;
+    }
+    case "reference_approved": {
+      // The referencing program can now open the syllabus read-only.
+      const referencing = facts.referencingProgramCode || "Your program";
+      title = `${referencing}'s reference to ${course} was approved`;
+      body = `${facts.actorName} approved ${referencing}'s request to reference ${full}. Its chairs and active faculty can now view it read-only.`;
+      break;
+    }
+    case "reference_revoked": {
+      // The referencing program can no longer open the syllabus, so the
+      // link goes to its references list instead.
+      const referencing = facts.referencingProgramCode || "Your program";
+      title = `${referencing}'s reference to ${course} was revoked`;
+      body = `${facts.actorName} revoked ${referencing}'s reference to ${full}.${facts.reason ? ` Reason: "${facts.reason}".` : ""} Request another reference or write your own syllabus for this course and term.`;
+      link = "/syllabus-reference";
+      break;
+    }
+    case "reference_withdrawn": {
+      // To the source lead: a pending request no longer needs a decision.
+      const referencing = facts.referencingProgramCode || "Another program";
+      title = `${referencing} withdrew its request to reference ${course}`;
+      body = `${facts.actorName} withdrew ${referencing}'s request to reference ${full}. No decision is needed.`;
+      break;
+    }
+    case "reference_stopped": {
+      // To the source lead: an approved reference was ended by its program.
+      const referencing = facts.referencingProgramCode || "Another program";
+      title = `${referencing} stopped referencing ${course}`;
+      body = `${facts.actorName} ended ${referencing}'s reference to ${full}. Its chairs and faculty can no longer view it.`;
       break;
     }
   }
