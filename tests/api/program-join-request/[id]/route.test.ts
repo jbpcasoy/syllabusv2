@@ -41,9 +41,13 @@ vi.mock("@/lib/auth", async () =>
   (await import("@/tests/helpers/mock-auth")).authModuleMock(),
 );
 
+vi.mock("@/lib/capabilities", async () =>
+  (await import("@/tests/helpers/mock-auth")).capabilitiesModuleMock(),
+);
+
 import { DELETE, PATCH } from "@/app/api/program-join-request/[id]/route";
 import { createAdminPb } from "@/lib/pocketbase";
-import { mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
+import { canMock, mockAuth, requireUserMock } from "@/tests/helpers/mock-auth";
 
 const ID = "abc123abc123abc";
 const ME = "me1me1me1me1me1";
@@ -159,14 +163,83 @@ describe("PATCH /api/program-join-request/:id", () => {
     expect((await PATCH(req("PATCH", approve), ctx)).status).toBe(200);
   });
 
-  it("refuses to let anyone, even an admin, decide their own request", async () => {
-    mockAuth({ id: REQUESTER, isAdmin: true });
+  it("refuses to let a chair decide their own request", async () => {
+    mockAuth({
+      id: REQUESTER,
+      roles: { chairOfPrograms: [PROGRAM_ID] },
+      scope: SCOPE,
+    });
 
     const res = await PATCH(req("PATCH", approve), ctx);
 
     expect(res.status).toBe(403);
     expect((await res.json()).error).toContain("your own request");
     expect(mocks.applyJoinRequestDecision).not.toHaveBeenCalled();
+  });
+
+  describe("a department head who chairs the program", () => {
+    const headScope = { ...SCOPE, departmentId: "dep123dep123dep" };
+    beforeEach(() => {
+      mockAuth({
+        id: REQUESTER,
+        roles: {
+          chairOfPrograms: [PROGRAM_ID],
+          headOfDepartments: [headScope.departmentId],
+        },
+        scope: headScope,
+      });
+    });
+
+    it("may approve their own request", async () => {
+      const res = await PATCH(req("PATCH", approve), ctx);
+
+      expect(res.status).toBe(200);
+      expect(canMock).toHaveBeenCalledWith(
+        expect.anything(),
+        "programJoinRequest.approveOwn",
+        { programJoinRequest: ID },
+      );
+      expect(mocks.applyJoinRequestDecision).toHaveBeenCalledWith(
+        expect.anything(),
+        pending,
+        approve,
+        REQUESTER,
+      );
+    });
+
+    it("may not reject their own request (they withdraw instead)", async () => {
+      mocks.parseProgramJoinRequestDecision.mockReturnValue({
+        ok: true,
+        data: { decision: "reject", reason: "Changed my mind" },
+      });
+
+      const res = await PATCH(req("PATCH", approve), ctx);
+
+      expect(res.status).toBe(403);
+      expect(mocks.applyJoinRequestDecision).not.toHaveBeenCalled();
+    });
+
+    it("may not approve their own request in another department", async () => {
+      mockAuth({
+        id: REQUESTER,
+        roles: {
+          chairOfPrograms: [PROGRAM_ID],
+          headOfDepartments: ["otherdept123456"],
+        },
+        scope: headScope,
+      });
+
+      const res = await PATCH(req("PATCH", approve), ctx);
+
+      expect(res.status).toBe(403);
+      expect(mocks.applyJoinRequestDecision).not.toHaveBeenCalled();
+    });
+  });
+
+  it("lets an admin approve their own request (admin always passes)", async () => {
+    mockAuth({ id: REQUESTER, isAdmin: true });
+
+    expect((await PATCH(req("PATCH", approve), ctx)).status).toBe(200);
   });
 
   it.each(["approved", "rejected"])(

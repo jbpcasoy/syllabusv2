@@ -31,6 +31,7 @@ export type Capability =
   | "programReviewer.write"
   | "faculty.write"
   | "programJoinRequest.review"
+  | "programJoinRequest.approveOwn"
   | "syllabusReference.request"
   | "syllabus.transferLead"
   | "signedCopy.return"
@@ -106,6 +107,10 @@ const RULES: Record<Capability, Rule> = {
   "faculty.write": chair,
   // Approving creates a faculty record, so it mirrors faculty.write.
   "programJoinRequest.review": chair,
+  // Approve your own request: the department head who chairs a program in
+  // their own department (one-program departments). The route still needs
+  // programJoinRequest.review too.
+  "programJoinRequest.approveOwn": head,
   // Request or withdraw a reference to another program's syllabus. The
   // source lead's decision is a relationship check, not a capability.
   "syllabusReference.request": chair,

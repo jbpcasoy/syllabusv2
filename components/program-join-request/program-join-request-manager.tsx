@@ -33,6 +33,11 @@ const STATUS_LABELS: Record<JoinRequestStatus, string> = {
 type ProgramJoinRequestManagerProps = {
   /** Show Approve/Reject. The API still checks each request's program. */
   canReview: boolean;
+  /**
+   * Programs where the user may approve their own request (department head
+   * who chairs it), or true for any. The API still checks.
+   */
+  approveOwn: true | string[];
   /** The signed-in user, who may withdraw their own pending requests. */
   currentUserId: string;
 };
@@ -45,6 +50,7 @@ type RowDialog = {
 
 export function ProgramJoinRequestManager({
   canReview,
+  approveOwn,
   currentUserId,
 }: ProgramJoinRequestManagerProps) {
   const [searchInput, setSearchInput] = useState("");
@@ -299,6 +305,10 @@ export function ProgramJoinRequestManager({
             {items.map((row) => {
               const mine = row.user === currentUserId;
               const pending = row.status === "pending";
+              const canApproveOwn =
+                mine &&
+                canReview &&
+                (approveOwn === true || approveOwn.includes(row.program));
               return (
                 <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm">
@@ -358,6 +368,16 @@ export function ProgramJoinRequestManager({
                         className="font-medium text-red-600 hover:text-red-500"
                       >
                         Withdraw
+                      </button>
+                    )}
+                    {pending && canApproveOwn && (
+                      <button
+                        type="button"
+                        onClick={() => approve(row)}
+                        disabled={decidingId === row.id}
+                        className="ml-4 font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
+                      >
+                        {decidingId === row.id ? "Approving…" : "Approve"}
                       </button>
                     )}
                     {pending && !mine && canReview && (

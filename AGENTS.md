@@ -106,6 +106,7 @@ Vitest, one test file per route file, mirroring the `app/api` path under `tests/
 | program chair (write)                                     | VPAA; Dean for their college; Department Head for their department | Scoped |
 | program reviewer (write)                                  | VPAA; Dean for their college; Department Head for their department | Scoped |
 | faculty (write)                                           | Program Chair of that program                                      | Scoped |
+| own join request (approve)                                | Department Head who also chairs the program                        | Scoped |
 | syllabus reference (request, withdraw)                    | Program Chair of the referencing program                           | Scoped |
 | signed copy (return as invalid)                           | Program Reviewer; Dean of its college; FDIS Chair; CITL Director; VPAA | Scoped |
 | syllabus lead (transfer)                                  | Program Chair of the syllabus's program                            | Scoped |
@@ -123,7 +124,7 @@ Add every new check as a capability in `lib/capability-rules.ts`. Never branch o
 **Registration and membership:**
 
 - Self-registration accepts only `ALLOWED_EMAIL_DOMAINS` (comma-separated, default `buksu.edu.ph`). Sign-in requires a verified email; `getCurrentUser()` treats unverified accounts as signed out. Admin-created users start verified.
-- A signed-in user asks to join a program (GE included) with an optional note. The program's chair or an admin approves (creating or reactivating the `faculties` record in one batch) or rejects with a reason. Nobody decides their own request. The requester may withdraw while pending. One pending request per user and program.
+- A signed-in user asks to join a program (GE included) with an optional note. The program's chair or an admin approves (creating or reactivating the `faculties` record in one batch) or rejects with a reason. Nobody decides their own request, except that a department head who chairs a program in their own department (for one-program departments) may approve, never reject, their own (`programJoinRequest.approveOwn`); admin passes as always. The requester may withdraw while pending. One pending request per user and program.
 
 **Review chain (no skipping):** Faculty submits, then 1 Program Reviewer, 2 Dean, 3 FDIS Chair, 4 CITL Director, 5 VPAA. The Program Reviewer is its own assignment (`program_reviewers`, one active per program), separate from the program chair and department head, who take no part in review but keep their other duties. `CHAIN_ROLES` in `lib/syllabus-workflow.ts` is the single list of stages.
 

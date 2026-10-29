@@ -394,6 +394,28 @@ describe("programJoinRequest.review", () => {
   });
 });
 
+describe("programJoinRequest.approveOwn", () => {
+  it("a department head passes only for programs in their department", () => {
+    expect(can(head, "programJoinRequest.approveOwn", SCOPE)).toBe(true);
+    expect(
+      can(head, "programJoinRequest.approveOwn", {
+        ...SCOPE,
+        departmentId: OTHER.department,
+      }),
+    ).toBe(false);
+  });
+
+  it("a chair alone, VPAA, dean and plain faculty are denied", () => {
+    for (const r of [chair, vpaa, dean, facultyOnly, NO_ROLES]) {
+      expect(can(r, "programJoinRequest.approveOwn", SCOPE)).toBe(false);
+    }
+  });
+
+  it("admin passes", () => {
+    expect(can(admin, "programJoinRequest.approveOwn", SCOPE)).toBe(true);
+  });
+});
+
 describe("syllabusReference.request", () => {
   it("a chair passes only for their own program", () => {
     expect(can(chair, "syllabusReference.request", SCOPE)).toBe(true);

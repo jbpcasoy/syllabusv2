@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth";
+import { can } from "@/lib/capabilities";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import {
   applyJoinRequestDecision,
@@ -39,12 +40,20 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       .collection("program_join_requests")
       .getOne<ProgramJoinRequest>(id);
 
-    // Applies to admins too: someone else must vouch for you.
+    // Someone else must vouch for you, unless you head the program's
+    // department (and chair it). Rejecting your own request is withdrawing.
     if (joinRequest.user === auth.user.id) {
-      return NextResponse.json(
-        { error: "You can't decide your own request" },
-        { status: 403 },
-      );
+      const allowed =
+        parsed.data.decision === "approve" &&
+        (await can(auth.user, "programJoinRequest.approveOwn", {
+          programJoinRequest: id,
+        }));
+      if (!allowed) {
+        return NextResponse.json(
+          { error: "You can't decide your own request" },
+          { status: 403 },
+        );
+      }
     }
     if (joinRequest.status !== "pending") return notPending(joinRequest.status);
 
