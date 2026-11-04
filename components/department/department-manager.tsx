@@ -353,6 +353,7 @@ export function DepartmentManager({ roles }: DepartmentManagerProps) {
         department={modal.department}
         colleges={colleges}
         canEdit={!!modal.department && canUpdate(modal.department)}
+        canMove={canCreate}
         onModeChange={(mode) => setModal((prev) => ({ ...prev, mode }))}
         onClose={() => setModal((prev) => ({ ...prev, open: false }))}
         onSaved={() => {

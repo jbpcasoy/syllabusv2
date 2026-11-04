@@ -243,28 +243,28 @@ export function CollegeManager({ canManage }: CollegeManagerProps) {
                     View
                   </button>
                   {canManage && (
-                    <button
-                      type="button"
-                      onClick={() => openModal("edit", college)}
-                      className="ml-4 font-medium text-indigo-600 hover:text-indigo-500"
-                    >
-                      Edit
-                    </button>
-                  )}
-                  {canManage && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setDeleteState((prev) => ({
-                          open: true,
-                          college,
-                          key: prev.key + 1,
-                        }))
-                      }
-                      className="ml-4 font-medium text-red-600 hover:text-red-500"
-                    >
-                      Delete
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => openModal("edit", college)}
+                        className="ml-4 font-medium text-indigo-600 hover:text-indigo-500"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDeleteState((prev) => ({
+                            open: true,
+                            college,
+                            key: prev.key + 1,
+                          }))
+                        }
+                        className="ml-4 font-medium text-red-600 hover:text-red-500"
+                      >
+                        Delete
+                      </button>
+                    </>
                   )}
                 </td>
               </tr>

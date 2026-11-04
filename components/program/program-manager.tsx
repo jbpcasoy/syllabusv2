@@ -366,6 +366,7 @@ export function ProgramManager({ roles }: ProgramManagerProps) {
         program={modal.program}
         departments={departments}
         canEdit={!!modal.program && canUpdate(modal.program)}
+        canMove={canCreate}
         onModeChange={(mode) => setModal((prev) => ({ ...prev, mode }))}
         onClose={() => setModal((prev) => ({ ...prev, open: false }))}
         onSaved={() => {
