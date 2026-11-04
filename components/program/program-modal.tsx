@@ -30,6 +30,11 @@ type ProgramModalProps = {
   onSaved: () => void;
   /** Shows the Edit button in view mode. */
   canEdit: boolean;
+  /**
+   * Whether the department can be changed while editing. Moving needs
+   * program.create in the new department, which a department head lacks.
+   */
+  canMove: boolean;
   onModeChange: (mode: ProgramModalMode) => void;
 };
 
@@ -50,6 +55,7 @@ export function ProgramModal({
   onClose,
   onSaved,
   canEdit,
+  canMove,
   onModeChange,
 }: ProgramModalProps) {
   const [name, setName] = useState(program?.name ?? "");
@@ -183,7 +189,7 @@ export function ProgramModal({
                 <Select
                   value={departmentId}
                   onChange={(e) => setDepartmentId(e.target.value)}
-                  disabled={saving}
+                  disabled={saving || (mode === "edit" && !canMove)}
                   className={inputClass}
                 >
                   <option value="">Select a department…</option>

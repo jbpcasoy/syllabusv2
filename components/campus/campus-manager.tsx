@@ -194,28 +194,28 @@ export function CampusManager({ canManage }: CampusManagerProps) {
                     View
                   </button>
                   {canManage && (
-                    <button
-                      type="button"
-                      onClick={() => openModal("edit", campus)}
-                      className="ml-4 font-medium text-indigo-600 hover:text-indigo-500"
-                    >
-                      Edit
-                    </button>
-                  )}
-                  {canManage && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setDeleteState((prev) => ({
-                          open: true,
-                          campus,
-                          key: prev.key + 1,
-                        }))
-                      }
-                      className="ml-4 font-medium text-red-600 hover:text-red-500"
-                    >
-                      Delete
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => openModal("edit", campus)}
+                        className="ml-4 font-medium text-indigo-600 hover:text-indigo-500"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDeleteState((prev) => ({
+                            open: true,
+                            campus,
+                            key: prev.key + 1,
+                          }))
+                        }
+                        className="ml-4 font-medium text-red-600 hover:text-red-500"
+                      >
+                        Delete
+                      </button>
+                    </>
                   )}
                 </td>
               </tr>

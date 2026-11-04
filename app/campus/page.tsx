@@ -14,6 +14,8 @@ export default async function CampusPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* campus.write is global, so one flag covers every row. Department and
+          program pages pass roles instead because their writes are scoped. */}
       <CampusManager canManage={await canSomewhere(user, "campus.write")} />
     </main>
   );

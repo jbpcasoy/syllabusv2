@@ -30,6 +30,11 @@ type DepartmentModalProps = {
   onSaved: () => void;
   /** Shows the Edit button in view mode. */
   canEdit: boolean;
+  /**
+   * Whether the college can be changed while editing. Moving needs
+   * department.create in the new college, which a department head lacks.
+   */
+  canMove: boolean;
   onModeChange: (mode: DepartmentModalMode) => void;
 };
 
@@ -50,6 +55,7 @@ export function DepartmentModal({
   onClose,
   onSaved,
   canEdit,
+  canMove,
   onModeChange,
 }: DepartmentModalProps) {
   const [name, setName] = useState(department?.name ?? "");
@@ -166,7 +172,7 @@ export function DepartmentModal({
                 <Select
                   value={collegeId}
                   onChange={(e) => setCollegeId(e.target.value)}
-                  disabled={saving}
+                  disabled={saving || (mode === "edit" && !canMove)}
                   className={inputClass}
                 >
                   <option value="">Select a college…</option>
