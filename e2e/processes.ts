@@ -16,6 +16,8 @@ export function start(
     env: { ...process.env, ...env },
     shell: needsShell(command),
     stdio: ["ignore", "pipe", "pipe"],
+    // Its own process group elsewhere, so stop() can kill the whole tree.
+    detached: process.platform !== "win32",
   });
   const log = (chunk: Buffer) => {
     if (process.env.E2E_VERBOSE) process.stdout.write(`[${label}] ${chunk}`);
@@ -35,8 +37,10 @@ export function run(command: string, args: string[], env: Record<string, string>
 }
 
 /**
- * Kills a process and its children. On Windows a plain kill leaves
- * `next start`'s child node process holding the port, so kill the tree.
+ * Kills a process and its children. A plain kill of `npx next start`
+ * leaves its next-server child holding the port, so kill the tree: with
+ * taskkill on Windows, through the process group (started detached)
+ * elsewhere.
  */
 export function stop(pid: number | undefined) {
   if (!pid) return;
@@ -44,7 +48,7 @@ export function stop(pid: number | undefined) {
     if (process.platform === "win32") {
       execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
     } else {
-      process.kill(pid, "SIGTERM");
+      process.kill(-pid, "SIGTERM");
     }
   } catch {
     // Already gone.

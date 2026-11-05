@@ -1,11 +1,13 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
-import { findSyllabusId, loadSeed, signIn } from "./helpers";
-import type { Person } from "./seed";
+import type { Page } from "@playwright/test";
+import { approveThrough, fileSignedCopy, returnAt, reviseAndResubmit, submitted } from "./arrange";
+import { expect, test } from "./fixtures";
+import { signIn } from "./helpers";
+import type { Person, World } from "./world";
 
 // Phase 6, P7: WCAG 2.2 AA, with zero serious or critical axe violations on
-// each page, opened by a role that can use it. Runs last, so the earlier
-// specs have left syllabi in every state.
+// each page, opened by a role that can use it. Arranges its own syllabi:
+// one filed, and one returned by the dean and resubmitted (back at stage 2).
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 async function expectNoSeriousViolations(page: Page) {
@@ -34,7 +36,7 @@ async function expectNoSeriousViolations(page: Page) {
 
 test.describe("signed out", () => {
   for (const path of ["/login", "/register"]) {
-    test(path, async ({ page }) => {
+    test(`${path} @A11Y-01`, async ({ page }) => {
       await page.goto(path);
       await expectNoSeriousViolations(page);
     });
@@ -48,17 +50,29 @@ const PAGES: [Person, string[]][] = [
   ["admin", ["/audit", "/college", "/program-chair", "/fdis-chair", "/prospectus"]],
 ];
 
+// Arranged once, on first use, for every test in this file.
+let arranged: Promise<{ chain: string; revise: string }> | undefined;
+function syllabi(page: Page, world: World) {
+  arranged ??= (async () => {
+    const chain = await submitted(page, world, world.courses[0]);
+    await approveThrough(page, world, chain, 1, 5);
+    await fileSignedCopy(page, world, chain);
+
+    const revise = await submitted(page, world, world.courses[1]);
+    await approveThrough(page, world, revise, 1, 1);
+    await returnAt(page, world, revise, 2, "Align the course outcomes with the program outcomes.");
+    await reviseAndResubmit(page, world, revise);
+    return { chain, revise };
+  })();
+  return arranged;
+}
+
 for (const [person, paths] of PAGES) {
   test.describe(`as ${person}`, () => {
     for (const path of paths) {
-      test(path, async ({ page }) => {
-        const seed = loadSeed();
-        await signIn(page, "lead");
-        const ids = {
-          chain: await findSyllabusId(page, seed.courses.chain.code),
-          revise: await findSyllabusId(page, seed.courses.revise.code),
-        };
-        await signIn(page, person);
+      test(`${path} @A11Y-01`, async ({ page, world }) => {
+        const ids = await syllabi(page, world);
+        await signIn(page, world.people[person]);
         await page.goto(path.replace("{chain}", ids.chain).replace("{revise}", ids.revise));
         await expectNoSeriousViolations(page);
       });

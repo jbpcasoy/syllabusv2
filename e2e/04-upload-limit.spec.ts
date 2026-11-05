@@ -1,23 +1,22 @@
-import { expect, test } from "@playwright/test";
-import { adminPb, createDraft, loadSeed, pdfFile, signIn } from "./helpers";
+import { expect, test } from "./fixtures";
+import { adminPb, createDraft, pdfFile, signIn } from "./helpers";
 
 // Seeds 20 recent upload rows for the lead instead of uploading 20 files,
 // then checks the next upload is refused with the wait in the message.
-// Runs after the specs where the lead uploads.
-test("the 21st upload within an hour is refused", async ({ page }) => {
-  const seed = loadSeed();
-  await signIn(page, "lead");
-  const id = await createDraft(page, seed, "limit");
+test("the 21st upload within an hour is refused @LIM-01", async ({ page, world }) => {
+  const lead = world.people.lead;
+  await signIn(page, world.people.lead);
+  const id = await createDraft(page, world, world.courses[0]);
 
   const pb = await adminPb();
   const recent = await pb.collection("audit_log").getList(1, 1, {
     filter: pb.filter("actor = {:lead} && action = 'file.uploaded'", {
-      lead: seed.users.lead,
+      lead: lead.id,
     }),
   });
   for (let i = recent.totalItems; i < 20; i++) {
     await pb.collection("audit_log").create({
-      actor: seed.users.lead,
+      actor: lead.id,
       action: "file.uploaded",
       target_collection: "syllabus_versions",
       target_id: "e2eseede2eseede",

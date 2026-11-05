@@ -15,7 +15,7 @@ import {
 } from "./env";
 import globalTeardown from "./global-teardown";
 import { assertPortFree, run, start, waitFor } from "./processes";
-import { seed } from "./seed";
+import { seedGlobal } from "./seed";
 
 /**
  * A throwaway PocketBase (every migration from scratch, hooks loaded) and
@@ -55,7 +55,7 @@ async function startEverything() {
   writeFileSync(STATE_FILE, JSON.stringify(state));
   await waitFor(`${PB_URL}/api/health`, 30_000);
 
-  writeFileSync(SEED_FILE, JSON.stringify(await seed(), null, 2));
+  writeFileSync(SEED_FILE, JSON.stringify(await seedGlobal(), null, 2));
 
   const appEnv = {
     NEXT_DIST_DIR: DIST_DIR,
