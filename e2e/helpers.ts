@@ -1,9 +1,9 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { PASSWORD } from "./env";
 import type { PersonRecord } from "./seed";
 import type { Course, World } from "./world";
 
-export { adminPb } from "./seed";
+export { adminPb, createUser } from "./seed";
 
 /**
  * Signs in through the API on the page's own context, so the session
@@ -16,6 +16,24 @@ export async function signIn(page: Page, person: PersonRecord) {
     data: { email: person.email, password: PASSWORD },
   });
   expect(res.status(), `sign-in as ${person.name}`).toBe(200);
+}
+
+/**
+ * The page's error alerts, without Next.js's route announcer (an empty
+ * `role="alert"` on every page).
+ */
+export function alerts(scope: Page | Locator) {
+  return scope.locator('[role="alert"]:not(#__next-route-announcer__)');
+}
+
+/** The page is the sign-in form, asked to return to `path` afterwards. */
+export async function expectSignInFor(page: Page, path: string) {
+  await expect
+    .poll(() => {
+      const url = new URL(page.url());
+      return url.pathname === "/login" ? url.searchParams.get("next") : url.pathname;
+    }, { message: `sign-in redirect for ${path}` })
+    .toBe(path);
 }
 
 /** The smallest file the server's magic-byte check accepts as a PDF. */

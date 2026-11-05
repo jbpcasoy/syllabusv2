@@ -25,6 +25,29 @@ export async function submitted(page: Page, world: World, course: Course) {
   return id;
 }
 
+/**
+ * The program reviewer co-authors the lead's syllabus, so after submit
+ * stage 1 waits for a proxy; the dean names the co-author as proxy.
+ */
+export async function submittedWithProxy(page: Page, world: World, course: Course) {
+  const id = await draftWithVersion(page, world, course);
+  await ok(
+    await page.request.patch(`/api/syllabus/${id}`, {
+      data: { co_authors: [world.people.reviewer.id] },
+    }),
+    "add co-author",
+  );
+  await submit(page, id);
+  await signIn(page, world.people.dean);
+  await ok(
+    await page.request.put(`/api/syllabus/${id}/stand-in`, {
+      data: { stage: 1, user: world.people.coAuthor.id },
+    }),
+    "name proxy",
+  );
+  return id;
+}
+
 /** Answers every Form 17 criterion Yes as the signed-in stage reviewer. */
 async function form17AllYes(page: Page, id: string) {
   const answers = checklistCriteria(CURRENT_FORM17).map((c) => ({

@@ -2,7 +2,17 @@ import { readFileSync } from "node:fs";
 import { SEED_FILE } from "./env";
 import { adminPb, createUser, type GlobalSeed, type PersonRecord } from "./seed";
 
-export type Person = "admin" | "chair" | "lead" | "coAuthor" | "reviewer" | "dean" | "fdis" | "citl" | "vpaa";
+export type Person =
+  | "admin"
+  | "head"
+  | "chair"
+  | "lead"
+  | "coAuthor"
+  | "reviewer"
+  | "dean"
+  | "fdis"
+  | "citl"
+  | "vpaa";
 
 export interface Course {
   id: string;
@@ -12,10 +22,12 @@ export interface Course {
 
 /**
  * One spec file's own org: college, department and program with every
- * chain role filled, a published prospectus with four courses on the
- * shared term, and its own users. Stages 3 to 5 and the admin are the
- * global holders, so their queues also list other worlds' syllabi:
- * find rows by course code, never by position.
+ * chain role filled and a department head, a published prospectus with
+ * four courses on the shared term, and its own users. The program
+ * reviewer is also faculty of the program, as in the walkthrough, so they
+ * can be a co-author (the proxy case). Stages 3 to 5 and the admin are the
+ * global holders, so their queues also list other worlds' syllabi: find
+ * rows by course code, never by position.
  */
 export interface World {
   name: string;
@@ -50,6 +62,7 @@ export async function createWorld(name: string): Promise<World> {
     createUser(pb, { name: `${title} ${role}`, email: `e2e.${tag.toLowerCase()}.${name}.${key}@buksu.edu.ph` });
   const people: World["people"] = {
     ...global.people,
+    head: await local("head", "Head"),
     chair: await local("chair", "Chair"),
     lead: await local("lead", "Lead"),
     coAuthor: await local("coauthor", "Coauthor"),
@@ -100,11 +113,12 @@ export async function createWorld(name: string): Promise<World> {
     courses.push({ id: course.id, ...def });
   }
 
-  for (const user of [people.lead, people.coAuthor]) {
+  for (const user of [people.lead, people.coAuthor, people.reviewer]) {
     await create("faculties", { user: user.id, program: program.id, active: true });
   }
   await create("program_chairs", { user: people.chair.id, program: program.id, active: true });
   await create("program_reviewers", { user: people.reviewer.id, program: program.id, active: true });
+  await create("department_heads", { user: people.head.id, department: department.id, active: true });
   await create("deans", { user: people.dean.id, college: college.id, active: true });
 
   return {

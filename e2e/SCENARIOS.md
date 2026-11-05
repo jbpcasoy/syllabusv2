@@ -11,7 +11,7 @@ Spec file names below are targets; the existing numbered specs (`01-full-chain.s
 - AUTH-02 Register with `@buksu.edu.ph` succeeds and a verification email arrives; sign-in refused while unverified.
 - AUTH-02b Signing in while unverified shows the "We sent a new link" message and a second email arrives.
 - AUTH-02c Following the emailed link verifies the account (PocketBase's confirmation page); signing in through the app then works.
-- AUTH-02d A used or tampered link doesn't verify.
+- AUTH-02d A tampered link doesn't verify.
 - AUTH-03 Verified user signs in through the form, lands on the right page; `?next=` is honoured.
 - AUTH-04 Wrong password shows an alert; no account enumeration in the message.
 - AUTH-05 Sign out clears the session; protected pages redirect to `/login?next=…`.
@@ -26,12 +26,12 @@ Spec file names below are targets; the existing numbered specs (`01-full-chain.s
 Data-driven over every manager page (campus, college, dean, department, department head, program, program chair, program reviewer, school year and term, course, prospectus, prospectus item, VPAA, FDIS chair, CITL director, faculty, join requests, user, audit, syllabus, syllabus reference, review queue):
 - MGR-01 Debounced search narrows the table (one request after typing stops).
 - MGR-02 Changing a filter resets to page 1.
-- MGR-03 Pagination at 10 rows per page (world seeds 11+ rows where needed).
+- MGR-03 Pagination at 10 rows per page. (School years and terms have no pagination bar.)
 - MGR-04 A failed list request shows the Retry banner; Retry recovers.
 - MGR-05 The table dims while loading.
 - MGR-06 Create/edit modal: validation error shown as an alert; reopening after cancel shows a clean form (remount key).
 - MGR-07 Modal and delete dialog can't be closed (Esc, backdrop, Cancel) while saving.
-- MGR-08 Delete dialog removes the row; 409 conflict message shown when the record is referenced.
+- MGR-08 Delete dialog removes the row; a delete the server refuses (the record is still referenced) shows the reason in the dialog and keeps the row.
 - MGR-09 Large option lists use the server-searched Combobox (course pickers).
 
 ### `org-setup.spec.ts` [Parts 1–2]

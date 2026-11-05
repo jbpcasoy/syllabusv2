@@ -47,7 +47,8 @@ test("a returned syllabus resumes at the stage that returned it @RET-01 @RET-02"
   const upload = page.getByRole("dialog");
   await upload.getByLabel("PDF file").setInputFiles(pdfFile("revision.pdf"));
   await upload.getByRole("button", { name: "Upload", exact: true }).click();
-  await expect(upload).toBeHidden();
+  // The dialog root has no box of its own, so wait for it to unmount.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
   await page.getByLabel("Action taken").fill("Mapped every course outcome to a program outcome.");
   await page.getByLabel("Page number").fill("3");

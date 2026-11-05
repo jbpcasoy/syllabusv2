@@ -1,9 +1,12 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
-import { APP_URL, PB_URL, SEED_FILE, STATE_FILE } from "./env";
+import { APP_URL, MAIL_DIR, PB_URL, SEED_FILE, STATE_FILE } from "./env";
+import { stopMailCatcher } from "./mail-catcher";
 import { stop, waitForClosed } from "./processes";
 
-/** Stops the app and PocketBase and deletes the throwaway database. */
+/** Stops the app, PocketBase and the mail catcher and deletes the throwaway data. */
 export default async function globalTeardown() {
+  await stopMailCatcher();
+  if (!process.env.E2E_KEEP_DATA) rmSync(MAIL_DIR, { recursive: true, force: true });
   if (!existsSync(STATE_FILE)) return;
   const state = JSON.parse(readFileSync(STATE_FILE, "utf8")) as {
     dataDir?: string;
