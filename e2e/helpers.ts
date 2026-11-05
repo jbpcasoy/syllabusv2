@@ -57,10 +57,11 @@ export async function ok<T>(res: ApiResponse, what: string): Promise<T> {
 // API shortcuts for arranging state a spec isn't about. Each runs as
 // whoever is signed in on `page`. Multi-person arrangements are in arrange.ts.
 
-export async function createDraft(page: Page, world: World, course: Course) {
+/** The lead's draft for `course`, on the world's term unless `term` is given. */
+export async function createDraft(page: Page, world: World, course: Course, term = world.term.id) {
   const created = await ok<{ id: string }>(
     await page.request.post("/api/syllabus", {
-      data: { course: course.id, term: world.term.id, program: world.program.id },
+      data: { course: course.id, term, program: world.program.id },
     }),
     "create draft",
   );
@@ -88,6 +89,19 @@ export async function getSyllabus(page: Page, syllabusId: string) {
 }
 
 // UI steps shared by several specs.
+
+/** Picks `person` in a dialog's "User" picker (search, then click the option). */
+export async function pickUser(page: Page, dialog: Locator, person: PersonRecord) {
+  await dialog.getByRole("combobox", { name: "User" }).fill(person.name);
+  await page.getByRole("listbox").getByRole("option", { name: new RegExp(escapeRegExp(person.email)) }).click();
+}
+
+export const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** A table row by the exact text of one of its cells. */
+export function rowWith(page: Page, cell: string) {
+  return page.getByRole("row").filter({ has: page.getByRole("cell", { name: cell, exact: true }) });
+}
 
 /** Answers every Form 17 criterion Yes and saves (review workspace). */
 export async function answerForm17AllYes(page: Page) {
