@@ -46,7 +46,8 @@ const DEPENDENTS = [
   },
   {
     collection: "courses",
-    filter: "prerequisites ?= {:id}",
+    // `.id`: PocketBase 0.40 matches nothing for `?=` on a bare multi-relation.
+    filter: "prerequisites.id ?= {:id}",
     singular: "course that lists it as a prerequisite",
     plural: "courses that list it as a prerequisite",
   },

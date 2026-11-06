@@ -57,7 +57,7 @@ describe("describeCourseDependents", () => {
   it("returns null when nothing references the course", async () => {
     expect(await describeCourseDependents(ID)).toBeNull();
     expect(mocks.filter).toHaveBeenCalledWith("course = {:id}", { id: ID });
-    expect(mocks.filter).toHaveBeenCalledWith("prerequisites ?= {:id}", {
+    expect(mocks.filter).toHaveBeenCalledWith("prerequisites.id ?= {:id}", {
       id: ID,
     });
   });
