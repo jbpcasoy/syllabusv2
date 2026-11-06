@@ -97,7 +97,7 @@ Data-driven over every manager page (campus, college, dean, department, departme
 - STA-02 `/review` "Needs a proxy" panel for dean; limited view (header, co-authors, stand-ins only).
 - STA-03 Conflicted reviewer is notified, workspace refuses and shows proxy picker.
 - STA-04 Proxy must be active program faculty; lead/co-author refused; valid proxy accepted.
-- STA-05 Proxy is notified, sees it "as proxy" in queue, approves.
+- STA-05 Proxy is notified, finds it in their queue, the workspace says "as proxy", and they approve; the conflicted reviewer's queue doesn't list it.
 - STA-06 Later-stage holder designates a stand-in for a conflicted later stage.
 
 ### `approval-filing.spec.ts` [Part 5]
@@ -107,14 +107,14 @@ Data-driven over every manager page (campus, college, dean, department, departme
 - FIL-04 Lead uploads signed scan → Filed.
 - FIL-05 Each allowed role can return the scan as invalid with a reason (one in UI, e.g. dean) → Approved; returned scan still listed; non-allowed role sees no control.
 - FIL-06 Re-upload → Filed again.
-- FIL-07 CSV/PDF exports for Form 17, 18-1, justification download.
+- FIL-07 Form data for the print views (Form 17, Form 18-1, justification) is served only to people with access. (Printing uses the browser; there are no file downloads.)
 
 ### `justification.spec.ts` [Part 5]
 - JUS-01 Panel appears only when `based_on` exists and after approval.
 - JUS-02 Entry needs a reason; save; letter preview addressed to the active CITL director.
 - JUS-03 Upload signed letter locks entries.
 - JUS-04 Reviewer or higher returns it with a reason; lead re-uploads.
-- JUS-05 Never blocks routing; co-author can view; referencer and program chair never see it.
+- JUS-05 Never blocks filing; co-author can view; the program chair never sees it (the referencer case is REF-03).
 
 ### `references.spec.ts` [Part 7]
 - REF-01 Chair requests a reference with a note; duplicate refused; withdraw; request again.

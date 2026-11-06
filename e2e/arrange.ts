@@ -10,17 +10,32 @@ import type { Course, Person, World } from "./world";
 
 const CHAIN: Person[] = ["reviewer", "dean", "fdis", "citl", "vpaa"];
 
-/** The lead's draft with one PDF version (world's term unless given). Returns the syllabus id. */
-export async function draftWithVersion(page: Page, world: World, course: Course, term = world.term.id) {
-  await signIn(page, world.people.lead);
+/**
+ * A draft with one PDF version, led by the world's lead unless `lead` is
+ * given, on the world's term unless `term` is. Returns the syllabus id.
+ */
+export async function draftWithVersion(
+  page: Page,
+  world: World,
+  course: Course,
+  term = world.term.id,
+  lead = world.people.lead,
+) {
+  await signIn(page, lead);
   const id = await createDraft(page, world, course, term);
   await uploadVersion(page, id);
   return id;
 }
 
 /** A draft with a version, submitted by the lead (now at stage 1). */
-export async function submitted(page: Page, world: World, course: Course, term = world.term.id) {
-  const id = await draftWithVersion(page, world, course, term);
+export async function submitted(
+  page: Page,
+  world: World,
+  course: Course,
+  term = world.term.id,
+  lead = world.people.lead,
+) {
+  const id = await draftWithVersion(page, world, course, term, lead);
   await submit(page, id);
   return id;
 }
@@ -191,12 +206,18 @@ export async function addCourse(world: World): Promise<Course> {
   return { id: course.id, ...def };
 }
 
-/** The world's prospectus for a school year listing `courses` (First Semester, First Year). */
+/**
+ * The world's prospectus for a school year, created or reused, with
+ * `courses` added (First Semester, First Year).
+ */
 export async function prospectusFor(world: World, schoolYear: string, courses: string[], published: boolean) {
   const pb = await adminPb();
-  const prospectus = await pb
-    .collection("prospectuses")
-    .create({ program: world.program.id, school_year: schoolYear, published });
+  const existing = await pb.collection("prospectuses").getFullList({
+    filter: pb.filter("program = {:p} && school_year = {:y}", { p: world.program.id, y: schoolYear }),
+  });
+  const prospectus =
+    existing[0] ??
+    (await pb.collection("prospectuses").create({ program: world.program.id, school_year: schoolYear, published }));
   for (const course of courses) {
     await pb.collection("prospectus_items").create({
       prospectus: prospectus.id,
