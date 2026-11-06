@@ -34,7 +34,7 @@ test("a returned syllabus resumes at the stage that returned it @RET-01 @RET-02"
   await expect(page.getByText("Align the course outcomes with the program outcomes.")).toBeVisible();
   await page.getByRole("button", { name: "Return for revision" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Return", exact: true }).click();
-  await expect(page).toHaveURL(/\/review$/);
+  await expect(page).toHaveURL(/:\d+\/review$/);
 
   // The lead revises.
   await signIn(page, world.people.lead);

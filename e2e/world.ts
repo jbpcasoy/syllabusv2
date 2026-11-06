@@ -34,6 +34,8 @@ export interface World {
   people: Record<Person, PersonRecord>;
   program: { id: string; code: string; name: string; /** As the selects show it. */ label: string };
   term: GlobalSeed["term"];
+  /** The program's published prospectus on the shared term's school year. */
+  prospectus: string;
   courses: [Course, Course, Course, Course];
 }
 
@@ -131,6 +133,7 @@ export async function createWorld(name: string): Promise<World> {
       label: `${programName} (${programCode})`,
     },
     term: global.term,
+    prospectus: prospectus.id,
     courses: courses as World["courses"],
   };
 }

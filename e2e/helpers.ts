@@ -125,7 +125,7 @@ export async function approveInUi(page: Page, syllabusId: string) {
   await dialog.getByRole("button", { name: "Approve", exact: true }).click();
   await expect(dialog.getByText(/^SYL-/)).toBeVisible();
   await dialog.getByRole("button", { name: "Done" }).click();
-  await expect(page).toHaveURL(/\/review$/);
+  await expect(page).toHaveURL(/:\d+\/review$/);
 }
 
 /** Audit rows for one syllabus, as the signed-in admin. */

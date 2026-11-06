@@ -1,18 +1,13 @@
 import type { Page } from "@playwright/test";
-import { approveThrough } from "./arrange";
+import { approveThrough, freshYearLabel, prospectusFor, schoolYearWithTerm } from "./arrange";
 import { expect, test } from "./fixtures";
 import { adminPb, alerts, createDraft, signIn, submit, uploadVersion } from "./helpers";
 import type { World } from "./world";
 
 // School years, terms, courses and prospectuses, as the admin (walkthrough
-// Part 1). Each test makes its own school years: labels are unique and
-// must be two consecutive years, so they're picked far from real ones.
+// Part 1). Each test makes its own school years (arrange.ts picks labels
+// far from real ones).
 
-let nextYear = 2100 + (Math.floor(Date.now() / 1000) % 400) * 2;
-const freshYearLabel = () => {
-  nextYear += 2;
-  return `${nextYear}-${nextYear + 1}`;
-};
 const stamp = () => Date.now().toString(36);
 
 const dialogOf = (page: Page) => page.getByRole("dialog");
@@ -21,34 +16,6 @@ async function submitDialog(page: Page, button: string) {
   const dialog = dialogOf(page);
   await dialog.getByRole("button", { name: button, exact: true }).click();
   await expect(dialog).toHaveCount(0);
-}
-
-/** A school year with an open First Semester term, straight in the database. */
-async function schoolYearWithTerm(label = freshYearLabel()) {
-  const pb = await adminPb();
-  const schoolYear = await pb.collection("school_years").create({ label });
-  const term = await pb.collection("terms").create({
-    school_year: schoolYear.id,
-    semester: "First Semester",
-    open: true,
-    review_days: 0,
-  });
-  return { schoolYear: schoolYear.id, label, term: term.id, termLabel: `${label} · First Semester` };
-}
-
-/** The world's prospectus for a school year, with the given courses, published or not. */
-async function prospectusFor(world: World, schoolYear: string, courses: string[], published: boolean) {
-  const pb = await adminPb();
-  const prospectus = await pb.collection("prospectuses").create({ program: world.program.id, school_year: schoolYear, published });
-  for (const course of courses) {
-    await pb.collection("prospectus_items").create({
-      prospectus: prospectus.id,
-      course,
-      semester: "First Semester",
-      year_level: "First Year",
-    });
-  }
-  return prospectus.id;
 }
 
 /** As the lead: is `code` offered in the New syllabus course picker for this term? */
