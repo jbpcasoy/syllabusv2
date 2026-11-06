@@ -185,7 +185,7 @@ Work in this order and do not start a phase before the previous one is done unle
 | 3     | Review engine, Form 17, Form 18-1, proxy, approval references, signed scan                                  | Done        |
 | 4     | Reviewer queues, PDF viewer, timeline, faculty return view                                                  | Done        |
 | 5     | Notifications, deadlines, dashboards                                                                        | Done        |
-| 6     | Audit trail, overrides, rate limits, end-to-end tests, accessibility                                        | Done (manual keyboard pass pending) |
+| 6     | Audit trail, overrides, rate limits, end-to-end tests, accessibility                                        | Done (keyboard, alert and zoom checks automated; two a11y fixes and the screen-reader pass pending) |
 
 Update the status column when a phase finishes.
 

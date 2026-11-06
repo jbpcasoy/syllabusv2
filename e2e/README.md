@@ -37,6 +37,12 @@ Global setup starts a local SMTP catcher on `127.0.0.1:2599` (`mail-catcher.ts`,
 
 `faults.ts` makes states a healthy server never shows: `failNext` (one 500), `hold` (keeps a request waiting until `release()`), and `pretendTwoPages` (rewrites a list response to claim two pages). `alerts(page)` finds error alerts without Next.js's empty route announcer. A Headless UI dialog's root has no box of its own, so check that a dialog closed with `toHaveCount(0)`, not `toBeHidden()`.
 
+## Known failures
+
+A test that finds a real bug which isn't fixed yet is marked `test.fail(...)` with the reason, so the suite stays green and Playwright reports it as an expected failure. Once the bug is fixed the test passes, and the marker makes it fail, so remove the marker then. Current ones: Form 17's radios unreachable by Tab (`a11y-keyboard.spec.ts`), and the "Open the syllabus" link on `/verify/<code>` (`KNOWN` in `05-a11y.spec.ts`).
+
+The three outbox email tests (`@NOT-04`, `@NOT-05`, `@NOT-06`) wait on PocketBase's once-a-minute sender and take about 6 minutes together. Skip them while iterating with `--grep-invert "NOT-0[456]"`.
+
 ## Scenario coverage
 
 `SCENARIOS.md` lists every scenario with an ID. Put the IDs a test covers in its title (`@REV-07`). `npm run test:e2e:coverage` lists IDs with no test and fails on tags missing from the catalog; `-- --strict` also fails on uncovered IDs.

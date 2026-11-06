@@ -1,6 +1,6 @@
 # Plan: automated frontend (end-to-end) coverage
 
-Status: agreed. All decisions in section 7 are made. Nothing here is built yet.
+Status: built. All eight delivery steps are done; every scenario in `e2e/SCENARIOS.md` has a test (`npm run test:e2e:coverage -- --strict`).
 
 ## 1. Goal and boundaries
 
