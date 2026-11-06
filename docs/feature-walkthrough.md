@@ -113,9 +113,9 @@ This round gives Part 5 a previous approved syllabus to build on.
 
 **The lead revises** (as `ana`):
 - [ ] Check the bell icon. There should be a "returned" notification. Open `/notifications` and try **Mark all read**.
-- [ ] Open the syllabus and click **Open revision workspace**. **Resubmit** stays disabled until you have done both of the following:
-  - **Upload revision**, and
-  - filled in **Action taken** and **Page number**, then clicked **Save answer** for *every* open point.
+- [ ] Open the syllabus and click **Open revision workspace**. The right side shows two numbered steps. **Resubmit** stays disabled until both are done, and the text beside it says what is left:
+  - Step 1: click **Upload revision** (inside the step) and upload the revised PDF, and
+  - Step 2: fill in **Action taken** and **Page number**, then click **Save answer** for *every* open point.
 - [ ] Resubmit. The syllabus goes back to **stage 1**, not to the start of the chain.
 
 **Stages 1 to 5:**

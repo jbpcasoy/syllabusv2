@@ -161,23 +161,48 @@ export function ReviseWorkspace({ id }: { id: string }) {
 
           <div className="flex flex-col lg:min-h-0">
             <p className="text-sm text-gray-600">
-              Returned at stage {syllabus.stage} ({stageLabel}). Upload a revised
-              PDF and answer each point, then resubmit. It goes back to the
-              same stage.
+              Returned at stage {syllabus.stage} ({stageLabel}). Do both steps,
+              then resubmit. It goes back to the same stage.
             </p>
 
-            <ul className="mt-3 space-y-1 text-sm" aria-label="Before you resubmit">
-              <Check done={hasRevision}>
-                {hasRevision
-                  ? `Revision uploaded (v${latest?.version_no})`
-                  : "Upload a revised PDF"}
-              </Check>
-              <Check done={points !== null && unanswered === 0}>
-                {points === null
-                  ? "Loading review points…"
-                  : `${toAnswer.length - unanswered} of ${toAnswer.length} points answered`}
-              </Check>
-            </ul>
+            <ol className="mt-3 space-y-2" aria-label="Before you resubmit">
+              <Step
+                n={1}
+                done={hasRevision}
+                title={
+                  hasRevision
+                    ? `Revised PDF uploaded (v${latest?.version_no})`
+                    : "Upload your revised PDF"
+                }
+                hint={
+                  hasRevision
+                    ? "Upload again if you need to replace it."
+                    : "Fix the syllabus file first, then upload the new PDF here."
+                }
+              >
+                <button
+                  type="button"
+                  onClick={() => setUpload((prev) => ({ open: true, key: prev.key + 1 }))}
+                  className={
+                    hasRevision
+                      ? "shrink-0 rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                      : "shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"
+                  }
+                >
+                  Upload revision
+                </button>
+              </Step>
+              <Step
+                n={2}
+                done={points !== null && unanswered === 0}
+                title={
+                  points === null
+                    ? "Loading review points…"
+                    : `Answer each review point (${toAnswer.length - unanswered} of ${toAnswer.length} answered)`
+                }
+                hint="Fill in Action taken and Page number below, then click Save answer."
+              />
+            </ol>
 
             {sideError && (
               <p role="alert" className="mt-3 text-sm text-red-600">
@@ -209,18 +234,11 @@ export function ReviseWorkspace({ id }: { id: string }) {
             </div>
 
             <div className="sticky bottom-0 mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 bg-white py-3">
-              {!ready && (
+              {!ready && points !== null && (
                 <span className="mr-auto text-xs text-gray-500">
-                  Resubmit opens once both items above are done.
+                  {missingSteps(hasRevision, unanswered)}
                 </span>
               )}
-              <button
-                type="button"
-                onClick={() => setUpload((prev) => ({ open: true, key: prev.key + 1 }))}
-                className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-              >
-                Upload revision
-              </button>
               <button
                 type="button"
                 disabled={!ready}
@@ -256,13 +274,51 @@ export function ReviseWorkspace({ id }: { id: string }) {
   );
 }
 
-function Check({ done, children }: { done: boolean; children: ReactNode }) {
+/** Why Resubmit is still off, naming exactly what is left. */
+function missingSteps(hasRevision: boolean, unanswered: number): string {
+  const left: string[] = [];
+  if (!hasRevision) left.push("upload your revised PDF (step 1)");
+  if (unanswered > 0)
+    left.push(`answer ${unanswered} more point${unanswered === 1 ? "" : "s"} (step 2)`);
+  const text = left.join(" and ");
+  return `To resubmit, ${text}.`;
+}
+
+/** One numbered step of the revise checklist, with its action beside it. */
+function Step({
+  n,
+  done,
+  title,
+  hint,
+  children,
+}: {
+  n: number;
+  done: boolean;
+  title: string;
+  hint: string;
+  children?: ReactNode;
+}) {
   return (
-    <li className={done ? "text-green-700" : "text-gray-700"}>
-      <span aria-hidden className="mr-1.5">
-        {done ? "✓" : "○"}
+    <li
+      className={`flex items-center gap-3 rounded-lg px-3 py-2 ring-1 ring-inset ${
+        done ? "bg-green-50 ring-green-200" : "bg-amber-50 ring-amber-200"
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+          done ? "bg-green-600 text-white" : "bg-white text-amber-800 ring-1 ring-amber-300"
+        }`}
+      >
+        {done ? "✓" : n}
       </span>
-      <span className="sr-only">{done ? "Done: " : "To do: "}</span>
+      <div className="min-w-0 flex-1 text-sm">
+        <p className={`font-medium ${done ? "text-green-800" : "text-gray-900"}`}>
+          <span className="sr-only">{done ? "Done: " : "To do: "}</span>
+          {title}
+        </p>
+        <p className="text-xs text-gray-600">{hint}</p>
+      </div>
       {children}
     </li>
   );
