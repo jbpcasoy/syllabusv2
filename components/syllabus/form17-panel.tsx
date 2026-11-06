@@ -192,9 +192,15 @@ export function Form17Panel({ syllabusId, editable }: Form17PanelProps) {
                       </div>
                       {editable ? (
                         <RadioGroup
-                          value={value?.answer ?? ""}
+                          // Remount once the saved answers load: Headless UI picks
+                          // the tabbable first option when the radios register and
+                          // doesn't revisit it, and while loading they're disabled,
+                          // so Tab would skip the whole checklist.
+                          key={form ? "loaded" : "loading"}
+                          // null, not "", while unanswered.
+                          value={value?.answer || null}
                           onChange={(answer) =>
-                            setAnswer(criterion.key, { answer })
+                            setAnswer(criterion.key, { answer: answer ?? "" })
                           }
                           aria-label={`Answer for ${criterion.key}`}
                           // Until the saved answers load, a click would be
@@ -206,7 +212,7 @@ export function Form17Panel({ syllabusId, editable }: Form17PanelProps) {
                             <Radio
                               key={option}
                               value={option}
-                              className="cursor-pointer rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ring-gray-300 data-checked:text-white data-checked:ring-0 data-disabled:opacity-50 data-checked:data-[value=no]:bg-amber-700 data-checked:data-[value=yes]:bg-green-700"
+                              className="cursor-pointer rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ring-gray-300 focus:outline-none data-focus:outline-2 data-focus:outline-offset-2 data-focus:outline-indigo-600 data-checked:text-white data-checked:ring-0 data-disabled:opacity-50 data-checked:data-[value=no]:bg-amber-700 data-checked:data-[value=yes]:bg-green-700"
                               data-value={option}
                             >
                               {option === "yes" ? "Yes" : "No"}

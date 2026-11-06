@@ -40,7 +40,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: sent
-            ? `Verify your email before signing in. We sent a new link to ${record.email}.`
+            ? // PocketBase skips a repeat email sent moments after the last one
+              // and doesn't say so, so don't claim a new one went out.
+              `Verify your email before signing in. Check ${record.email} for the verification link. If it hasn't arrived, try signing in again in a few minutes to get a new one.`
             : "Verify your email before signing in. We couldn't send a new link right now; try again later.",
         },
         { status: 403 },

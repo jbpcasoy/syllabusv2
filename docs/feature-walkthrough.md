@@ -212,7 +212,7 @@ Each of these should fail with a clear message:
 
 ## Part 11 — Keyboard and accessibility pass
 
-This is the manual check still marked pending for Phase 6.
+The keyboard, alert and 200% zoom checks below are automated in `e2e/a11y-keyboard.spec.ts` and `e2e/a11y-alerts-zoom.spec.ts`. The screen-reader check (NVDA or Narrator) is still manual.
 
 - [ ] Do Part 5's return-and-resubmit with the **keyboard only**: Tab, Shift+Tab, Enter, Space and the arrow keys in comboboxes and radio groups. Focus should stay visible, and Esc should close dialogs except while saving.
 - [ ] Check that error messages are announced (`role="alert"`). Use NVDA or Narrator on one form.

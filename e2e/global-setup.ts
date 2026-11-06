@@ -5,6 +5,8 @@ import {
   APP_PORT,
   APP_URL,
   DIST_DIR,
+  MAIL_DIR,
+  MAIL_PORT,
   PB_BIN,
   PB_PORT,
   PB_URL,
@@ -14,12 +16,14 @@ import {
   SUPERUSER,
 } from "./env";
 import globalTeardown from "./global-teardown";
+import { startMailCatcher } from "./mail-catcher";
 import { assertPortFree, run, start, waitFor } from "./processes";
-import { seed } from "./seed";
+import { adminPb, seedGlobal } from "./seed";
 
 /**
- * A throwaway PocketBase (every migration from scratch, hooks loaded) and
- * the production build of the app, wired to each other. Set E2E_SKIP_BUILD=1
+ * A throwaway PocketBase (every migration from scratch, hooks loaded), a
+ * local mail catcher it sends through, and the production build of the
+ * app, wired to each other. Set E2E_SKIP_BUILD=1
  * to reuse the last .next-e2e build.
  */
 export default async function globalSetup() {
@@ -55,7 +59,20 @@ async function startEverything() {
   writeFileSync(STATE_FILE, JSON.stringify(state));
   await waitFor(`${PB_URL}/api/health`, 30_000);
 
-  writeFileSync(SEED_FILE, JSON.stringify(await seed(), null, 2));
+  // Real emails: verification links and notifications land in MAIL_DIR.
+  await startMailCatcher(MAIL_DIR, MAIL_PORT);
+  await (await adminPb()).settings.update({
+    meta: {
+      appName: "Syllabus E2E",
+      // Verification links point at PocketBase's own confirmation page.
+      appURL: PB_URL,
+      senderName: "Syllabus E2E",
+      senderAddress: "no-reply@buksu.edu.ph",
+    },
+    smtp: { enabled: true, host: "127.0.0.1", port: MAIL_PORT, tls: false },
+  });
+
+  writeFileSync(SEED_FILE, JSON.stringify(await seedGlobal(), null, 2));
 
   const appEnv = {
     NEXT_DIST_DIR: DIST_DIR,

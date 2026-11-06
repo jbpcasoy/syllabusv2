@@ -1,10 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import {
   answerForm17AllYes,
   approveInUi,
   auditFor,
   getSyllabus,
-  loadSeed,
   pdfFile,
   signIn,
 } from "./helpers";
@@ -12,17 +11,16 @@ import {
 // Draft to filed through the real UI: the lead creates, uploads and
 // submits; each of the five stages approves from its queue; the lead files
 // the signed copy; the audit log holds every status change.
-test("a syllabus goes through all five stages and is filed", async ({ page }) => {
-  const seed = loadSeed();
-  const code = seed.courses.chain.code;
+test("a syllabus goes through all five stages and is filed @REV-01 @FIL-04", async ({ page, world }) => {
+  const code = world.courses[0].code;
 
   // The lead starts a draft from My Syllabi.
-  await signIn(page, "lead");
+  await signIn(page, world.people.lead);
   await page.goto("/syllabus");
   await page.getByRole("button", { name: "New syllabus" }).click();
   const create = page.getByRole("dialog");
-  await create.getByLabel("Term").selectOption({ label: "2026-2027 · First Semester" });
-  await create.getByLabel("Program").selectOption({ label: "E2E BS Information Technology (E2EBSIT)" });
+  await create.getByLabel("Term").selectOption({ label: world.term.label });
+  await create.getByLabel("Program").selectOption({ label: world.program.label });
   await create.getByRole("combobox", { name: "Course" }).fill(code);
   await page.getByRole("option", { name: new RegExp(code) }).click();
   await create.getByRole("button", { name: "Create draft" }).click();
@@ -34,13 +32,14 @@ test("a syllabus goes through all five stages and is filed", async ({ page }) =>
   const upload = page.getByRole("dialog");
   await upload.getByLabel("PDF file").setInputFiles(pdfFile());
   await upload.getByRole("button", { name: "Upload", exact: true }).click();
-  await expect(upload).toBeHidden();
+  // The dialog root has no box of its own, so wait for it to unmount.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByRole("button", { name: "Submit for review" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Submit", exact: true }).click();
   await expect.poll(async () => (await getSyllabus(page, id)).status).toBe("submitted");
 
   // Stage 1 finds it in the queue and fills Form 17, shared by every stage.
-  await signIn(page, "reviewer");
+  await signIn(page, world.people.reviewer);
   await page.goto("/review");
   const row = page.getByRole("row", { name: new RegExp(code) });
   await row.getByRole("link", { name: "Review" }).click();
@@ -50,11 +49,11 @@ test("a syllabus goes through all five stages and is filed", async ({ page }) =>
 
   // Stages 2 to 5 approve in order.
   for (const person of ["dean", "fdis", "citl", "vpaa"] as const) {
-    await signIn(page, person);
+    await signIn(page, world.people[person]);
     await approveInUi(page, id);
   }
 
-  await signIn(page, "lead");
+  await signIn(page, world.people.lead);
   expect(await getSyllabus(page, id)).toMatchObject({ status: "approved", stage: 5 });
 
   // The lead files the wet-signed scan.
@@ -66,7 +65,7 @@ test("a syllabus goes through all five stages and is filed", async ({ page }) =>
   await expect(page.getByText("Filed: the signed copy is on record.")).toBeVisible();
 
   // Admin sees every status change in the audit log.
-  await signIn(page, "admin");
+  await signIn(page, world.people.admin);
   const rows = await auditFor(page, id);
   const changes = rows
     .map((r) => r.action)
@@ -85,5 +84,5 @@ test("a syllabus goes through all five stages and is filed", async ({ page }) =>
 
   await page.goto("/audit");
   await expect(page.getByRole("heading", { name: "Audit log" })).toBeVisible();
-  await expect(page.getByRole("link", { name: `E2EBSIT · ${code}` }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: `${world.program.code} · ${code}` }).first()).toBeVisible();
 });

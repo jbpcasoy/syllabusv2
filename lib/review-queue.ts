@@ -198,6 +198,8 @@ export function toQueueItems(
         waiting && cover && cover.user !== me
           ? (cover.expand?.user?.name ?? "")
           : null,
+      acting_as:
+        waiting && cover?.user === me ? (stage === 1 ? "proxy" : "standIn") : null,
     };
   });
 }

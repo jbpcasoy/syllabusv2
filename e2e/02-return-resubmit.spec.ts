@@ -1,11 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import {
   answerForm17AllYes,
   approveInUi,
   auditFor,
   createDraft,
   getSyllabus,
-  loadSeed,
   pdfFile,
   signIn,
   submit,
@@ -14,21 +13,20 @@ import {
 
 // The dean returns with a Form 18-1 point; the lead uploads a revision,
 // answers the point and resubmits; review resumes at the dean.
-test("a returned syllabus resumes at the stage that returned it", async ({ page }) => {
-  const seed = loadSeed();
+test("a returned syllabus resumes at the stage that returned it @RET-01 @RET-02", async ({ page, world }) => {
 
-  await signIn(page, "lead");
-  const id = await createDraft(page, seed, "revise");
+  await signIn(page, world.people.lead);
+  const id = await createDraft(page, world, world.courses[0]);
   await uploadVersion(page, id);
   await submit(page, id);
 
-  await signIn(page, "reviewer");
+  await signIn(page, world.people.reviewer);
   await page.goto(`/syllabus/${id}/review`);
   await answerForm17AllYes(page);
   await approveInUi(page, id);
 
   // The dean raises a point (Part A, no legend code) and returns.
-  await signIn(page, "dean");
+  await signIn(page, world.people.dean);
   await page.goto(`/syllabus/${id}/review`);
   await page.getByRole("tab", { name: "Form 18-1" }).click();
   await page.getByLabel("Review point").fill("Align the course outcomes with the program outcomes.");
@@ -36,10 +34,10 @@ test("a returned syllabus resumes at the stage that returned it", async ({ page 
   await expect(page.getByText("Align the course outcomes with the program outcomes.")).toBeVisible();
   await page.getByRole("button", { name: "Return for revision" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Return", exact: true }).click();
-  await expect(page).toHaveURL(/\/review$/);
+  await expect(page).toHaveURL(/:\d+\/review$/);
 
   // The lead revises.
-  await signIn(page, "lead");
+  await signIn(page, world.people.lead);
   expect(await getSyllabus(page, id)).toMatchObject({ status: "returned", stage: 2 });
   await page.goto(`/syllabus/${id}/revise`);
   const resubmit = page.getByRole("button", { name: "Resubmit", exact: true });
@@ -49,7 +47,8 @@ test("a returned syllabus resumes at the stage that returned it", async ({ page 
   const upload = page.getByRole("dialog");
   await upload.getByLabel("PDF file").setInputFiles(pdfFile("revision.pdf"));
   await upload.getByRole("button", { name: "Upload", exact: true }).click();
-  await expect(upload).toBeHidden();
+  // The dialog root has no box of its own, so wait for it to unmount.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
   await page.getByLabel("Action taken").fill("Mapped every course outcome to a program outcome.");
   await page.getByLabel("Page number").fill("3");
@@ -62,7 +61,7 @@ test("a returned syllabus resumes at the stage that returned it", async ({ page 
   await expect(page).toHaveURL(`/syllabus/${id}`);
   expect(await getSyllabus(page, id)).toMatchObject({ status: "submitted", stage: 2 });
 
-  await signIn(page, "admin");
+  await signIn(page, world.people.admin);
   const actions = (await auditFor(page, id))
     .map((r) => r.action)
     .filter((a) => a !== "file.uploaded")

@@ -42,6 +42,10 @@ export function DepartmentManager({ roles }: DepartmentManagerProps) {
     evaluateCapability(roles, "department.update", departmentScope(department));
   const canDelete = (department: DepartmentRecord) =>
     evaluateCapability(roles, "department.delete", departmentScope(department));
+  // The college list is the org list (everyone sees it); the form only
+  // offers colleges a department may be created in, e.g. a dean's own.
+  const canCreateIn = (college: CollegeRecord) =>
+    evaluateCapability(roles, "department.create", { collegeId: college.id });
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -351,7 +355,7 @@ export function DepartmentManager({ roles }: DepartmentManagerProps) {
         open={modal.open}
         mode={modal.mode}
         department={modal.department}
-        colleges={colleges}
+        colleges={colleges.filter(canCreateIn)}
         canEdit={!!modal.department && canUpdate(modal.department)}
         canMove={canCreate}
         onModeChange={(mode) => setModal((prev) => ({ ...prev, mode }))}

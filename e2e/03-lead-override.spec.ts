@@ -1,21 +1,21 @@
-import { expect, test } from "@playwright/test";
-import { auditFor, createDraft, getSyllabus, loadSeed, signIn } from "./helpers";
+import { expect, test } from "./fixtures";
+import { auditFor, createDraft, getSyllabus, signIn } from "./helpers";
 
 // Admin isn't the program's chair, so reassigning the lead is an override:
 // the dialog asks for a reason and the audit log marks it.
-test("an admin reassigns the lead only with a reason, marked as an override", async ({ page }) => {
-  const seed = loadSeed();
+test("an admin reassigns the lead only with a reason, marked as an override @LEAD-02", async ({ page, world }) => {
+  const coAuthor = world.people.coAuthor;
   const reason = "The lead is on study leave this semester.";
 
-  await signIn(page, "lead");
-  const id = await createDraft(page, seed, "lead");
+  await signIn(page, world.people.lead);
+  const id = await createDraft(page, world, world.courses[0]);
 
-  await signIn(page, "admin");
+  await signIn(page, world.people.admin);
   await page.goto(`/syllabus/${id}`);
   await page.getByRole("button", { name: "Transfer lead" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("New lead").fill("Coauthor");
-  await page.getByRole("option", { name: /E2E Coauthor/ }).click();
+  await dialog.getByLabel("New lead").fill(coAuthor.name);
+  await page.getByRole("option", { name: coAuthor.name }).click();
 
   const transfer = dialog.getByRole("button", { name: "Transfer", exact: true });
   await expect(dialog.getByLabel("Reason (required)")).toBeVisible();
@@ -23,8 +23,8 @@ test("an admin reassigns the lead only with a reason, marked as an override", as
   await dialog.getByLabel("Reason (required)").fill(reason);
   await transfer.click();
   // The dialog can read as hidden mid-transition, before the PUT returns.
-  await expect.poll(async () => (await getSyllabus(page, id)).lead).toBe(seed.users.coAuthor);
-  await expect(page.getByText(/Lead: E2E Coauthor/)).toBeVisible();
+  await expect.poll(async () => (await getSyllabus(page, id)).lead).toBe(coAuthor.id);
+  await expect(page.getByText(`Lead: ${coAuthor.name}`)).toBeVisible();
   expect(await auditFor(page, id)).toEqual([
     expect.objectContaining({ action: "lead.transferred", override: true, reason }),
   ]);
@@ -35,5 +35,5 @@ test("an admin reassigns the lead only with a reason, marked as an override", as
   const row = page.getByRole("row", { name: /Lead transferred/ }).first();
   await expect(row.getByText("Override", { exact: true })).toBeVisible();
   await expect(row.getByText(reason)).toBeVisible();
-  await expect(row.getByText("From E2E Lead to E2E Coauthor")).toBeVisible();
+  await expect(row.getByText(`From ${world.people.lead.name} to ${coAuthor.name}`)).toBeVisible();
 });

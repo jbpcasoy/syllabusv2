@@ -470,6 +470,9 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
             onSubmitted={(updated) => {
               setSubmit(shut);
               setSyllabus(updated);
+              // The submit response has no `review` (what the viewer may do
+              // now, e.g. "Waiting for a proxy"), so refetch it.
+              reload();
             }}
           />
           <DeleteSyllabusDialog

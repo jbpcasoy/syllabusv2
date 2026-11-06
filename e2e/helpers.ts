@@ -1,34 +1,39 @@
-import { expect, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
-import PocketBase from "pocketbase";
-import { PASSWORD, PB_URL, SEED_FILE, SUPERUSER } from "./env";
-import { PEOPLE, type Person, type Seed } from "./seed";
+import { expect, type Locator, type Page } from "@playwright/test";
+import { PASSWORD } from "./env";
+import type { PersonRecord } from "./seed";
+import type { Course, World } from "./world";
 
-export function loadSeed(): Seed {
-  return JSON.parse(readFileSync(SEED_FILE, "utf8")) as Seed;
-}
-
-/** Superuser client on the throwaway PocketBase, for arranging state. */
-export async function adminPb(): Promise<PocketBase> {
-  const pb = new PocketBase(PB_URL);
-  pb.autoCancellation(false);
-  await pb
-    .collection("_superusers")
-    .authWithPassword(SUPERUSER.email, SUPERUSER.password);
-  return pb;
-}
+export { adminPb, createUser } from "./seed";
 
 /**
  * Signs in through the API on the page's own context, so the session
  * cookie is shared with the browser. The login form itself is covered by
  * the accessibility spec.
  */
-export async function signIn(page: Page, person: Person) {
+export async function signIn(page: Page, person: PersonRecord) {
   await page.context().clearCookies();
   const res = await page.request.post("/api/auth/login", {
-    data: { email: PEOPLE[person].email, password: PASSWORD },
+    data: { email: person.email, password: PASSWORD },
   });
-  expect(res.status(), `sign-in as ${person}`).toBe(200);
+  expect(res.status(), `sign-in as ${person.name}`).toBe(200);
+}
+
+/**
+ * The page's error alerts, without Next.js's route announcer (an empty
+ * `role="alert"` on every page).
+ */
+export function alerts(scope: Page | Locator) {
+  return scope.locator('[role="alert"]:not(#__next-route-announcer__)');
+}
+
+/** The page is the sign-in form, asked to return to `path` afterwards. */
+export async function expectSignInFor(page: Page, path: string) {
+  await expect
+    .poll(() => {
+      const url = new URL(page.url());
+      return url.pathname === "/login" ? url.searchParams.get("next") : url.pathname;
+    }, { message: `sign-in redirect for ${path}` })
+    .toBe(path);
 }
 
 /** The smallest file the server's magic-byte check accepts as a PDF. */
@@ -42,18 +47,21 @@ export function pdfFile(name = "syllabus.pdf") {
   };
 }
 
-async function ok<T>(res: Awaited<ReturnType<Page["request"]["get"]>>, what: string): Promise<T> {
+type ApiResponse = Awaited<ReturnType<Page["request"]["get"]>>;
+
+export async function ok<T>(res: ApiResponse, what: string): Promise<T> {
   expect(res.ok(), `${what}: ${res.status()} ${await res.text()}`).toBeTruthy();
   return (res.status() === 204 ? null : await res.json()) as T;
 }
 
 // API shortcuts for arranging state a spec isn't about. Each runs as
-// whoever is signed in on `page`.
+// whoever is signed in on `page`. Multi-person arrangements are in arrange.ts.
 
-export async function createDraft(page: Page, seed: Seed, course: keyof Seed["courses"]) {
+/** The lead's draft for `course`, on the world's term unless `term` is given. */
+export async function createDraft(page: Page, world: World, course: Course, term = world.term.id) {
   const created = await ok<{ id: string }>(
     await page.request.post("/api/syllabus", {
-      data: { course: seed.courses[course].id, term: seed.term, program: seed.program },
+      data: { course: course.id, term, program: world.program.id },
     }),
     "create draft",
   );
@@ -80,18 +88,20 @@ export async function getSyllabus(page: Page, syllabusId: string) {
   );
 }
 
-/** The id of the signed-in user's syllabus for a seeded course code. */
-export async function findSyllabusId(page: Page, code: string): Promise<string> {
-  const list = await ok<{ items: { id: string; expand?: { course?: { code: string } } }[] }>(
-    await page.request.get(`/api/syllabus?search=${encodeURIComponent(code)}&perPage=10`),
-    "find syllabus",
-  );
-  const match = list.items.find((s) => s.expand?.course?.code === code);
-  expect(match, `syllabus for ${code}`).toBeTruthy();
-  return match!.id;
+// UI steps shared by several specs.
+
+/** Picks `person` in a dialog's "User" picker (search, then click the option). */
+export async function pickUser(page: Page, dialog: Locator, person: PersonRecord) {
+  await dialog.getByRole("combobox", { name: "User" }).fill(person.name);
+  await page.getByRole("listbox").getByRole("option", { name: new RegExp(escapeRegExp(person.email)) }).click();
 }
 
-// UI steps shared by several specs.
+export const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** A table row by the exact text of one of its cells. */
+export function rowWith(page: Page, cell: string) {
+  return page.getByRole("row").filter({ has: page.getByRole("cell", { name: cell, exact: true }) });
+}
 
 /** Answers every Form 17 criterion Yes and saves (review workspace). */
 export async function answerForm17AllYes(page: Page) {
@@ -115,7 +125,7 @@ export async function approveInUi(page: Page, syllabusId: string) {
   await dialog.getByRole("button", { name: "Approve", exact: true }).click();
   await expect(dialog.getByText(/^SYL-/)).toBeVisible();
   await dialog.getByRole("button", { name: "Done" }).click();
-  await expect(page).toHaveURL(/\/review$/);
+  await expect(page).toHaveURL(/:\d+\/review$/);
 }
 
 /** Audit rows for one syllabus, as the signed-in admin. */

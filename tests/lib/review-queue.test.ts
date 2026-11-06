@@ -210,6 +210,7 @@ describe("toQueueItems", () => {
         version_no: 3,
         actionable: true,
         covered_by: null,
+        acting_as: null,
         syllabus: expect.objectContaining({ id: "syl", access: "reviewer" }),
       }),
     ]);
@@ -229,7 +230,7 @@ describe("toQueueItems", () => {
         { syllabus: "syl", stage: 2, user: OTHER, expand: { user: { name: "Ana" } } },
       ],
     });
-    expect(item).toMatchObject({ actionable: false, covered_by: "Ana" });
+    expect(item).toMatchObject({ actionable: false, covered_by: "Ana", acting_as: null });
   });
 
   it("lets the stand-in act even without the role", () => {
@@ -238,7 +239,25 @@ describe("toQueueItems", () => {
       roles: NO_ROLES,
       covers: [{ syllabus: "syl", stage: 2, user: ME }],
     });
-    expect(item).toMatchObject({ actionable: true, covered_by: null });
+    expect(item).toMatchObject({ actionable: true, covered_by: null, acting_as: "standIn" });
+  });
+
+  it("says the viewer acts as proxy when they cover stage 1", () => {
+    const [item] = toQueueItems([record({ stage: 1 })], {
+      ...context,
+      stage: 1,
+      roles: NO_ROLES,
+      covers: [{ syllabus: "syl", stage: 1, user: ME }],
+    });
+    expect(item).toMatchObject({ actionable: true, acting_as: "proxy" });
+  });
+
+  it("drops acting_as once the stage is no longer waiting", () => {
+    const [item] = toQueueItems([record({ stage: 3 })], {
+      ...context,
+      covers: [{ syllabus: "syl", stage: 2, user: ME }],
+    });
+    expect(item.acting_as).toBeNull();
   });
 
   it("never lets an admin act unless they hold the stage", () => {

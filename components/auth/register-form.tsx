@@ -71,7 +71,7 @@ export function RegisterForm({ loginHref, allowedDomains }: RegisterFormProps) {
           <span className="font-medium text-gray-900">{sentTo}</span>. Open it,
           then sign in.
         </p>
-        <p className="text-gray-500">No email? Signing in sends a new link.</p>
+        <p className="text-gray-500">No email after a few minutes? Signing in sends a new link.</p>
         <Link
           href={loginHref}
           className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
