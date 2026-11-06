@@ -59,6 +59,19 @@ export async function requestEmailVerification(email: string): Promise<boolean> 
 }
 
 /**
+ * Confirms the token from an emailed verification link. Returns false for an
+ * expired, malformed or already-used token instead of throwing.
+ */
+export async function confirmEmailVerification(token: string): Promise<boolean> {
+  try {
+    await createPb().collection("users").confirmVerification(token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Validates the cookie's token against PocketBase and returns the user.
  * Unverified accounts count as signed out, even with a valid token.
  */

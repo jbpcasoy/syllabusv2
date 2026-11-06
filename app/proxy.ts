@@ -5,6 +5,8 @@ import { NextResponse, type NextRequest } from "next/server";
 const AUTH_COOKIE = "pb_auth";
 const LOGIN_PATH = "/login";
 const PUBLIC_PATHS = [LOGIN_PATH, "/register"];
+// Emailed verification links: the reader is not signed in yet.
+const PUBLIC_PREFIXES = ["/confirm-email/"];
 
 /**
  * Cheap, optimistic check: decode the JWT payload and look at `exp`.
@@ -25,7 +27,12 @@ function isTokenExpired(token: string): boolean {
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next();
+  if (
+    PUBLIC_PATHS.includes(pathname) ||
+    PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  ) {
+    return NextResponse.next();
+  }
 
   const token = request.cookies.get(AUTH_COOKIE)?.value;
   if (token && !isTokenExpired(token)) return NextResponse.next();

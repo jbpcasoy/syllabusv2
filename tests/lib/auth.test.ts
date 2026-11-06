@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   save: vi.fn(),
   authRefresh: vi.fn(),
   requestVerification: vi.fn(),
+  confirmVerification: vi.fn(),
   can: vi.fn(),
 }));
 
@@ -33,6 +34,7 @@ vi.mock("@/lib/pocketbase", async () => {
       collection: () => ({
         authRefresh: mocks.authRefresh,
         requestVerification: mocks.requestVerification,
+        confirmVerification: mocks.confirmVerification,
       }),
       files: { getURL: vi.fn() },
     })),
@@ -50,6 +52,7 @@ vi.mock("@/lib/capabilities", () => ({ can: mocks.can }));
 
 import {
   authorize,
+  confirmEmailVerification,
   requestEmailVerification,
   requireUser,
   toSessionUser,
@@ -191,6 +194,21 @@ describe("requestEmailVerification", () => {
 
     expect(await requestEmailVerification("a@buksu.edu.ph")).toBe(false);
     spy.mockRestore();
+  });
+});
+
+describe("confirmEmailVerification", () => {
+  it("returns true once PocketBase accepts the token", async () => {
+    mocks.confirmVerification.mockResolvedValue(true);
+
+    expect(await confirmEmailVerification("tok")).toBe(true);
+    expect(mocks.confirmVerification).toHaveBeenCalledWith("tok");
+  });
+
+  it("returns false for an invalid or expired token", async () => {
+    mocks.confirmVerification.mockRejectedValue(new Error("400"));
+
+    expect(await confirmEmailVerification("bad")).toBe(false);
   });
 });
 
