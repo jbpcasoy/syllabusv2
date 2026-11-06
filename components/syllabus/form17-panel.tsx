@@ -28,6 +28,8 @@ type Form17PanelProps = {
   syllabusId: string;
   /** The viewer is the reviewer at the current stage. */
   editable: boolean;
+  /** Called whenever the panel gains or loses unsaved edits. */
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 type Draft = Record<string, { answer: Form17Answer | ""; remarks: string }>;
@@ -44,7 +46,7 @@ function draftFrom(form: Form17Response): Draft {
 }
 
 /** Form 17 (OVPAA-F-INS-017): one shared Yes/No checklist per version. */
-export function Form17Panel({ syllabusId, editable }: Form17PanelProps) {
+export function Form17Panel({ syllabusId, editable, onDirtyChange }: Form17PanelProps) {
   const [form, setForm] = useState<Form17Response | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +97,21 @@ export function Form17Panel({ syllabusId, editable }: Form17PanelProps) {
       remarks: draft[key].remarks.trim(),
     }));
   const suggestionsChanged = !!form && suggestions.trim() !== form.suggestions;
+  const unsaved = changed.length + (suggestionsChanged ? 1 : 0);
+  const dirty = editable && unsaved > 0;
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
+  // Warn before leaving the page with edits that were never saved.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
   const answered = Object.values(draft).filter((d) => d.answer).length;
   const total = checklistCriteria(definition).length;
 
@@ -160,7 +177,8 @@ export function Form17Panel({ syllabusId, editable }: Form17PanelProps) {
             {answered} of {total} answered
             {form.has_no && (
               <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
-                Has a &quot;No&quot;: approval is blocked
+                {dirty ? "Saved answers have" : "Has"} a &quot;No&quot;: approval
+                is blocked
               </span>
             )}
           </p>
@@ -290,7 +308,17 @@ export function Form17Panel({ syllabusId, editable }: Form17PanelProps) {
       </div>
 
       {editable && (
-        <div className="mt-4 flex items-center justify-end gap-3">
+        // Sticks to the bottom of the scrolling forms pane so Save stays in
+        // view while the reviewer works down the checklist.
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 bg-white pt-3 lg:sticky lg:bottom-0 lg:pb-1">
+          <p
+            role="status"
+            className={`mr-auto text-sm ${dirty ? "font-medium text-amber-800" : "text-gray-500"}`}
+          >
+            {dirty
+              ? `${unsaved} unsaved ${unsaved === 1 ? "change" : "changes"}`
+              : form && "All changes saved"}
+          </p>
           {saveError && (
             <p role="alert" className="text-sm text-red-600">
               {saveError}
