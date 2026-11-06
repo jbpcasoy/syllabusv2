@@ -5,7 +5,7 @@ import { CHAIN_ROLES } from "@/lib/syllabus-workflow";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Form17Panel } from "./form17-panel";
 import { Form18Panel } from "./form18-panel";
 import { PdfPane } from "./pdf-pane";
@@ -22,6 +22,8 @@ export function ReviewWorkspace({ id }: { id: string }) {
   const router = useRouter();
   const [reloadKey, setReloadKey] = useState(0);
   const { syllabus, versions, error } = useSyllabusWorkspace(id, reloadKey);
+  const [form17Dirty, setForm17Dirty] = useState(false);
+  const onForm17Dirty = useCallback((dirty: boolean) => setForm17Dirty(dirty), []);
   const [versionId, setVersionId] = useState<string | null>(null);
   const [decide, setDecide] = useState({
     open: false,
@@ -139,13 +141,26 @@ export function ReviewWorkspace({ id }: { id: string }) {
             </p>
             <TabGroup className="mt-2 flex min-h-0 flex-1 flex-col">
               <TabList className="flex gap-1 border-b border-gray-200">
-                <Tab className={tabClass}>Form 17</Tab>
+                <Tab className={tabClass}>
+                  Form 17
+                  {form17Dirty && (
+                    <>
+                      <span aria-hidden className="ml-1.5 inline-block size-2 rounded-full bg-amber-500" />
+                      <span className="sr-only"> (unsaved changes)</span>
+                    </>
+                  )}
+                </Tab>
                 <Tab className={tabClass}>Form 18-1</Tab>
               </TabList>
               {/* Panels stay mounted so unsaved Form 17 edits survive a tab switch. */}
               <TabPanels className="mt-3 min-h-0 flex-1 overflow-y-auto">
                 <TabPanel unmount={false}>
-                  <Form17Panel key={`form17-${reloadKey}`} syllabusId={id} editable />
+                  <Form17Panel
+                    key={`form17-${reloadKey}`}
+                    syllabusId={id}
+                    editable
+                    onDirtyChange={onForm17Dirty}
+                  />
                 </TabPanel>
                 <TabPanel unmount={false}>
                   <Form18Panel
@@ -159,18 +174,25 @@ export function ReviewWorkspace({ id }: { id: string }) {
               </TabPanels>
             </TabGroup>
 
-            <div className="sticky bottom-0 mt-3 flex flex-wrap justify-end gap-2 border-t border-gray-200 bg-white py-3">
+            <div className="sticky bottom-0 mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 bg-white py-3">
+              {form17Dirty && (
+                <p role="status" className="mr-auto text-sm text-amber-800">
+                  Save your Form 17 changes before deciding.
+                </p>
+              )}
               <button
                 type="button"
+                disabled={form17Dirty}
                 onClick={() => openDecision("return")}
-                className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-amber-700 ring-1 ring-inset ring-amber-300 hover:bg-amber-50"
+                className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-amber-700 ring-1 ring-inset ring-amber-300 hover:bg-amber-50 disabled:opacity-50"
               >
                 Return for revision
               </button>
               <button
                 type="button"
+                disabled={form17Dirty}
                 onClick={() => openDecision("approve")}
-                className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
               >
                 Approve
               </button>

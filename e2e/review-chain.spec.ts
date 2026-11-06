@@ -94,6 +94,28 @@ test("Form 17 needs every answer, remarks on a No, and a No blocks Approve @REV-
   expect((await getSyllabus(page, id)).stage).toBe(1);
 });
 
+test("unsaved Form 17 edits are flagged and hold back Approve and Return @REV-04", async ({ page, world }) => {
+  const id = await submitted(page, world, await addCourse(world));
+  await signIn(page, world.people.reviewer);
+  await page.goto(`/syllabus/${id}/review`);
+
+  const approve = page.getByRole("button", { name: "Approve", exact: true });
+  const ret = page.getByRole("button", { name: "Return for revision", exact: true });
+  await expect(approve).toBeEnabled();
+
+  await page.getByRole("radiogroup", { name: `Answer for ${CRITERIA[0]}` }).getByRole("radio", { name: "Yes" }).click();
+  await expect(page.getByText("1 unsaved change")).toBeVisible();
+  await expect(page.getByText("Save your Form 17 changes before deciding.")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Form 17 (unsaved changes)" })).toBeVisible();
+  await expect(approve).toBeDisabled();
+  await expect(ret).toBeDisabled();
+
+  await page.getByRole("button", { name: "Save checklist" }).click();
+  await expect(page.getByText("All changes saved")).toBeVisible();
+  await expect(approve).toBeEnabled();
+  await expect(ret).toBeEnabled();
+});
+
 test("a later reviewer's Form 17 change is logged with who and which stage @REV-05", async ({ page, world }) => {
   const id = await submitted(page, world, await addCourse(world));
   await approveThrough(page, world, id, 1, 1);
