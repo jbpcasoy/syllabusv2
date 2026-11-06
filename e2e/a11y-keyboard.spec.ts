@@ -41,11 +41,6 @@ async function tabTo(page: Page, target: Locator, { max = 120, back = false } = 
 }
 
 test("Form 17 can be answered with the keyboard @A11Y-02", async ({ page, world }) => {
-  // Known gap: every Yes/No radio has tabindex -1 until answered, so Tab
-  // skips the checklist. The group gets value "" instead of null, which
-  // Headless UI treats as a value no option matches
-  // (components/syllabus/form17-panel.tsx).
-  test.fail(true, "Form 17 radios are unreachable by Tab until answered.");
   const id = await submitted(page, world, await addCourse(world));
   await signIn(page, world.people.reviewer);
   await page.goto(`/syllabus/${id}/review`);
@@ -65,7 +60,7 @@ test("a reviewer returns and the lead resubmits, keyboard only @A11Y-02", async 
   test.setTimeout(180_000);
   const id = await submitted(page, world, await addCourse(world));
 
-  // Form 17 through the API (see the test above); everything else by keyboard.
+  // Form 17 by keyboard is the test above; here it's answered through the API.
   await signIn(page, world.people.reviewer);
   await ok(
     await page.request.put(`/api/syllabus/${id}/form17`, {

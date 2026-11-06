@@ -79,7 +79,10 @@ describe("POST /api/auth/login", () => {
     const res = await POST(post({ email: EMAIL, password: "pw" }));
 
     expect(res.status).toBe(403);
-    expect((await res.json()).error).toContain(`new link to ${EMAIL}`);
+    const { error } = await res.json();
+    expect(error).toContain(`Check ${EMAIL} for the verification link.`);
+    // PocketBase may have skipped the resend, so it never claims one went out.
+    expect(error).not.toMatch(/we sent/i);
     expect(mocks.requestEmailVerification).toHaveBeenCalledWith(EMAIL);
     expect(mocks.setSessionCookie).not.toHaveBeenCalled();
   });

@@ -21,6 +21,11 @@ export interface ReviewQueueItem {
   actionable: boolean;
   /** Name of the stand-in covering this stage for someone else, or null. */
   covered_by: string | null;
+  /**
+   * When the viewer covers this stage for a conflicted holder while it
+   * waits: "proxy" at stage 1, "standIn" later. Otherwise null.
+   */
+  acting_as: "proxy" | "standIn" | null;
 }
 
 /** Body of GET /api/review-queue. */

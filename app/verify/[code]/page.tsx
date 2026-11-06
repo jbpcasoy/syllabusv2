@@ -70,7 +70,7 @@ export default async function VerifyApprovalPage({ params }: PageProps) {
         <p className="mt-4 text-sm">
           <Link
             href={`/syllabus/${approval.syllabusId}`}
-            className="text-indigo-600 hover:text-indigo-500"
+            className="font-medium text-indigo-600 underline hover:text-indigo-500"
           >
             Open the syllabus
           </Link>{" "}

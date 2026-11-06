@@ -276,7 +276,7 @@ export function ReviewQueueManager() {
               loading ? "opacity-50" : "opacity-100"
             }`}
           >
-            {items.map(({ syllabus: row, version_no, actionable, covered_by }) => (
+            {items.map(({ syllabus: row, version_no, actionable, covered_by, acting_as }) => (
               <tr key={row.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">
                   <Link
@@ -289,6 +289,11 @@ export function ReviewQueueManager() {
                     {row.expand?.course?.title}
                     {version_no > 0 && ` · v${version_no}`}
                   </div>
+                  {acting_as && (
+                    <div className="mt-0.5 text-xs font-medium text-indigo-700">
+                      {acting_as === "proxy" ? "As proxy" : "As stand-in"}
+                    </div>
+                  )}
                 </td>
                 <td className="hidden px-4 py-3 text-sm text-gray-500 sm:table-cell">
                   {row.expand?.program?.code || "—"}

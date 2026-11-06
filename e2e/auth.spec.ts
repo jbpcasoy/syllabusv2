@@ -86,7 +86,7 @@ test("signing in while unverified sends a new link @AUTH-02b", async ({ page }) 
   await page.goto("/login");
   await signInWithForm(page, email);
   await expect(alerts(page)).toHaveText(
-    `Verify your email before signing in. We sent a new link to ${email}.`,
+    `Verify your email before signing in. Check ${email} for the verification link. If it hasn't arrived, try signing in again in a few minutes to get a new one.`,
   );
   const mail = await waitForMail(email, { subject: VERIFY_SUBJECT });
   linkIn(mail, VERIFY_LINK);

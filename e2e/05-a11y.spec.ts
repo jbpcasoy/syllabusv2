@@ -131,10 +131,7 @@ const PAGES: [Person, string[]][] = [
  * Known violations, reported and not yet fixed. Each is expected to fail,
  * so the suite stays green and flags the entry for removal once fixed.
  */
-const KNOWN: Record<string, string> = {
-  "/verify/{code}":
-    'link-in-text-block: "Open the syllabus" has no underline and 2.77:1 contrast with the text around it (app/verify/[code]/page.tsx).',
-};
+const KNOWN: Record<string, string> = {};
 
 for (const [person, paths] of PAGES) {
   test.describe(`as ${person}`, () => {

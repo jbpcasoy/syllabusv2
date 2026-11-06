@@ -145,26 +145,23 @@ test("a dean creates a department in their college, never in another @ORG-03", a
   await signIn(page, world.people.dean);
   await page.goto("/department");
 
-  // The college list isn't scoped (it's the org list), so another college
-  // can be picked; saving it is refused with the reason.
   await page.getByRole("button", { name: "New department" }).click();
-  let dialog = dialogOf(page);
-  await dialog.getByLabel("Name").fill(`${name} Elsewhere`);
-  await dialog.getByLabel("College").selectOption(theirs.college);
-  await dialog.getByRole("button", { name: "Create", exact: true }).click();
-  await expect(alerts(dialog)).not.toBeEmpty();
-  await dialog.getByRole("button", { name: "Cancel" }).click();
-  await expect(dialog).toHaveCount(0);
-
-  await page.getByRole("button", { name: "New department" }).click();
-  dialog = dialogOf(page);
+  const dialog = dialogOf(page);
+  // Only colleges a department may be created in are offered.
+  const values = await dialog
+    .getByLabel("College")
+    .locator("option")
+    .evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value).filter(Boolean));
+  expect(values).toEqual([mine.college]);
   await dialog.getByLabel("Name").fill(name);
   await dialog.getByLabel("College").selectOption(mine.college);
   await submitDialog(page, "Create");
   await page.getByLabel("Search departments").fill(name);
   await expect(page.getByRole("cell", { name, exact: true })).toBeVisible();
-  await page.getByLabel("Search departments").fill(`${name} Elsewhere`);
-  await expect(page.getByText(/0 results/)).toBeVisible();
+
+  // The server refuses another college too.
+  const refused = await page.request.post("/api/department", { data: { name: `${name} Elsewhere`, college: theirs.college } });
+  expect(refused.status()).toBe(403);
 });
 
 test("a dean assigns a department head and creates a program @ORG-04", async ({ page, world }) => {

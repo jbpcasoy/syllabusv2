@@ -47,9 +47,6 @@ test("submitting with the reviewer as co-author warns, then waits for a proxy @S
   await expect(dialogOf(page)).toContainText("The program reviewer leads or co-authors this syllabus");
   await dialogOf(page).getByRole("button", { name: "Submit", exact: true }).click();
   await expect(dialogOf(page)).toHaveCount(0);
-  // Known gap: the submit response has no `review`, so the banner only
-  // shows once the page reloads (the API already reports proxyNeeded).
-  await page.reload();
   await expect(page.getByText(/Waiting for a proxy/)).toBeVisible();
   expect(await getSyllabus(page, id)).toMatchObject({ status: "submitted", stage: 1 });
 });
@@ -120,9 +117,9 @@ test("the proxy is notified, sees it as proxy, and approves; the reviewer can't 
 
   await signIn(page, world.people.coAuthor);
   expect(await notificationTitles(page)).toContain(`${course.code} (${world.program.code}) is waiting for your review`);
-  // The queue lists it; the workspace says in which capacity.
   await page.goto("/review");
   const row = page.getByRole("row", { name: new RegExp(course.code) });
+  await expect(row).toContainText("As proxy");
   await row.getByRole("link", { name: "Review" }).click();
   await expect(page.getByText(/Reviewing at stage 1 \(.+, as proxy\)/)).toBeVisible();
   await answerForm17AllYes(page);
@@ -154,7 +151,7 @@ test("a later stage's holder names a stand-in for a conflicted dean @STA-06", as
 
   await signIn(page, world.people.head);
   await page.goto("/review");
-  await expect(page.getByRole("row", { name: new RegExp(course.code) })).toBeVisible();
+  await expect(page.getByRole("row", { name: new RegExp(course.code) })).toContainText("As stand-in");
   await page.goto(`/syllabus/${id}/review`);
   await expect(page.getByText(/Reviewing at stage 2 \(.+, as stand-in\)/)).toBeVisible();
   await approveInUi(page, id);

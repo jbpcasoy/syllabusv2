@@ -97,7 +97,7 @@ Data-driven over every manager page (campus, college, dean, department, departme
 - STA-02 `/review` "Needs a proxy" panel for dean; limited view (header, co-authors, stand-ins only).
 - STA-03 Conflicted reviewer is notified, workspace refuses and shows proxy picker.
 - STA-04 Proxy must be active program faculty; lead/co-author refused; valid proxy accepted.
-- STA-05 Proxy is notified, finds it in their queue, the workspace says "as proxy", and they approve; the conflicted reviewer's queue doesn't list it.
+- STA-05 Proxy is notified, sees it "as proxy" in their queue and workspace, and approves; the conflicted reviewer's queue doesn't list it.
 - STA-06 Later-stage holder designates a stand-in for a conflicted later stage.
 
 ### `approval-filing.spec.ts` [Part 5]

@@ -39,7 +39,7 @@ Global setup starts a local SMTP catcher on `127.0.0.1:2599` (`mail-catcher.ts`,
 
 ## Known failures
 
-A test that finds a real bug which isn't fixed yet is marked `test.fail(...)` with the reason, so the suite stays green and Playwright reports it as an expected failure. Once the bug is fixed the test passes, and the marker makes it fail, so remove the marker then. Current ones: Form 17's radios unreachable by Tab (`a11y-keyboard.spec.ts`), and the "Open the syllabus" link on `/verify/<code>` (`KNOWN` in `05-a11y.spec.ts`).
+A test that finds a real bug which isn't fixed yet is marked `test.fail(...)` with the reason, so the suite stays green and Playwright reports it as an expected failure. Once the bug is fixed the test passes, and the marker makes it fail, so remove the marker then. There are none at the moment; axe exceptions go in `KNOWN` in `05-a11y.spec.ts`.
 
 The three outbox email tests (`@NOT-04`, `@NOT-05`, `@NOT-06`) wait on PocketBase's once-a-minute sender and take about 6 minutes together. Skip them while iterating with `--grep-invert "NOT-0[456]"`.
 
