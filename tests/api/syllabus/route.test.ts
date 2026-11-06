@@ -154,7 +154,7 @@ describe("GET /api/syllabus", () => {
       [PROGRAM],
     );
     expect(mocks.syllabiGetList.mock.calls[0][2].filter).toBe(
-      `(lead = "${ME}" || co_authors ?= "${ME}" || (id = "refrefrefrefref"))`,
+      `(lead = "${ME}" || co_authors.id ?= "${ME}" || (id = "refrefrefrefref"))`,
     );
     expect((await res.json()).items[0].access).toBe("referencer");
   });
@@ -184,7 +184,7 @@ describe("GET /api/syllabus", () => {
     const res = await GET(get());
 
     expect(mocks.syllabiGetList.mock.calls[0][2].filter).toBe(
-      `(lead = "${ME}" || co_authors ?= "${ME}" || (program = "${PROGRAM}"))`,
+      `(lead = "${ME}" || co_authors.id ?= "${ME}" || (program = "${PROGRAM}"))`,
     );
     expect((await res.json()).items[0].access).toBe("chair");
   });
@@ -196,7 +196,7 @@ describe("GET /api/syllabus", () => {
     expect(mocks.syllabiGetList).toHaveBeenCalledWith(1, 30, {
       sort: "-updated",
       expand: "course,term.school_year,program,lead,co_authors",
-      filter: `(lead = "${ME}" || co_authors ?= "${ME}")`,
+      filter: `(lead = "${ME}" || co_authors.id ?= "${ME}")`,
     });
     const body = await res.json();
     expect(body.items).toEqual([
@@ -272,7 +272,7 @@ describe("GET /api/syllabus", () => {
       sort: "-updated",
       expand: "course,term.school_year,program,lead,co_authors",
       filter: [
-        `(lead = "${ME}" || co_authors ?= "${ME}")`,
+        `(lead = "${ME}" || co_authors.id ?= "${ME}")`,
         '(course.code ~ "IT" || course.title ~ "IT" || program.code ~ "IT")',
         `term = "${TERM}"`,
         `program = "${PROGRAM}"`,

@@ -227,8 +227,11 @@ test("co-authors: faculty can be added, others can't, and co-authors only view @
   const listed = page.getByRole("listitem").filter({ hasText: world.people.coAuthor.name });
   await expect(listed.getByRole("button", { name: "Remove" })).toBeVisible();
 
+  // The co-author finds it in My syllabi, not only by its URL.
   await signIn(page, world.people.coAuthor);
-  await page.goto(`/syllabus/${id}`);
+  await page.goto("/syllabus");
+  await page.getByRole("link", { name: course2.code, exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/syllabus/${id}$`));
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByRole("button", { name: "Upload new version" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Submit for review" })).toHaveCount(0);

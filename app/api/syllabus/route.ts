@@ -56,7 +56,9 @@ export async function GET(request: NextRequest) {
       const ids = await listAwaitingReviewIds(pb, me, roles);
       filters.push(anyOf(pb, "id", ids, "w"));
     } else if (!roles.isAdmin) {
-      const visible = [pb.filter("lead = {:me} || co_authors ?= {:me}", { me })];
+      // `co_authors.id`: PocketBase 0.40 matches nothing for `?=` on a bare
+      // multi-relation field.
+      const visible = [pb.filter("lead = {:me} || co_authors.id ?= {:me}", { me })];
       if (roles.chairOfPrograms.length > 0) {
         visible.push(anyOf(pb, "program", roles.chairOfPrograms, "c"));
       }
