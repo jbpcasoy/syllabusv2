@@ -32,9 +32,7 @@ test("a syllabus goes through all five stages and is filed @REV-01 @FIL-04", asy
   const upload = page.getByRole("dialog");
   await upload.getByLabel("PDF file").setInputFiles(pdfFile());
   await upload.getByRole("button", { name: "Upload", exact: true }).click();
-  // The dialog root has no box of its own, so wait for it to unmount.
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page.getByRole("button", { name: "Submit for review" }).click();
+  await upload.getByRole("button", { name: "Submit for review now" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Submit", exact: true }).click();
   await expect.poll(async () => (await getSyllabus(page, id)).status).toBe("submitted");
 

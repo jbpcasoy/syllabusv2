@@ -253,6 +253,22 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
         )}
       </div>
 
+      {editable && (versionCount ?? 0) > 0 && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span>
+            <strong>Not submitted yet.</strong> Reviewers won&apos;t see this
+            syllabus until you submit it for review.
+          </span>
+          <button
+            type="button"
+            onClick={() => setSubmit(opened)}
+            className="rounded-md bg-amber-700 px-3 py-1.5 font-semibold text-white hover:bg-amber-600"
+          >
+            Submit now
+          </button>
+        </div>
+      )}
+
       {editable && syllabus.based_on && versionCount === 0 && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
           <span>
@@ -440,9 +456,11 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
           open={upload.open}
           syllabusId={syllabus.id}
           onClose={() => setUpload(shut)}
-          onUploaded={() => {
+          // The modal stays open to remind the lead to submit.
+          onUploaded={() => setVersionsKey((k) => k + 1)}
+          onSubmitNow={() => {
             setUpload(shut);
-            setVersionsKey((k) => k + 1);
+            setSubmit(opened);
           }}
         />
       )}

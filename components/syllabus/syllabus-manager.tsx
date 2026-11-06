@@ -46,6 +46,7 @@ export function SyllabusManager({ programs }: SyllabusManagerProps) {
   const [error, setError] = useState<string | null>(null);
 
   const [terms, setTerms] = useState<TermResponse[]>([]);
+  const [unsubmitted, setUnsubmitted] = useState(0);
   const [modal, setModal] = useState({ open: false, key: 0 });
 
   // Load terms once for the filter and the new-syllabus form.
@@ -60,7 +61,21 @@ export function SyllabusManager({ programs }: SyllabusManagerProps) {
     return () => controller.abort();
   }, []);
 
-  // Debounce the search box and go back to page 1 when the filter changes.
+  // Count the drafts the user leads, so they don't forget to submit them.
+  // Co-authors can't submit, so their drafts don't count.
+  useEffect(() => {
+    const controller = new AbortController();
+    listSyllabi({ page: 1, perPage: 100, status: "draft" }, controller.signal)
+      .then((result) =>
+        setUnsubmitted(result.items.filter((s) => s.access === "lead").length),
+      )
+      .catch(() => {
+        // Only a reminder; the main list surfaces its own errors.
+      });
+    return () => controller.abort();
+  }, [reloadKey]);
+
+    // Debounce the search box and go back to page 1 when the filter changes.
   useEffect(() => {
     const timeout = setTimeout(() => {
       const next = searchInput.trim();
@@ -142,6 +157,26 @@ export function SyllabusManager({ programs }: SyllabusManagerProps) {
       {programs.length > 0 && terms.length > 0 && openTerms.length === 0 && (
         <p className="mt-4 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
           No term is open for submissions right now.
+        </p>
+      )}
+
+      {unsubmitted > 0 && statusFilter !== "draft" && (
+        <p className="mt-4 flex flex-wrap items-center gap-x-2 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span>
+            You have {unsubmitted} {unsubmitted === 1 ? "draft" : "drafts"} not
+            yet submitted for review.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setScope("");
+              setStatusFilter("draft");
+              setPage(1);
+            }}
+            className="font-medium underline"
+          >
+            Show {unsubmitted === 1 ? "it" : "them"}
+          </button>
         </p>
       )}
 
@@ -307,6 +342,11 @@ export function SyllabusManager({ programs }: SyllabusManagerProps) {
                 </td>
                 <td className="px-4 py-3 text-sm">
                   <SyllabusStatusBadge status={row.status} />
+                  {row.status === "draft" && row.access === "lead" && (
+                    <div className="mt-1 text-xs text-amber-800">
+                      Not submitted yet
+                    </div>
+                  )}
                   <div className="mt-1 empty:hidden">
                     <SubmissionOverdueBadge
                       term={row.expand?.term}

@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  MAX_PDF_BYTES,
-  uploadSyllabusVersion,
-} from "@/lib/syllabus-client";
+import { MAX_PDF_BYTES, uploadSyllabusVersion } from "@/lib/syllabus-client";
 import { MAX_VERSION_NOTES } from "@/types/syllabus-version";
 import {
   Description,
@@ -23,6 +20,11 @@ type UploadVersionModalProps = {
   syllabusId: string;
   onClose: () => void;
   onUploaded: () => void;
+  /**
+   * Set for a draft: after the upload the modal stays open and reminds the
+   * lead that the syllabus isn't submitted yet, offering to submit now.
+   */
+  onSubmitNow?: () => void;
 };
 
 const inputClass =
@@ -35,11 +37,13 @@ export function UploadVersionModal({
   syllabusId,
   onClose,
   onUploaded,
+  onSubmitNow,
 }: UploadVersionModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploaded, setUploaded] = useState(false);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -56,6 +60,10 @@ export function UploadVersionModal({
     setError(null);
     try {
       await uploadSyllabusVersion(syllabusId, file, notes.trim());
+      if (onSubmitNow) {
+        setSaving(false);
+        setUploaded(true);
+      }
       onUploaded();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -79,66 +87,99 @@ export function UploadVersionModal({
           transition
           className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl transition duration-200 data-closed:scale-95 data-closed:opacity-0"
         >
-          <DialogTitle className="text-lg font-semibold text-gray-900">
-            Upload new version
-          </DialogTitle>
-
-          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-            <Field>
-              <Label className="block text-sm font-medium text-gray-900">
-                PDF file
-              </Label>
-              <Input
-                type="file"
-                accept="application/pdf,.pdf"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                disabled={saving}
-                className="mt-1 block w-full text-sm text-gray-900 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100"
-              />
-              <Description className="mt-1 text-xs text-gray-500">
-                PDF only, up to {MAX_MB} MB.
-              </Description>
-            </Field>
-
-            <Field>
-              <Label className="block text-sm font-medium text-gray-900">
-                Notes <span className="font-normal text-gray-500">(optional)</span>
-              </Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                disabled={saving}
-                rows={3}
-                maxLength={MAX_VERSION_NOTES}
-                placeholder="What changed in this version?"
-                className={inputClass}
-              />
-            </Field>
-
-            {error && (
-              <p role="alert" className="text-sm text-red-600">
-                {error}
+          {uploaded ? (
+            <>
+              <DialogTitle className="text-lg font-semibold text-gray-900">
+                PDF uploaded
+              </DialogTitle>
+              <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                Your syllabus is <strong>not submitted yet</strong>. Reviewers
+                won&apos;t see it until you submit it for review.
               </p>
-            )}
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                >
+                  Keep as draft
+                </button>
+                <button
+                  type="button"
+                  onClick={onSubmitNow}
+                  className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                >
+                  Submit for review now
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <DialogTitle className="text-lg font-semibold text-gray-900">
+                Upload new version
+              </DialogTitle>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={saving}
-                className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
-              >
-                {saving ? "Uploading…" : "Upload"}
-              </button>
-            </div>
-          </form>
+              <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+                <Field>
+                  <Label className="block text-sm font-medium text-gray-900">
+                    PDF file
+                  </Label>
+                  <Input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    disabled={saving}
+                    className="mt-1 block w-full text-sm text-gray-900 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100"
+                  />
+                  <Description className="mt-1 text-xs text-gray-500">
+                    PDF only, up to {MAX_MB} MB.
+                  </Description>
+                </Field>
+
+                <Field>
+                  <Label className="block text-sm font-medium text-gray-900">
+                    Notes{" "}
+                    <span className="font-normal text-gray-500">
+                      (optional)
+                    </span>
+                  </Label>
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    disabled={saving}
+                    rows={3}
+                    maxLength={MAX_VERSION_NOTES}
+                    placeholder="What changed in this version?"
+                    className={inputClass}
+                  />
+                </Field>
+
+                {error && (
+                  <p role="alert" className="text-sm text-red-600">
+                    {error}
+                  </p>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={saving}
+                    className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                  >
+                    {saving ? "Uploading…" : "Upload"}
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
         </DialogPanel>
       </div>
     </Dialog>

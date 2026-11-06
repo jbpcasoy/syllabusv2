@@ -142,9 +142,19 @@ test("uploads accept a real PDF and refuse a fake or oversized one @SYL-05", asy
   await expect(alerts(dialog)).not.toBeEmpty();
   await dialog.getByRole("button", { name: "Cancel" }).click();
 
+  // A good upload keeps the dialog open to say it isn't submitted yet.
   dialog = await uploadInUi(page, pdfFile());
+  await expect(dialog).toContainText("not submitted yet");
+  await dialog.getByRole("button", { name: "Keep as draft" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Submit for review" })).toBeEnabled();
+  await expect(page.getByText("Not submitted yet.")).toBeVisible();
+
+  // My syllabi reminds the lead too.
+  await page.goto("/syllabus");
+  await expect(page.getByText(/You have \d+ drafts? not yet submitted/)).toBeVisible();
+  const row = page.getByRole("row", { name: new RegExp(course0.code) });
+  await expect(row).toContainText("Not submitted yet");
 });
 
 test("submit waits for a PDF, then asks to confirm @SYL-06", async ({ page, world }) => {
@@ -156,8 +166,9 @@ test("submit waits for a PDF, then asks to confirm @SYL-06", async ({ page, worl
   await expect(submitButton).toBeDisabled();
   await expect(submitButton).toHaveAttribute("title", "Upload a PDF first");
 
-  await expect(await uploadInUi(page, pdfFile())).toHaveCount(0);
-  await submitButton.click();
+  // Straight from the upload dialog into the submit confirmation.
+  const upload = await uploadInUi(page, pdfFile());
+  await upload.getByRole("button", { name: "Submit for review now" }).click();
   await dialogOf(page).getByRole("button", { name: "Submit", exact: true }).click();
   await expect(dialogOf(page)).toHaveCount(0);
   await expect.poll(async () => (await getSyllabus(page, id)).status).toBe("submitted");
