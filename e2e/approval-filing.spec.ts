@@ -98,11 +98,12 @@ test("the timeline lists every transition and each version's decisions @FIL-03",
   await expect(versions.getByRole("row").filter({ hasText: "S1 approved" })).toHaveCount(1);
 });
 
-test("the lead files the scan; the dean returns it as invalid; the lead files again @FIL-04 @FIL-05 @FIL-06", async ({
+test("the lead files the scan; the dean finds it and returns it as invalid; the lead files again @FIL-04 @FIL-05 @FIL-06 @FIL-08 @FIL-09", async ({
   page,
   world,
 }) => {
-  const id = await submitted(page, world, await addCourse(world));
+  const course = await addCourse(world);
+  const id = await submitted(page, world, course);
   await approveThrough(page, world, id, 1, 5);
 
   await signIn(page, world.people.lead);
@@ -121,8 +122,16 @@ test("the lead files the scan; the dean returns it as invalid; the lead files ag
   }
 
   const reason = "The CITL director's signature is missing.";
+  // The dean hears about the filing and finds the syllabus in the queue.
   await signIn(page, world.people.dean);
-  await page.goto(`/syllabus/${id}`);
+  await page.goto("/notifications");
+  await expect(
+    page.getByRole("link", { name: `${course.code} (${world.program.code}) was filed with its signed scan` }),
+  ).toHaveAttribute("href", `/syllabus/${id}`);
+  await page.goto("/review");
+  await page.getByLabel("Status").selectOption({ label: "Filed (check the scan)" });
+  await page.getByRole("link", { name: course.code, exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/syllabus/${id}$`));
   await page.getByRole("button", { name: "Return as invalid" }).click();
   await expect(alerts(page).filter({ hasText: "reason" })).toHaveText("Give a reason for returning it.");
   await page.getByLabel("Return the scan as invalid").fill(reason);
@@ -130,6 +139,15 @@ test("the lead files the scan; the dean returns it as invalid; the lead files ag
   const copies = page.locator("section").filter({ has: page.getByRole("heading", { name: "Signed copy" }) });
   await expect(copies.getByRole("listitem").filter({ hasText: "Returned" })).toContainText(reason);
   expect((await getSyllabus(page, id)).status).toBe("approved");
+
+  // The lead hears why, with a link back to the syllabus.
+  await signIn(page, world.people.lead);
+  await page.goto("/notifications");
+  const returned = page.getByRole("link", {
+    name: `The signed scan of ${course.code} (${world.program.code}) was returned as invalid`,
+  });
+  await expect(returned).toHaveAttribute("href", `/syllabus/${id}`);
+  await expect(page.getByRole("listitem").filter({ has: returned })).toContainText(reason);
 
   await fileSignedCopy(page, world, id);
   await page.goto(`/syllabus/${id}`);

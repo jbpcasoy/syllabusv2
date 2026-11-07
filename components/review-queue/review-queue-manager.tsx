@@ -24,6 +24,7 @@ const STATUS_OPTIONS: { value: QueueStatus; label: string; since: string }[] = [
   { value: "waiting", label: "Waiting", since: "Waiting" },
   { value: "returned", label: "Returned (with faculty)", since: "Returned" },
   { value: "passed", label: "Passed this stage", since: "Last change" },
+  { value: "filed", label: "Filed (check the scan)", since: "Filed" },
 ];
 
 const stageLabel = (stage: number) => CHAIN_ROLES[stage - 1]?.label ?? `Stage ${stage}`;

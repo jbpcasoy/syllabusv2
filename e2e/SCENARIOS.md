@@ -108,6 +108,8 @@ Data-driven over every manager page (campus, college, dean, department, departme
 - FIL-05 Each allowed role can return the scan as invalid with a reason (one in UI, e.g. dean) → Approved; returned scan still listed; non-allowed role sees no control.
 - FIL-06 Re-upload → Filed again.
 - FIL-07 Form data for the print views (Form 17, Form 18-1, justification) is served only to people with access. (Printing uses the browser; there are no file downloads.)
+- FIL-08 Filing notifies every chain holder (`scan_filed`), and the dean reaches the filed syllabus from the notification and from the Review Queue's **Filed (check the scan)** status, not by URL.
+- FIL-09 Returning the scan as invalid notifies the lead (`scan_returned`) with the reason and a link to the syllabus.
 
 ### `justification.spec.ts` [Part 5]
 - JUS-01 Panel appears only when `based_on` exists and after approval.

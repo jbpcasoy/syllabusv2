@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   resolveSyllabusAccess: vi.fn(),
   listSignedCopies: vi.fn(),
   checkPdfUpload: vi.fn(),
+  loadChainHolders: vi.fn(),
 }));
 
 vi.mock("@/lib/pocketbase", async () => {
@@ -52,6 +53,9 @@ vi.mock("@/lib/syllabus-decision", () => ({
   hasNotUniqueError: (error: { code?: string }) =>
     error?.code === "validation_not_unique",
 }));
+vi.mock("@/lib/syllabus-chain", () => ({
+  loadChainHolders: mocks.loadChainHolders,
+}));
 vi.mock("@/lib/pdf", () => ({ checkPdfUpload: mocks.checkPdfUpload }));
 vi.mock("@/lib/auth", async () =>
   (await import("@/tests/helpers/mock-auth")).authModuleMock(),
@@ -63,7 +67,7 @@ vi.mock("@/lib/upload-limit", async () =>
   (await import("@/tests/helpers/upload-limit")).uploadLimitModuleMock(),
 );
 
-// The workflow stays real: filing is its decision.
+// The workflow stays real: filing is its decision. So do the notifications.
 import { GET, POST } from "@/app/api/syllabus/[id]/signed-copy/route";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { mockAuth } from "@/tests/helpers/mock-auth";
@@ -73,7 +77,17 @@ const ID = "sylsylsylsylsyl";
 const ME = "leadleadleadlea";
 const ctx = { params: Promise.resolve({ id: ID }) };
 const pdf = new File(["%PDF-1.7"], "scan.pdf", { type: "application/pdf" });
-const syllabus = (status = "approved") => ({ id: ID, lead: ME, co_authors: [], status, stage: 5 });
+const REVIEWER = "reviewer1111111";
+const DEAN = "dean11111111111";
+const syllabus = (status = "approved") => ({
+  id: ID,
+  lead: ME,
+  co_authors: [],
+  status,
+  stage: 5,
+  program: "progprogprogpro",
+  expand: { course: { code: "IT 101", title: "Intro" }, program: { code: "BSIT" } },
+});
 
 function upload() {
   const form = new FormData();
@@ -98,6 +112,7 @@ beforeEach(() => {
   mocks.batchOps.length = 0;
   mocks.batchSend.mockResolvedValue([]);
   mocks.listSignedCopies.mockResolvedValue([{ id: "cpy" }]);
+  mocks.loadChainHolders.mockResolvedValue([[REVIEWER], [DEAN, ME], [], [], []]);
 });
 
 describe("GET /api/syllabus/:id/signed-copy", () => {
@@ -136,7 +151,7 @@ describe("POST /api/syllabus/:id/signed-copy", () => {
     expect(mocks.copiesCreate).not.toHaveBeenCalled();
   });
 
-  it("stores the scan, then files the syllabus with its event in one batch", async () => {
+  it("stores the scan, then files the syllabus with its event and notifications in one batch", async () => {
     const res = await upload();
 
     expect(res.status).toBe(201);
@@ -192,7 +207,27 @@ describe("POST /api/syllabus/:id/signed-copy", () => {
           data: { kind: "signed_copy" },
         },
       ],
+      // Every chain holder but the lead hears, so they can check the scan.
+      ...[
+        [REVIEWER, 1],
+        [DEAN, 2],
+      ].map(([user, stage]) => [
+        "create",
+        "notifications",
+        expect.objectContaining({
+          user,
+          syllabus: ID,
+          kind: "scan_filed",
+          stage,
+          actor: ME,
+          title: "IT 101 (BSIT) was filed with its signed scan",
+          link: `/syllabus/${ID}`,
+          email_status: "pending",
+        }),
+      ]),
     ]);
+    expect(mocks.loadChainHolders).toHaveBeenCalledWith(expect.anything(), "progprogprogpro");
+    expect(mocks.syllabiGetOne).toHaveBeenCalledWith(ID, { expand: "course,program" });
     expect(mocks.batchSend).toHaveBeenCalledTimes(1);
     expect(await res.json()).toMatchObject({ mapped: true, status: "valid" });
   });

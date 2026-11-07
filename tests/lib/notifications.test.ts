@@ -258,6 +258,42 @@ describe("notificationRecipients", () => {
     ).toEqual([{ user: LEAD, kind: "approval_undone", stage: 1 }]);
   });
 
+  it("on filing, tells every chain holder once, at the first stage they hold", () => {
+    const holders: ChainHolders = [
+      ["reviewer1111111"],
+      ["dean11111111111", "vpaa11111111111"],
+      ["fdis11111111111"],
+      ["citl11111111111"],
+      ["vpaa11111111111"],
+    ];
+    expect(
+      notificationRecipients(event("filed", 5, LEAD), SYLLABUS, holders, [
+        { stage: 2, user: "standinstandins" },
+      ]),
+    ).toEqual([
+      { user: "reviewer1111111", kind: "scan_filed", stage: 1 },
+      { user: "dean11111111111", kind: "scan_filed", stage: 2 },
+      { user: "vpaa11111111111", kind: "scan_filed", stage: 2 },
+      { user: "fdis11111111111", kind: "scan_filed", stage: 3 },
+      { user: "citl11111111111", kind: "scan_filed", stage: 4 },
+    ]);
+  });
+
+  it("on filing, skips holders who write the syllabus", () => {
+    const holders: ChainHolders = [[CO], ...HOLDERS.slice(1)];
+    expect(
+      notificationRecipients(event("filed", 5, LEAD), SYLLABUS, holders, []).map(
+        (t) => t.user,
+      ),
+    ).not.toContain(CO);
+  });
+
+  it("on a returned scan, tells only the lead", () => {
+    expect(
+      notificationRecipients(event("scan_returned", 5, "dean11111111111"), SYLLABUS, HOLDERS, []),
+    ).toEqual([{ user: LEAD, kind: "scan_returned", stage: 5 }]);
+  });
+
   it("skips a co-author listed twice", () => {
     expect(
       notificationRecipients(
@@ -355,6 +391,23 @@ describe("notificationText", () => {
     expect(notificationText("approval_undone", 2, SYLLABUS_ID, facts)).toEqual({
       title: "The Dean's approval of IT 101 (BSIT) was undone",
       body: 'Admin (administrator) undid the Dean\'s approval of IT 101 Intro to Computing (BSIT). Reason: "Approved by mistake". It is waiting on the Dean again.',
+      link: `/syllabus/${SYLLABUS_ID}`,
+    });
+  });
+
+  it("tells the lead why the scan was returned", () => {
+    const facts = { ...FACTS, actorName: "Dee Dean", reason: "Missing signature." };
+    expect(notificationText("scan_returned", 5, SYLLABUS_ID, facts)).toEqual({
+      title: "The signed scan of IT 101 (BSIT) was returned as invalid",
+      body: 'Dee Dean returned the signed scan of IT 101 Intro to Computing (BSIT) as invalid. Reason: "Missing signature.". The syllabus is back to Approved. Upload a new wet-signed scan to file it again.',
+      link: `/syllabus/${SYLLABUS_ID}`,
+    });
+  });
+
+  it("asks each chain holder to check a filed scan", () => {
+    expect(notificationText("scan_filed", 2, SYLLABUS_ID, FACTS)).toEqual({
+      title: "IT 101 (BSIT) was filed with its signed scan",
+      body: "Ana Cruz uploaded the wet-signed scan of IT 101 Intro to Computing (BSIT), which files it. Check that the scan is complete and signed. If it isn't, open the syllabus and return the scan as invalid with a reason.",
       link: `/syllabus/${SYLLABUS_ID}`,
     });
   });

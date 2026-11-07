@@ -75,6 +75,7 @@ const syllabus = (status = "filed") => ({
   co_authors: [],
   status,
   stage: 5,
+  expand: { course: { code: "IT 101", title: "Intro" }, program: { code: "BSIT" } },
 });
 const copy = (extra: object = {}) => ({ id: COPY, syllabus: ID, status: "valid", ...extra });
 
@@ -104,7 +105,7 @@ beforeEach(() => {
 });
 
 describe("PATCH /api/syllabus/:id/signed-copy/:copyId", () => {
-  it("returns the copy and the syllabus to approved, with its event, in one batch", async () => {
+  it("returns the copy and the syllabus to approved, with its event and the lead's notification, in one batch", async () => {
     const res = await patch();
 
     expect(res.status).toBe(200);
@@ -156,7 +157,23 @@ describe("PATCH /api/syllabus/:id/signed-copy/:copyId", () => {
           },
         },
       ],
+      [
+        "create",
+        "notifications",
+        expect.objectContaining({
+          user: "leadleadleadlea",
+          syllabus: ID,
+          kind: "scan_returned",
+          stage: 5,
+          actor: ME,
+          title: "The signed scan of IT 101 (BSIT) was returned as invalid",
+          body: expect.stringContaining('Reason: "Missing signature."'),
+          link: `/syllabus/${ID}`,
+          email_status: "pending",
+        }),
+      ],
     ]);
+    expect(mocks.syllabiGetOne).toHaveBeenCalledWith(ID, { expand: "course,program" });
     expect(mocks.batchSend).toHaveBeenCalledTimes(1);
     expect(authorizeMock).toHaveBeenCalledWith(
       expect.objectContaining({ id: ME }),

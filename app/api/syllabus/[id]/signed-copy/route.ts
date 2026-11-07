@@ -1,4 +1,10 @@
 import { requireUser } from "@/lib/auth";
+import {
+  addNotifications,
+  notificationFacts,
+  notificationRecipients,
+  NOTIFY_EXPAND,
+} from "@/lib/notifications";
 import { checkPdfUpload } from "@/lib/pdf";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
@@ -8,6 +14,7 @@ import {
   toSignedCopyResponse,
 } from "@/lib/signed-copy";
 import { getSyllabusAccess, resolveSyllabusAccess } from "@/lib/syllabus";
+import { loadChainHolders } from "@/lib/syllabus-chain";
 import { hasNotUniqueError } from "@/lib/syllabus-decision";
 import { addSyllabusEvent } from "@/lib/syllabus-events";
 import { transition } from "@/lib/syllabus-workflow";
@@ -50,7 +57,8 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 // POST /api/syllabus/:id/signed-copy  multipart: file=<PDF, max 20 MB>
 // Lead only, once approved. Stores the scan of the wet-signed syllabus and
 // files it (approved -> filed). One valid copy at a time. Rate-limited (429)
-// and audited as file.uploaded in the filing batch.
+// and audited as file.uploaded in the filing batch, which also notifies each
+// chain holder (scan_filed), since any of them may return the scan.
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
@@ -76,7 +84,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     const [syllabus, roles] = await Promise.all([
-      pb.collection("syllabi").getOne<Syllabus>(id),
+      pb.collection("syllabi").getOne<Syllabus>(id, { expand: NOTIFY_EXPAND }),
       getUserRoles(me),
     ]);
     const access = getSyllabusAccess(me, roles, syllabus);
@@ -92,6 +100,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 409 });
     }
+
+    const holders = await loadChainHolders(pb, syllabus.program);
+    const targets = notificationRecipients(
+      { type: "filed", stage: syllabus.stage, actor: me },
+      syllabus,
+      holders,
+      [],
+    );
 
     let created: SignedCopy;
     try {
@@ -127,6 +143,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         { from: syllabus, to: result.next },
       );
       addUploadAudit(batch, me, id, "signed_copy", created.id);
+      addNotifications(
+        batch,
+        id,
+        me,
+        targets,
+        notificationFacts(syllabus, auth.user.name),
+      );
       await batch.send();
     } catch (error) {
       await pb.collection("syllabus_signed_copies").delete(created.id);
