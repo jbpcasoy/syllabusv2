@@ -5,6 +5,12 @@ import {
   findJustification,
   loadJustificationResponse,
 } from "@/lib/justification";
+import {
+  addNotifications,
+  notificationFacts,
+  notificationRecipients,
+  NOTIFY_EXPAND,
+} from "@/lib/notifications";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
 import { resolveSyllabusAccess } from "@/lib/syllabus";
@@ -23,11 +29,14 @@ const notFound = () => NextResponse.json({ error: "Not found" }, { status: 404 }
 const conflict = (error: string) =>
   NextResponse.json({ error }, { status: 409 });
 
-/** The syllabus and the caller's access; null when they may not see it. */
-async function load(id: string, userId: string) {
+/**
+ * The syllabus and the caller's access; null when they may not see it.
+ * `expand` adds relations, such as NOTIFY_EXPAND for the notification text.
+ */
+async function load(id: string, userId: string, expand?: string) {
   const pb = await createAdminPb();
   const [syllabus, roles] = await Promise.all([
-    pb.collection("syllabi").getOne<Syllabus>(id),
+    pb.collection("syllabi").getOne<Syllabus>(id, expand ? { expand } : undefined),
     getUserRoles(userId),
   ]);
   const access = await resolveSyllabusAccess(pb, userId, roles, syllabus);
@@ -134,7 +143,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 
 // PATCH /api/syllabus/:id/justification  { "action": "return", "reason": "" }
 // justification.return in the syllabus's program: its program reviewer or
-// any higher role in the chain, or admin. submitted -> returned.
+// any higher role in the chain, or admin. submitted -> returned. The lead
+// is notified (justification_returned) in the same batch, with the reason.
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
@@ -147,7 +157,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
 
-    const loaded = await load(id, auth.user.id);
+    const loaded = await load(id, auth.user.id, NOTIFY_EXPAND);
     if (!loaded) return notFound();
     const { pb, syllabus, access } = loaded;
     const denied = await authorize(auth.user, "justification.return", {
@@ -159,12 +169,26 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const ruleError = returnError(record?.status ?? null);
     if (ruleError || !record) return conflict(ruleError ?? "");
 
-    await pb.collection("syllabus_justifications").update(record.id, {
+    const batch = pb.createBatch();
+    batch.collection("syllabus_justifications").update(record.id, {
       status: "returned",
       return_reason: parsed.data.reason,
       returned_by: auth.user.id,
       returned_at: new Date().toISOString(),
     });
+    addNotifications(
+      batch,
+      id,
+      auth.user.id,
+      notificationRecipients(
+        { type: "justification_returned", stage: syllabus.stage, actor: auth.user.id },
+        syllabus,
+        [],
+        [],
+      ),
+      { ...notificationFacts(syllabus, auth.user.name), reason: parsed.data.reason },
+    );
+    await batch.send();
     return NextResponse.json(
       await loadJustificationResponse(pb, syllabus, { access, canReturn: true }),
     );

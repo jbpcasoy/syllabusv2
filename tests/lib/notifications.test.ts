@@ -314,6 +314,12 @@ describe("notificationRecipients", () => {
     ).toEqual([{ user: LEAD, kind: "scan_returned", stage: 5 }]);
   });
 
+  it("on a returned justification, tells only the lead", () => {
+    expect(
+      notificationRecipients(event("justification_returned", 5, "dean11111111111"), SYLLABUS, HOLDERS, []),
+    ).toEqual([{ user: LEAD, kind: "justification_returned", stage: 5 }]);
+  });
+
   it("skips a co-author listed twice", () => {
     expect(
       notificationRecipients(
@@ -420,6 +426,15 @@ describe("notificationText", () => {
     expect(notificationText("scan_returned", 5, SYLLABUS_ID, facts)).toEqual({
       title: "The signed scan of IT 101 (BSIT) was returned as invalid",
       body: 'Dee Dean returned the signed scan of IT 101 Intro to Computing (BSIT) as invalid. Reason: "Missing signature.". The syllabus is back to Approved. Upload a new wet-signed scan to file it again.',
+      link: `/syllabus/${SYLLABUS_ID}`,
+    });
+  });
+
+  it("tells the lead why the justification was returned", () => {
+    const facts = { ...FACTS, actorName: "Dee Dean", reason: "Wrong term." };
+    expect(notificationText("justification_returned", 5, SYLLABUS_ID, facts)).toEqual({
+      title: "The signed justification for IT 101 (BSIT) was returned for revision",
+      body: 'Dee Dean returned the signed justification letter for IT 101 Intro to Computing (BSIT) for revision. Reason: "Wrong term.". Revise the entries if needed, have the letter signed again and upload the new scan. This never blocks the syllabus.',
       link: `/syllabus/${SYLLABUS_ID}`,
     });
   });

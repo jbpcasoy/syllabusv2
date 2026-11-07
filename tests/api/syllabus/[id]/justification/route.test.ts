@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   loadJustificationResponse: vi.fn(),
   parseJustificationInput: vi.fn(),
   parseJustificationReturn: vi.fn(),
+  batchOps: [] as unknown[][],
+  batchSend: vi.fn(),
 }));
 
 vi.mock("@/lib/pocketbase", async () => {
@@ -20,7 +22,17 @@ vi.mock("@/lib/pocketbase", async () => {
       ? { getOne: mocks.syllabiGetOne }
       : { create: mocks.create, update: mocks.update, delete: mocks.delete };
   return {
-    createAdminPb: vi.fn(async () => ({ collection })),
+    createAdminPb: vi.fn(async () => ({
+      collection,
+      createBatch: () => ({
+        collection: (name: string) => ({
+          create: (body: unknown) => mocks.batchOps.push(["create", name, body]),
+          update: (id: string, body: unknown) =>
+            mocks.batchOps.push(["update", name, id, body]),
+        }),
+        send: mocks.batchSend,
+      }),
+    })),
     handlePbError: vi.fn((error: unknown) => {
       const status =
         typeof error === "object" && error && "status" in error
@@ -57,7 +69,8 @@ vi.mock("@/lib/capabilities", async () =>
   (await import("@/tests/helpers/mock-auth")).capabilitiesModuleMock(),
 );
 
-// The justification rules stay real (lib/syllabus-justification.ts).
+// The justification rules (lib/syllabus-justification.ts) and the
+// notifications stay real: who hears and what they read is the point.
 import { GET, PATCH, PUT } from "@/app/api/syllabus/[id]/justification/route";
 import { createAdminPb } from "@/lib/pocketbase";
 import { mockAuth } from "@/tests/helpers/mock-auth";
@@ -79,8 +92,13 @@ const syllabus = (status = "approved") => ({
   id: ID,
   program: PROGRAM,
   lead: "leadleadleadlea",
-  co_authors: [],
+  co_authors: ["cocococococococ"],
   status,
+  stage: 5,
+  expand: {
+    course: { code: "IT 101", title: "Intro to Computing" },
+    program: { code: "BSIT" },
+  },
 });
 
 const req = (method: string, body: unknown = {}) =>
@@ -101,6 +119,8 @@ beforeEach(() => {
   mocks.loadJustificationResponse.mockResolvedValue(RESPONSE);
   mocks.parseJustificationInput.mockReturnValue({ ok: true, data: { entries: ENTRIES } });
   mocks.parseJustificationReturn.mockReturnValue({ ok: true, data: { reason: "Wrong term." } });
+  mocks.batchOps.length = 0;
+  mocks.batchSend.mockResolvedValue([]);
 });
 
 describe("GET /api/syllabus/:id/justification", () => {
@@ -201,19 +221,50 @@ describe("PATCH /api/syllabus/:id/justification", () => {
     mocks.findJustification.mockResolvedValue({ id: "jst", status: "submitted" });
   });
 
-  it("returns a submitted justification for revision", async () => {
+  it("returns it and notifies the lead with the reason in one batch", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-28T08:00:00.000Z"));
     const res = await PATCH(req("PATCH"), ctx);
     vi.useRealTimers();
 
     expect(res.status).toBe(200);
-    expect(mocks.update).toHaveBeenCalledWith("jst", {
-      status: "returned",
-      return_reason: "Wrong term.",
-      returned_by: "revwrevwrevwrev",
-      returned_at: "2026-10-28T08:00:00.000Z",
-    });
+    expect(mocks.syllabiGetOne).toHaveBeenCalledWith(ID, { expand: "course,program" });
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.batchSend).toHaveBeenCalledTimes(1);
+    // Only the lead: co-authors can't upload the letter again.
+    expect(mocks.batchOps).toEqual([
+      [
+        "update",
+        "syllabus_justifications",
+        "jst",
+        {
+          status: "returned",
+          return_reason: "Wrong term.",
+          returned_by: "revwrevwrevwrev",
+          returned_at: "2026-10-28T08:00:00.000Z",
+        },
+      ],
+      [
+        "create",
+        "notifications",
+        expect.objectContaining({
+          user: "leadleadleadlea",
+          syllabus: ID,
+          kind: "justification_returned",
+          stage: 5,
+          actor: "revwrevwrevwrev",
+          title: "The signed justification for IT 101 (BSIT) was returned for revision",
+          body: expect.stringContaining('Reason: "Wrong term."'),
+          link: `/syllabus/${ID}`,
+          email_status: "pending",
+        }),
+      ],
+    ]);
+  });
+
+  it("propagates a failed batch, so nothing is half-written", async () => {
+    mocks.batchSend.mockRejectedValue({ status: 500 });
+    expect((await PATCH(req("PATCH"), ctx)).status).toBe(500);
   });
 
   it.each([
@@ -230,7 +281,7 @@ describe("PATCH /api/syllabus/:id/justification", () => {
   ])("returns 403 to %s with nothing written", async (_label, roles, scope) => {
     mockAuth({ roles, scope });
     expect((await PATCH(req("PATCH"), ctx)).status).toBe(403);
-    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.batchSend).not.toHaveBeenCalled();
   });
 
   it.each([null, { id: "jst", status: "draft" }, { id: "jst", status: "returned" }])(
@@ -238,13 +289,14 @@ describe("PATCH /api/syllabus/:id/justification", () => {
     async (record) => {
       mocks.findJustification.mockResolvedValue(record);
       expect((await PATCH(req("PATCH"), ctx)).status).toBe(409);
-      expect(mocks.update).not.toHaveBeenCalled();
+      expect(mocks.batchSend).not.toHaveBeenCalled();
     },
   );
 
   it("answers 404 to a referencer", async () => {
     mocks.resolveSyllabusAccess.mockResolvedValue("referencer");
     expect((await PATCH(req("PATCH"), ctx)).status).toBe(404);
+    expect(mocks.batchSend).not.toHaveBeenCalled();
   });
 
   it("returns 400 for a bad body", async () => {

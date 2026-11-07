@@ -20,10 +20,11 @@ export interface NotifyEvent {
     | "approval_undone"
     | "filed"
     | "scan_returned"
-    | "justification_submitted";
+    | "justification_submitted"
+    | "justification_returned";
   /**
    * The stage submitted to, decided at, returned from, or undone (5 when
-   * filed or when the signed justification is uploaded).
+   * filed or when the signed justification is uploaded or returned).
    */
   stage: number;
   /** ID of the user who made the transition. Never notified. */
@@ -38,7 +39,7 @@ export interface NotificationFacts {
   actorName: string;
   /** For the reference kinds: the program asking to reference it. */
   referencingProgramCode?: string;
-  /** For reference_revoked: the lead's (or admin's) reason. */
+  /** For reference_revoked, approval_undone and the returns: the reason. */
   reason?: string;
 }
 
@@ -159,6 +160,12 @@ export function notificationRecipients(
       // Only the lead can upload a new scan.
       targets = [{ user: syllabus.lead, kind: "scan_returned", stage: event.stage }];
       break;
+    case "justification_returned":
+      // Only the lead can upload the signed letter again.
+      targets = [
+        { user: syllabus.lead, kind: "justification_returned", stage: event.stage },
+      ];
+      break;
   }
 
   const seen = new Set<string>([event.actor]);
@@ -257,6 +264,11 @@ export function notificationText(
       // To each chain holder: they may return the letter for revision.
       title = `The signed justification for ${course} was uploaded`;
       body = `${facts.actorName} uploaded the signed justification letter for ${full}. Check that it is complete and signed. If it isn't, open the syllabus and return it for revision with a reason.`;
+      break;
+    case "justification_returned":
+      // To the lead: revise the letter, have it signed and upload it again.
+      title = `The signed justification for ${course} was returned for revision`;
+      body = `${facts.actorName} returned the signed justification letter for ${full} for revision.${facts.reason ? ` Reason: "${facts.reason}".` : ""} Revise the entries if needed, have the letter signed again and upload the new scan. This never blocks the syllabus.`;
       break;
   }
   return { title: clip(title, TITLE_MAX), body: clip(body, BODY_MAX), link };
