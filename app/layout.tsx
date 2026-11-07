@@ -12,7 +12,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-pt-16">
       <body className="min-h-screen bg-gray-50">
         <AppHeader />
         <AppShell>{children}</AppShell>

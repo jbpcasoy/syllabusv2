@@ -13,7 +13,7 @@ export function Sidebar({ items }: SidebarProps) {
 
   return (
     <aside className="w-40 shrink-0 border-r border-gray-200 bg-white sm:w-56 print:hidden">
-      <nav aria-label="Main navigation" className="sticky top-0 p-3 sm:p-4">
+      <nav aria-label="Main navigation" className="sticky top-16 p-3 sm:p-4">
         <ul className="space-y-1">
           {items.map((item) => {
             const active =
