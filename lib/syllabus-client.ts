@@ -22,7 +22,11 @@ import type {
   PointInput,
   PointUpdateInput,
 } from "@/types/form18";
-import type { ReviewDecision, ReviewResult } from "@/types/syllabus-review";
+import type {
+  ReviewDecision,
+  ReviewResult,
+  UndoApprovalInput,
+} from "@/types/syllabus-review";
 import type {
   StandInCandidate,
   StandInInput,
@@ -254,6 +258,13 @@ export function deleteReviewPoint(id: string, pointId: string) {
 export function transferLead(id: string, input: LeadTransferInput) {
   return request<SyllabusResponse>(`/api/syllabus/${id}/lead`, {
     method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export function undoApproval(id: string, input: UndoApprovalInput) {
+  return request<SyllabusResponse>(`/api/syllabus/${id}/undo-approval`, {
+    method: "POST",
     body: JSON.stringify(input),
   });
 }

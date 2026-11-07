@@ -145,6 +145,11 @@ Data-driven over every manager page (campus, college, dean, department, departme
 - DSH-05 Review overdue badge after backdating `status_changed_at` past `review_days`.
 - DSH-06 Submission overdue: no syllabus, draft only, or reference to a draft, after the deadline.
 
+### `undo-approval.spec.ts`
+- UND-01 Admin undoes the Dean's then the Program Reviewer's approval, one stage at a time, each with a 10+ character reason: timeline keeps each approval and adds "Approval undone" after it; audit rows marked override; lead and the stage's reviewer notified; undone code stops verifying; stage 1 re-approves with the same code.
+- UND-02 Admin undoes the final VPAA approval (approved → waiting on VPAA); VPAA approves again.
+- UND-03 VPAA, dean and lead see no undo control; a direct POST is refused (403).
+
 ### `audit.spec.ts` [Part 9]
 - AUD-01 Admin filters by syllabus; status changes, uploads and override listed; override marked.
 - AUD-02 VPAA refused.

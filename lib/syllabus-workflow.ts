@@ -6,6 +6,8 @@
  *   draft --submit--> submitted@1 --approve--> submitted@2 ... @5 --approve--> approved
  *   submitted@N --return--> returned@N --resubmit--> submitted@N
  *   approved --file--> filed --rejectScan--> approved
+ *   submitted@N (N >= 2) --undoApproval--> submitted@N-1
+ *   approved --undoApproval--> submitted@5
  */
 
 export const SYLLABUS_STATUSES = [
@@ -91,13 +93,24 @@ export interface RejectScanEvent {
   type: "rejectScan";
 }
 
+/**
+ * An admin takes back the latest approval, one stage at a time. The route
+ * deletes that approval's review row so the stage can decide again.
+ */
+export interface UndoApprovalEvent {
+  type: "undoApproval";
+  /** The approve row of the stage being undone exists. */
+  approvalFound: boolean;
+}
+
 export type WorkflowEvent =
   | SubmitEvent
   | ApproveEvent
   | ReturnEvent
   | ResubmitEvent
   | FileEvent
-  | RejectScanEvent;
+  | RejectScanEvent
+  | UndoApprovalEvent;
 
 export type TransitionResult =
   | { ok: true; next: WorkflowState }
@@ -120,6 +133,8 @@ export function transition(
       return file(state, event);
     case "rejectScan":
       return rejectScan(state);
+    case "undoApproval":
+      return undoApproval(state, event);
   }
 }
 
@@ -217,4 +232,38 @@ function rejectScan(state: WorkflowState): TransitionResult {
     return fail("Only a filed syllabus can have its signed copy returned.");
   }
   return { ok: true, next: { status: "approved", stage: FINAL_STAGE } };
+}
+
+/**
+ * The stage whose approval an undo takes back, or null when there is none:
+ * the stage before the one waiting, or the final stage once approved.
+ */
+export function undoableStage(state: WorkflowState): number | null {
+  if (state.status === "approved") return FINAL_STAGE;
+  if (state.status === "submitted" && state.stage >= 2) return state.stage - 1;
+  return null;
+}
+
+function undoApproval(
+  state: WorkflowState,
+  event: UndoApprovalEvent,
+): TransitionResult {
+  if (state.status === "filed") {
+    return fail(
+      "Return the signed copy as invalid before undoing the final approval.",
+    );
+  }
+  if (state.status === "returned") {
+    return fail(
+      "This syllabus is with its lead for revision. Undo an approval after it is resubmitted.",
+    );
+  }
+  const stage = undoableStage(state);
+  if (stage === null) return fail("There is no approval to undo.");
+  if (!event.approvalFound) {
+    return fail(
+      `No stage ${stage} approval is on record. Check the syllabus's review records.`,
+    );
+  }
+  return { ok: true, next: { status: "submitted", stage } };
 }

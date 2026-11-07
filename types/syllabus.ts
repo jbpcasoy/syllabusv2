@@ -165,6 +165,8 @@ export interface SyllabusResponse {
   can_transfer_lead?: boolean;
   /** An admin who isn't the chair: a transfer needs a reason. */
   lead_transfer_is_override?: boolean;
+  /** syllabus.undoApproval (admin); set by GET /api/syllabus/:id. */
+  can_undo_approval?: boolean;
   expand?: {
     course?: { id: string; code: string; title: string };
     term?: TermSummary;

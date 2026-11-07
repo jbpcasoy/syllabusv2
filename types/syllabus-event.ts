@@ -7,6 +7,7 @@ export const SYLLABUS_EVENT_TYPES = [
   "resubmitted",
   "filed",
   "scan_returned",
+  "approval_undone",
 ] as const;
 export type SyllabusEventType = (typeof SYLLABUS_EVENT_TYPES)[number];
 
@@ -18,7 +19,7 @@ export interface SyllabusEvent extends RecordModel {
   /** ID of the syllabus. */
   syllabus: string;
   type: SyllabusEventType;
-  /** 1 to 5; 0 for filed and scan_returned. */
+  /** 1 to 5 (the stage undone on approval_undone); 0 for filed and scan_returned. */
   stage: number;
   /** ID of the version acted on, or "". */
   version: string;
@@ -26,7 +27,7 @@ export interface SyllabusEvent extends RecordModel {
   actor: string;
   /** SYL-... on approved, otherwise "". */
   approval_code: string;
-  /** On scan_returned, otherwise "". */
+  /** On scan_returned and approval_undone, otherwise "". */
   reason: string;
   created: string;
 }

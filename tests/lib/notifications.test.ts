@@ -231,6 +231,33 @@ describe("notificationRecipients", () => {
     ).toEqual([{ user: "reviewer1111111", kind: "review_requested", stage: 1 }]);
   });
 
+  it("on an undone approval, tells the stage's holders and the lead", () => {
+    expect(
+      notificationRecipients(event("approval_undone", 2), SYLLABUS, HOLDERS, []),
+    ).toEqual([
+      { user: "dean11111111111", kind: "approval_undone", stage: 2 },
+      { user: "dean22222222222", kind: "approval_undone", stage: 2 },
+      { user: LEAD, kind: "approval_undone", stage: 2 },
+    ]);
+  });
+
+  it("on an undone approval, tells the stand-in instead of the holders", () => {
+    const standIns: StandIn[] = [{ stage: 3, user: "standinstandins" }];
+    expect(
+      notificationRecipients(event("approval_undone", 3), SYLLABUS, HOLDERS, standIns),
+    ).toEqual([
+      { user: "standinstandins", kind: "approval_undone", stage: 3 },
+      { user: LEAD, kind: "approval_undone", stage: 3 },
+    ]);
+  });
+
+  it("on an undone stage 1 approval without a proxy, still tells the program reviewer", () => {
+    const holders: ChainHolders = [[LEAD], ...HOLDERS.slice(1)];
+    expect(
+      notificationRecipients(event("approval_undone", 1), SYLLABUS, holders, []),
+    ).toEqual([{ user: LEAD, kind: "approval_undone", stage: 1 }]);
+  });
+
   it("skips a co-author listed twice", () => {
     expect(
       notificationRecipients(
@@ -319,6 +346,15 @@ describe("notificationText", () => {
     expect(notificationText("reference_stopped", 0, SYLLABUS_ID, facts)).toEqual({
       title: "BSN stopped referencing IT 101 (BSIT)",
       body: "Ana Cruz ended BSN's reference to IT 101 Intro to Computing (BSIT). Its chairs and faculty can no longer view it.",
+      link: `/syllabus/${SYLLABUS_ID}`,
+    });
+  });
+
+  it("explains an undone approval with the admin's reason", () => {
+    const facts = { ...FACTS, actorName: "Admin", reason: "Approved by mistake" };
+    expect(notificationText("approval_undone", 2, SYLLABUS_ID, facts)).toEqual({
+      title: "The Dean's approval of IT 101 (BSIT) was undone",
+      body: 'Admin (administrator) undid the Dean\'s approval of IT 101 Intro to Computing (BSIT). Reason: "Approved by mistake". It is waiting on the Dean again.',
       link: `/syllabus/${SYLLABUS_ID}`,
     });
   });

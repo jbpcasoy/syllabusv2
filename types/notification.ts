@@ -11,6 +11,7 @@ export const NOTIFICATION_KINDS = [
   "reference_revoked",
   "reference_withdrawn",
   "reference_stopped",
+  "approval_undone",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 

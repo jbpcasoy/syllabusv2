@@ -7,6 +7,7 @@ export const AUDIT_ACTIONS = [
   "resubmitted",
   "filed",
   "scan_returned",
+  "approval_undone",
   "lead.transferred",
   "file.uploaded",
 ] as const;

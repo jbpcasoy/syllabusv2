@@ -12,8 +12,8 @@ type Authors = Pick<Syllabus, "lead" | "co_authors">;
 
 /** The transitions that notify (Phase 5, D2). */
 export interface NotifyEvent {
-  type: "submitted" | "resubmitted" | "approved" | "returned";
-  /** The stage submitted to, decided at, or returned from. */
+  type: "submitted" | "resubmitted" | "approved" | "returned" | "approval_undone";
+  /** The stage submitted to, decided at, returned from, or undone. */
   stage: number;
   /** ID of the user who made the transition. Never notified. */
   actor: string;
@@ -87,15 +87,14 @@ export function notificationRecipients(
   holders: ChainHolders,
   standIns: readonly StandIn[],
 ): NotificationTarget[] {
-  const reviewers = (stage: number): NotificationTarget[] =>
+  const reviewers = (
+    stage: number,
+    kind: NotificationKind = "review_requested",
+  ): NotificationTarget[] =>
     (stage === 1 && !standIns.some((s) => s.stage === 1)
       ? (holders[0] ?? [])
       : stageActors(stage, syllabus, holders, standIns)
-    ).map((user) => ({
-      user,
-      kind: "review_requested",
-      stage,
-    }));
+    ).map((user) => ({ user, kind, stage }));
   const authors = (kind: NotificationKind): NotificationTarget[] =>
     [syllabus.lead, ...syllabus.co_authors].map((user) => ({
       user,
@@ -120,6 +119,13 @@ export function notificationRecipients(
       break;
     case "returned":
       targets = authors("returned");
+      break;
+    case "approval_undone":
+      // The undone stage waits again: its actors and the lead hear why.
+      targets = [
+        ...reviewers(event.stage, "approval_undone"),
+        { user: syllabus.lead, kind: "approval_undone", stage: event.stage },
+      ];
       break;
   }
 
@@ -200,6 +206,11 @@ export function notificationText(
       body = `${facts.actorName} ended ${referencing}'s reference to ${full}. Its chairs and faculty can no longer view it.`;
       break;
     }
+    case "approval_undone":
+      // To the lead and to whoever acts at the stage now waiting again.
+      title = `The ${role}'s approval of ${course} was undone`;
+      body = `${facts.actorName} (administrator) undid the ${role}'s approval of ${full}.${facts.reason ? ` Reason: "${facts.reason}".` : ""} It is waiting on the ${role} again.`;
+      break;
   }
   return { title: clip(title, TITLE_MAX), body: clip(body, BODY_MAX), link };
 }

@@ -20,6 +20,7 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   resubmitted: "Resubmitted",
   filed: "Filed",
   scan_returned: "Signed copy returned",
+  approval_undone: "Approval undone",
   "lead.transferred": "Lead transferred",
   "file.uploaded": "File uploaded",
 };

@@ -125,6 +125,7 @@ describe("GET /api/syllabus/:id", () => {
         mapped: true,
         can_return_signed_copy: false,
         can_transfer_lead: false,
+        can_undo_approval: false,
         lead_transfer_is_override: false,
         review: {
           actorStage: null,
@@ -149,6 +150,16 @@ describe("GET /api/syllabus/:id", () => {
       can_transfer_lead: true,
       lead_transfer_is_override: true,
     });
+  });
+
+  it("lets only an admin undo an approval", async () => {
+    mockAuth({ id: "adminadminadmin", isAdmin: true });
+    mocks.getSyllabusAccess.mockReturnValue("admin");
+    expect((await (await GET(req("GET"), ctx)).json()).can_undo_approval).toBe(true);
+
+    mockAuth({ id: ME, roles: { isVpaa: true } });
+    mocks.getSyllabusAccess.mockReturnValue("lead");
+    expect((await (await GET(req("GET"), ctx)).json()).can_undo_approval).toBe(false);
   });
 
   it("tells the program reviewer they may decide stage 1", async () => {

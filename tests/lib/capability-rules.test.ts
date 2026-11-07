@@ -36,6 +36,7 @@ const ADMIN_ONLY: Capability[] = [
   "prospectus.write",
   "prospectusItem.write",
   "audit.view",
+  "syllabus.undoApproval",
 ];
 const VPAA_GLOBAL: Capability[] = [
   "college.write",
@@ -71,6 +72,13 @@ describe("admin override", () => {
 
 describe("isAdminOverride", () => {
   const lead: Capability = "syllabus.transferLead";
+
+  it("is always true for undoing an approval, even for a VPAA admin", () => {
+    expect(isAdminOverride(admin, "syllabus.undoApproval", SCOPE)).toBe(true);
+    expect(
+      isAdminOverride({ ...vpaa, isAdmin: true }, "syllabus.undoApproval", SCOPE),
+    ).toBe(true);
+  });
 
   it("is true for an admin the rule itself refuses", () => {
     expect(isAdminOverride(admin, lead, SCOPE)).toBe(true);
