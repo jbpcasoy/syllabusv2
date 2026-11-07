@@ -19,8 +19,12 @@ export interface NotifyEvent {
     | "returned"
     | "approval_undone"
     | "filed"
-    | "scan_returned";
-  /** The stage submitted to, decided at, returned from, or undone (5 when filed). */
+    | "scan_returned"
+    | "justification_submitted";
+  /**
+   * The stage submitted to, decided at, returned from, or undone (5 when
+   * filed or when the signed justification is uploaded).
+   */
   stage: number;
   /** ID of the user who made the transition. Never notified. */
   actor: string;
@@ -109,6 +113,15 @@ export function notificationRecipients(
       stage: event.stage,
     }));
 
+  // Each active chain holder once, at the first stage they hold. Authors
+  // never; stand-ins neither, since they can't return a scan or letter.
+  const chainHolders = (kind: NotificationKind): NotificationTarget[] =>
+    holders.flatMap((users, i) =>
+      users
+        .filter((u) => u !== syllabus.lead && !syllabus.co_authors.includes(u))
+        .map((user) => ({ user, kind, stage: i + 1 })),
+    );
+
   let targets: NotificationTarget[];
   switch (event.type) {
     case "submitted":
@@ -135,13 +148,12 @@ export function notificationRecipients(
       ];
       break;
     case "filed":
-      // Every chain holder may return the scan as invalid, so each hears
-      // once, at the first stage they hold. Stand-ins can't return a scan.
-      targets = holders.flatMap((users, i) =>
-        users
-          .filter((u) => u !== syllabus.lead && !syllabus.co_authors.includes(u))
-          .map((user) => ({ user, kind: "scan_filed" as const, stage: i + 1 })),
-      );
+      // Every chain holder may return the scan as invalid.
+      targets = chainHolders("scan_filed");
+      break;
+    case "justification_submitted":
+      // Every chain holder may return the signed letter for revision.
+      targets = chainHolders("justification_submitted");
       break;
     case "scan_returned":
       // Only the lead can upload a new scan.
@@ -240,6 +252,11 @@ export function notificationText(
       // To each chain holder: they may return the scan as invalid.
       title = `${course} was filed with its signed scan`;
       body = `${facts.actorName} uploaded the wet-signed scan of ${full}, which files it. Check that the scan is complete and signed. If it isn't, open the syllabus and return the scan as invalid with a reason.`;
+      break;
+    case "justification_submitted":
+      // To each chain holder: they may return the letter for revision.
+      title = `The signed justification for ${course} was uploaded`;
+      body = `${facts.actorName} uploaded the signed justification letter for ${full}. Check that it is complete and signed. If it isn't, open the syllabus and return it for revision with a reason.`;
       break;
   }
   return { title: clip(title, TITLE_MAX), body: clip(body, BODY_MAX), link };

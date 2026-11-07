@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   loadJustificationResponse: vi.fn(),
   checkPdfUpload: vi.fn(),
   fetchVersionFile: vi.fn(),
+  loadChainHolders: vi.fn(),
 }));
 
 vi.mock("@/lib/pocketbase", async () => {
@@ -48,6 +49,7 @@ vi.mock("@/lib/justification", () => ({
 }));
 vi.mock("@/lib/pdf", () => ({ checkPdfUpload: mocks.checkPdfUpload }));
 vi.mock("@/lib/syllabus-version", () => ({ fetchVersionFile: mocks.fetchVersionFile }));
+vi.mock("@/lib/syllabus-chain", () => ({ loadChainHolders: mocks.loadChainHolders }));
 vi.mock("@/lib/auth", async () =>
   (await import("@/tests/helpers/mock-auth")).authModuleMock(),
 );
@@ -58,6 +60,7 @@ vi.mock("@/lib/upload-limit", async () =>
   (await import("@/tests/helpers/upload-limit")).uploadLimitModuleMock(),
 );
 
+// The notifications stay real: who hears and what they read is the point.
 import { GET, POST } from "@/app/api/syllabus/[id]/justification/scan/route";
 import { mockAuth } from "@/tests/helpers/mock-auth";
 import { checkUploadRateMock } from "@/tests/helpers/upload-limit";
@@ -65,7 +68,20 @@ import { checkUploadRateMock } from "@/tests/helpers/upload-limit";
 const ID = "sylsylsylsylsyl";
 const ctx = { params: Promise.resolve({ id: ID }) };
 const pdf = new File(["%PDF-1.7"], "letter.pdf", { type: "application/pdf" });
-const syllabus = (status = "approved") => ({ id: ID, lead: "l", co_authors: [], status });
+const REVIEWER = "reviewer1111111";
+const DEAN = "dean11111111111";
+const syllabus = (status = "approved") => ({
+  id: ID,
+  lead: "l",
+  co_authors: ["co"],
+  status,
+  stage: 5,
+  program: "progprogprogpro",
+  expand: {
+    course: { code: "IT 101", title: "Intro to Computing" },
+    program: { code: "BSIT" },
+  },
+});
 
 function upload() {
   const form = new FormData();
@@ -98,6 +114,8 @@ beforeEach(() => {
   mocks.fetchVersionFile.mockResolvedValue(new Response("%PDF-1.7", { status: 200 }));
   mocks.batchOps.length = 0;
   mocks.batchSend.mockResolvedValue([]);
+  // Authors hold stages too: neither the lead nor a co-author hears.
+  mocks.loadChainHolders.mockResolvedValue([[REVIEWER], [DEAN, "l"], ["co"], [], [DEAN]]);
 });
 
 describe("POST /api/syllabus/:id/justification/scan", () => {
@@ -113,8 +131,11 @@ describe("POST /api/syllabus/:id/justification/scan", () => {
     expect(mocks.update).not.toHaveBeenCalled();
   });
 
-  it("audits the stored scan so the limit counts it", async () => {
+  it("audits the stored scan and notifies each chain holder in one batch", async () => {
     await upload();
+    expect(mocks.syllabiGetOne).toHaveBeenCalledWith(ID, { expand: "course,program" });
+    expect(mocks.loadChainHolders).toHaveBeenCalledWith(expect.anything(), "progprogprogpro");
+    expect(mocks.batchSend).toHaveBeenCalledTimes(1);
     expect(mocks.batchOps).toEqual([
       [
         "create",
@@ -127,16 +148,42 @@ describe("POST /api/syllabus/:id/justification/scan", () => {
           data: { kind: "justification_scan" },
         },
       ],
+      // Once each, at the first stage they hold, so they can check the letter.
+      ...[
+        [REVIEWER, 1],
+        [DEAN, 2],
+      ].map(([user, stage]) => [
+        "create",
+        "notifications",
+        expect.objectContaining({
+          user,
+          syllabus: ID,
+          kind: "justification_submitted",
+          stage,
+          actor: "l",
+          title: "The signed justification for IT 101 (BSIT) was uploaded",
+          link: `/syllabus/${ID}`,
+          email_status: "pending",
+        }),
+      ]),
     ]);
   });
 
-  it("keeps the upload and logs when its audit row fails", async () => {
+  it("notifies again on a re-upload after a return", async () => {
+    mocks.findJustification.mockResolvedValue({ id: "jst", status: "returned", entries: [{ author: "a", reason: "r" }] });
+    await upload();
+    expect(
+      mocks.batchOps.filter(([, name]) => name === "notifications"),
+    ).toHaveLength(2);
+  });
+
+  it("keeps the upload and logs when its audit and notification batch fails", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.batchSend.mockRejectedValue({ status: 500 });
 
     expect((await upload()).status).toBe(200);
     expect(mocks.update).toHaveBeenCalled();
-    expect(log).toHaveBeenCalledWith("Upload audit failed", "jst", { status: 500 });
+    expect(log).toHaveBeenCalledWith("Upload audit or notifications failed", "jst", { status: 500 });
     log.mockRestore();
   });
 
@@ -167,6 +214,7 @@ describe("POST /api/syllabus/:id/justification/scan", () => {
     mocks.findJustification.mockResolvedValue(record);
     expect((await upload()).status).toBe(409);
     expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.batchSend).not.toHaveBeenCalled();
   });
 
   it("returns 409 before approval", async () => {
@@ -185,6 +233,7 @@ describe("POST /api/syllabus/:id/justification/scan", () => {
     mocks.resolveSyllabusAccess.mockResolvedValue(access);
     expect((await upload()).status).toBe(403);
     expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.batchSend).not.toHaveBeenCalled();
   });
 
   it("answers 404 to a referencer", async () => {

@@ -141,7 +141,8 @@ This round gives Part 5 a previous approved syllabus to build on.
 **Justification Form** (shown because Carla wrote last year's syllabus and isn't an author this year):
 - [ ] As `ana`: tick *Carla Prev can't sign* and leave the reason empty. Saving should refuse. Add a reason, click **Save justification**, then **Preview the letter**. The letter shows the course and entry and is addressed to `citl`.
 - [ ] Upload `letter.pdf` with **Upload and submit**. The entries are now locked.
-- [ ] As `rev` (or anyone higher in the chain): **Return for revision** with a reason. As `ana`, re-upload.
+- [ ] As `rev`, `dean`, `fdis`, `citl` and `vpaa`: the bell shows "The signed justification for … was uploaded" (the email goes out within a minute when SMTP is set). It links to the syllabus.
+- [ ] As `rev` (or anyone higher in the chain): **Return for revision** with a reason. As `ana`, re-upload. Each chain holder is notified again.
 - [ ] Check that the justification never blocked anything, and that `nchair` (a referencer in Part 7) never sees it.
 
 ## Part 6 — Proxy and stand-ins (IT 102)
