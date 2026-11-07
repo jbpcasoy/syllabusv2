@@ -8,7 +8,7 @@ import {
   type SyllabusResponse,
   type TimelineEntry,
 } from "@/lib/syllabus-client";
-import { CHAIN_ROLES } from "@/lib/syllabus-workflow";
+import { CHAIN_ROLES, undoableStage } from "@/lib/syllabus-workflow";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -31,16 +31,24 @@ import {
 import { SyllabusReferencesPanel } from "./syllabus-references-panel";
 import { SyllabusTimeline } from "./syllabus-timeline";
 import { SyllabusVersions } from "./syllabus-versions";
+import { UndoApprovalDialog } from "./undo-approval-dialog";
 import { UploadVersionModal } from "./upload-version-modal";
 
 type SyllabusDetailProps = { id: string; viewer: ReferenceViewer };
+
+const DECISION_LABELS: Partial<Record<TimelineEntry["kind"], string>> = {
+  approved: "approved",
+  returned: "returned",
+  approval_undone: "approval undone",
+};
 
 /** "S1 returned", "S2 approved" per version number, oldest first. */
 function decisionsByVersion(entries: TimelineEntry[] | null) {
   const map = new Map<number, string[]>();
   for (const e of entries ?? []) {
-    if ((e.kind !== "approved" && e.kind !== "returned") || !e.version_no) continue;
-    map.set(e.version_no, [...(map.get(e.version_no) ?? []), `S${e.stage} ${e.kind}`]);
+    const label = DECISION_LABELS[e.kind];
+    if (!label || !e.version_no) continue;
+    map.set(e.version_no, [...(map.get(e.version_no) ?? []), `S${e.stage} ${label}`]);
   }
   return map;
 }
@@ -66,6 +74,7 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
   const [submit, setSubmit] = useState(closed);
   const [remove, setRemove] = useState(closed);
   const [transfer, setTransfer] = useState(closed);
+  const [undo, setUndo] = useState(closed);
   const [copying, setCopying] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
 
@@ -152,6 +161,8 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
   const showStandIns =
     syllabus.status !== "draft" || (review?.designatableStages.length ?? 0) > 0;
   const reload = () => setReloadKey((k) => k + 1);
+  // The stage an admin's undo would take back, or null.
+  const undoStage = syllabus.can_undo_approval ? undoableStage(syllabus) : null;
 
   async function handleStartFromPrevious() {
     if (!syllabus) return;
@@ -202,15 +213,26 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
             {syllabus.submitted_at &&
               ` · Submitted ${formatDate(syllabus.submitted_at)}`}
           </p>
-          {syllabus.can_transfer_lead && syllabus.status !== "filed" && (
-            <button
-              type="button"
-              onClick={() => setTransfer(opened)}
-              className="mt-1 text-sm font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              Transfer lead
-            </button>
-          )}
+          <div className="flex flex-wrap gap-x-4">
+            {syllabus.can_transfer_lead && syllabus.status !== "filed" && (
+              <button
+                type="button"
+                onClick={() => setTransfer(opened)}
+                className="mt-1 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+              >
+                Transfer lead
+              </button>
+            )}
+            {undoStage && (
+              <button
+                type="button"
+                onClick={() => setUndo(opened)}
+                className="mt-1 text-sm font-medium text-red-600 hover:text-red-500"
+              >
+                Undo {CHAIN_ROLES[undoStage - 1]?.label} approval
+              </button>
+            )}
+          </div>
         </div>
 
         {editable && (
@@ -473,6 +495,19 @@ export function SyllabusDetail({ id, viewer }: SyllabusDetailProps) {
           onClose={() => setTransfer(shut)}
           onTransferred={() => {
             setTransfer(shut);
+            reload();
+          }}
+        />
+      )}
+
+      {undoStage && (
+        <UndoApprovalDialog
+          key={`undo-${undo.key}`}
+          open={undo.open}
+          syllabus={syllabus}
+          onClose={() => setUndo(shut)}
+          onUndone={() => {
+            setUndo(shut);
             reload();
           }}
         />

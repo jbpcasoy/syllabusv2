@@ -4,12 +4,14 @@ import {
   INITIAL_STATE,
   SYLLABUS_STATUSES,
   transition,
+  undoableStage,
   type ApproveEvent,
   type FileEvent,
   type RejectScanEvent,
   type ResubmitEvent,
   type ReturnEvent,
   type SubmitEvent,
+  type UndoApprovalEvent,
   type WorkflowEvent,
   type WorkflowState,
 } from "@/lib/syllabus-workflow";
@@ -50,6 +52,7 @@ const RESUBMIT: ResubmitEvent = {
 };
 const FILE: FileEvent = { type: "file", hasScan: true };
 const REJECT_SCAN: RejectScanEvent = { type: "rejectScan" };
+const UNDO: UndoApprovalEvent = { type: "undoApproval", approvalFound: true };
 
 const STAGES = [1, 2, 3, 4, 5];
 
@@ -333,17 +336,74 @@ describe("transition: rejectScan", () => {
   );
 });
 
+describe("transition: undoApproval", () => {
+  it.each([2, 3, 4, 5])("moves a syllabus waiting at stage %i back one stage", (stage) => {
+    expect(transition(inReview(stage), UNDO)).toEqual({
+      ok: true,
+      next: inReview(stage - 1),
+    });
+  });
+
+  it("moves an approved syllabus back to waiting on the final stage", () => {
+    expect(transition(APPROVED, UNDO)).toEqual({ ok: true, next: inReview(5) });
+  });
+
+  it("refuses a filed syllabus until its signed copy is returned", () => {
+    expectError(
+      transition(FILED, UNDO),
+      "Return the signed copy as invalid before undoing the final approval.",
+    );
+  });
+
+  it.each(STAGES)("refuses a syllabus returned at stage %i", (stage) => {
+    expectError(
+      transition(returnedAt(stage), UNDO),
+      "This syllabus is with its lead for revision. Undo an approval after it is resubmitted.",
+    );
+  });
+
+  it.each([DRAFT, inReview(1)])("refuses %o, which has no approval", (state) => {
+    expectError(transition(state, UNDO), "There is no approval to undo.");
+  });
+
+  it("refuses when the approval to undo isn't on record", () => {
+    expectError(
+      transition(inReview(3), { type: "undoApproval", approvalFound: false }),
+      "No stage 2 approval is on record. Check the syllabus's review records.",
+    );
+  });
+
+  it("names the stage each state would undo", () => {
+    expect(undoableStage(DRAFT)).toBeNull();
+    expect(undoableStage(inReview(1))).toBeNull();
+    expect(undoableStage(inReview(2))).toBe(1);
+    expect(undoableStage(inReview(5))).toBe(4);
+    expect(undoableStage(returnedAt(3))).toBeNull();
+    expect(undoableStage(APPROVED)).toBe(5);
+    expect(undoableStage(FILED)).toBeNull();
+  });
+
+  it("lets the undone stage approve again", () => {
+    const undone = transition(inReview(3), UNDO);
+    expect(undone.ok && transition(undone.next, approve(2))).toEqual({
+      ok: true,
+      next: inReview(3),
+    });
+  });
+});
+
 describe("transition: every state and event", () => {
   // Each state with the events it accepts when every fact is favourable.
   const STATES: [WorkflowState, WorkflowEvent["type"][]][] = [
     [DRAFT, ["submit"]],
-    ...STAGES.map(
-      (s): [WorkflowState, WorkflowEvent["type"][]] => [inReview(s), ["approve", "return"]],
-    ),
+    ...STAGES.map((s): [WorkflowState, WorkflowEvent["type"][]] => [
+      inReview(s),
+      s === 1 ? ["approve", "return"] : ["approve", "return", "undoApproval"],
+    ]),
     ...STAGES.map(
       (s): [WorkflowState, WorkflowEvent["type"][]] => [returnedAt(s), ["resubmit"]],
     ),
-    [APPROVED, ["file"]],
+    [APPROVED, ["file", "undoApproval"]],
     [FILED, ["rejectScan"]],
   ];
   const favourable = (state: WorkflowState): WorkflowEvent[] => [
@@ -353,6 +413,7 @@ describe("transition: every state and event", () => {
     RESUBMIT,
     FILE,
     REJECT_SCAN,
+    UNDO,
   ];
 
   it.each(STATES)("%o accepts exactly %o", (state, allowed) => {

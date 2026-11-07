@@ -12,6 +12,7 @@ export type Capability =
   | "prospectus.write"
   | "prospectusItem.write"
   | "audit.view"
+  | "syllabus.undoApproval"
   // Any manager, global
   | "user.pick"
   // VPAA, global
@@ -78,6 +79,9 @@ const RULES: Record<Capability, Rule> = {
   "prospectusItem.write": adminOnly,
   // The audit log (Phase 6, P5).
   "audit.view": adminOnly,
+  // Take back a syllabus's latest approval, one stage at a time. Always an
+  // override, so the route requires a reason (lib/syllabus-workflow.ts).
+  "syllabus.undoApproval": adminOnly,
 
   // Search users (id, name, email only) to assign a role: anyone who can
   // write an assignment somewhere. Global because the directory isn't scoped.

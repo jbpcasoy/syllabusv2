@@ -25,6 +25,7 @@ const DOT: Record<TimelineEntry["kind"], string> = {
   returned: "bg-amber-500",
   filed: "bg-emerald-600",
   scan_returned: "bg-red-500",
+  approval_undone: "bg-orange-500",
 };
 
 export function describeEntry(entry: TimelineEntry): string {
@@ -45,6 +46,8 @@ export function describeEntry(entry: TimelineEntry): string {
       return `Signed copy filed${by(entry)}`;
     case "scan_returned":
       return `Signed copy returned as invalid${by(entry)}`;
+    case "approval_undone":
+      return `Approval undone at ${stageName(entry.stage)}${by(entry)}`;
   }
 }
 

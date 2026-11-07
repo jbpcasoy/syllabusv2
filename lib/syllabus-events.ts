@@ -11,6 +11,13 @@ export interface StatusChange {
   to: WorkflowState;
 }
 
+/** Extra audit facts for a transition an admin forces (Phase 6, P3). */
+export interface AuditExtras {
+  override?: boolean;
+  /** Merged into the audit row's data; keep it small (2 KB in all). */
+  data?: Record<string, unknown>;
+}
+
 /**
  * Queues one timeline event, and its audit row, on the batch that makes the
  * transition, so all three land together or not at all. Pure: no reads,
@@ -22,6 +29,7 @@ export function addSyllabusEvent(
   syllabusId: string,
   event: SyllabusEventInput,
   change: StatusChange,
+  extras: AuditExtras = {},
 ): void {
   batch.collection("syllabus_events").create({
     syllabus: syllabusId,
@@ -38,8 +46,10 @@ export function addSyllabusEvent(
     target_collection: "syllabi",
     target_id: syllabusId,
     syllabus: syllabusId,
+    override: extras.override,
     reason: event.reason,
     data: {
+      ...extras.data,
       from: { status: change.from.status, stage: change.from.stage },
       to: { status: change.to.status, stage: change.to.stage },
       ...(event.version && { version: event.version }),

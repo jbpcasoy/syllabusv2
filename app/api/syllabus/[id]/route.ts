@@ -77,16 +77,18 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     if (!access) return notFound();
 
     const target = { program: syllabus.program };
-    const [standIns, canReturnSignedCopy, canTransferLead] =
+    const [standIns, canReturnSignedCopy, canTransferLead, canUndoApproval] =
       await Promise.all([
         loadStandIns(pb, syllabus.id),
         can(auth.user, "signedCopy.return", target),
         can(auth.user, "syllabus.transferLead", target),
+        can(auth.user, "syllabus.undoApproval"),
       ]);
     return NextResponse.json({
       ...toSyllabusResponse(syllabus, access),
       can_return_signed_copy: canReturnSignedCopy,
       can_transfer_lead: canTransferLead,
+      can_undo_approval: canUndoApproval,
       lead_transfer_is_override: isAdminOverride(
         roles,
         "syllabus.transferLead",

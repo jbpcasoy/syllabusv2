@@ -42,7 +42,7 @@ describe("parseAuditQuery", () => {
   });
 
   it.each([
-    ["action=deleted", "`action` must be one of: submitted, approved, returned, resubmitted, filed, scan_returned, lead.transferred, file.uploaded"],
+    ["action=deleted", "`action` must be one of: submitted, approved, returned, resubmitted, filed, scan_returned, approval_undone, lead.transferred, file.uploaded"],
     ["actor=short", "`actor` must be a valid id"],
     ["syllabus=UPPERCASEUPPERCA", "`syllabus` must be a valid id"],
     ["override=yes", "`override` must be true or false"],

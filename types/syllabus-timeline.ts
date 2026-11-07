@@ -16,7 +16,7 @@ export interface TimelineEntry {
   actor_name: string;
   /** SYL-... on approved, otherwise "". */
   approval_code: string;
-  /** On scan_returned, otherwise "". */
+  /** On scan_returned and approval_undone, otherwise "". */
   reason: string;
 }
 

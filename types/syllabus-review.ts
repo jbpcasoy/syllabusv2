@@ -34,3 +34,8 @@ export interface ReviewResult {
     approval_code: string;
   };
 }
+
+/** Body of POST /api/syllabus/:id/undo-approval. */
+export interface UndoApprovalInput {
+  reason: string;
+}
