@@ -1,4 +1,10 @@
 import { authorize, requireUser } from "@/lib/auth";
+import {
+  addNotifications,
+  notificationFacts,
+  notificationRecipients,
+  NOTIFY_EXPAND,
+} from "@/lib/notifications";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
 import { SIGNED_COPY_EXPAND, toSignedCopyResponse } from "@/lib/signed-copy";
@@ -16,7 +22,8 @@ type RouteContext = { params: Promise<{ id: string; copyId: string }> };
 // signedCopy.return in the syllabus's program: its program reviewer, the
 // dean of its college, the FDIS chair, CITL director, VPAA, or admin.
 // Returns the valid copy as invalid and the syllabus to approved, in one
-// batch, so the lead can upload a new scan.
+// batch, so the lead can upload a new scan. The lead is notified
+// (scan_returned) in the same batch, with the reason.
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { id, copyId } = await params;
   const auth = await requireUser();
@@ -31,7 +38,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
     const pb = await createAdminPb();
     const [syllabus, copy, roles] = await Promise.all([
-      pb.collection("syllabi").getOne<Syllabus>(id),
+      pb.collection("syllabi").getOne<Syllabus>(id, { expand: NOTIFY_EXPAND }),
       pb.collection("syllabus_signed_copies").getOne<SignedCopy>(copyId),
       getUserRoles(auth.user.id),
     ]);
@@ -77,6 +84,18 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         reason: parsed.data.reason,
       },
       { from: syllabus, to: result.next },
+    );
+    addNotifications(
+      batch,
+      id,
+      auth.user.id,
+      notificationRecipients(
+        { type: "scan_returned", stage: syllabus.stage, actor: auth.user.id },
+        syllabus,
+        [],
+        [],
+      ),
+      { ...notificationFacts(syllabus, auth.user.name), reason: parsed.data.reason },
     );
     await batch.send();
 

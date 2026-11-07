@@ -111,6 +111,7 @@ describe("statusFilter and queueSort", () => {
       "passed",
       "(((status = 'submitted' || status = 'returned') && stage > 2) || status = 'approved' || status = 'filed')",
     ],
+    ["filed", "status = 'filed'"],
   ] as const)("filters %s", (status, expected) => {
     expect(statusFilter(pb, 2, status)).toBe(expected);
   });
@@ -119,6 +120,7 @@ describe("statusFilter and queueSort", () => {
     expect(queueSort("waiting")).toBe("status_changed_at,id");
     expect(queueSort("returned")).toBe("-status_changed_at,-id");
     expect(queueSort("passed")).toBe("-status_changed_at,-id");
+    expect(queueSort("filed")).toBe("-status_changed_at,-id");
   });
 });
 

@@ -93,6 +93,9 @@ export function statusFilter(
         "(((status = 'submitted' || status = 'returned') && stage > {:stage}) || status = 'approved' || status = 'filed')",
         { stage },
       );
+    case "filed":
+      // Filed syllabi whose scan the stage's holder may return as invalid.
+      return "status = 'filed'";
   }
 }
 

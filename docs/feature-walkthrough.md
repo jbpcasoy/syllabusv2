@@ -134,8 +134,9 @@ This round gives Part 5 a previous approved syllabus to build on.
 
 **Signed copy:**
 - [ ] As `ana`: upload the signed scan. The status becomes **Filed**.
-- [ ] As `dean`: return the scan as invalid, with a reason. The status goes back to **Approved**, and the returned scan is still listed.
-- [ ] As `ana`: upload a new scan. The status becomes **Filed** again.
+- [ ] As `rev`, `dean`, `fdis`, `citl` and `vpaa`: the bell shows "… was filed with its signed scan". `ana` gets no such notification, because she filed it.
+- [ ] As `dean`: open **Review Queue**, stay on the **2. Dean** tab and set the status filter to **Filed (check the scan)**. Click the course code to open the syllabus. (The notification links there too.) Return the scan as invalid, with a reason. The status goes back to **Approved**, and the returned scan is still listed.
+- [ ] As `ana`: the bell shows "The signed scan of … was returned as invalid", with the dean's reason. Open it, upload a new scan, and the status becomes **Filed** again.
 
 **Justification Form** (shown because Carla wrote last year's syllabus and isn't an author this year):
 - [ ] As `ana`: tick *Carla Prev can't sign* and leave the reason empty. Saving should refuse. Add a reason, click **Save justification**, then **Preview the letter**. The letter shows the course and entry and is addressed to `citl`.

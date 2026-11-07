@@ -5,7 +5,7 @@ import type { SyllabusResponse } from "./syllabus";
  * Which rows of a stage's queue: waiting on the stage, returned by it (with
  * faculty), or past it (approved at this stage or beyond).
  */
-export const QUEUE_STATUSES = ["waiting", "returned", "passed"] as const;
+export const QUEUE_STATUSES = ["waiting", "returned", "passed", "filed"] as const;
 export type QueueStatus = (typeof QUEUE_STATUSES)[number];
 
 export function isQueueStatus(value: unknown): value is QueueStatus {

@@ -160,7 +160,7 @@ describe("GET /api/review-queue", () => {
     const res = await get("?status=everything");
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({
-      error: "Status must be waiting, returned or passed.",
+      error: "Status must be waiting, returned, passed or filed.",
     });
     expect(createAdminPb).not.toHaveBeenCalled();
   });

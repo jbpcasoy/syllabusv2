@@ -12,8 +12,15 @@ type Authors = Pick<Syllabus, "lead" | "co_authors">;
 
 /** The transitions that notify (Phase 5, D2). */
 export interface NotifyEvent {
-  type: "submitted" | "resubmitted" | "approved" | "returned" | "approval_undone";
-  /** The stage submitted to, decided at, returned from, or undone. */
+  type:
+    | "submitted"
+    | "resubmitted"
+    | "approved"
+    | "returned"
+    | "approval_undone"
+    | "filed"
+    | "scan_returned";
+  /** The stage submitted to, decided at, returned from, or undone (5 when filed). */
   stage: number;
   /** ID of the user who made the transition. Never notified. */
   actor: string;
@@ -127,6 +134,19 @@ export function notificationRecipients(
         { user: syllabus.lead, kind: "approval_undone", stage: event.stage },
       ];
       break;
+    case "filed":
+      // Every chain holder may return the scan as invalid, so each hears
+      // once, at the first stage they hold. Stand-ins can't return a scan.
+      targets = holders.flatMap((users, i) =>
+        users
+          .filter((u) => u !== syllabus.lead && !syllabus.co_authors.includes(u))
+          .map((user) => ({ user, kind: "scan_filed" as const, stage: i + 1 })),
+      );
+      break;
+    case "scan_returned":
+      // Only the lead can upload a new scan.
+      targets = [{ user: syllabus.lead, kind: "scan_returned", stage: event.stage }];
+      break;
   }
 
   const seen = new Set<string>([event.actor]);
@@ -210,6 +230,16 @@ export function notificationText(
       // To the lead and to whoever acts at the stage now waiting again.
       title = `The ${role}'s approval of ${course} was undone`;
       body = `${facts.actorName} (administrator) undid the ${role}'s approval of ${full}.${facts.reason ? ` Reason: "${facts.reason}".` : ""} It is waiting on the ${role} again.`;
+      break;
+    case "scan_returned":
+      // To the lead: the scan on file was rejected; upload a new one.
+      title = `The signed scan of ${course} was returned as invalid`;
+      body = `${facts.actorName} returned the signed scan of ${full} as invalid.${facts.reason ? ` Reason: "${facts.reason}".` : ""} The syllabus is back to Approved. Upload a new wet-signed scan to file it again.`;
+      break;
+    case "scan_filed":
+      // To each chain holder: they may return the scan as invalid.
+      title = `${course} was filed with its signed scan`;
+      body = `${facts.actorName} uploaded the wet-signed scan of ${full}, which files it. Check that the scan is complete and signed. If it isn't, open the syllabus and return the scan as invalid with a reason.`;
       break;
   }
   return { title: clip(title, TITLE_MAX), body: clip(body, BODY_MAX), link };

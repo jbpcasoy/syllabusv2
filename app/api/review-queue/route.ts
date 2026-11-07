@@ -16,7 +16,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // GET /api/review-queue?stage=2&status=waiting&program=<id>&term=<id>&search=foo&page=1&perPage=30
 // Any signed-in user. One stage's queue: syllabi in the caller's scope at
-// that stage (status waiting, returned or passed), never ones they author.
+// that stage (status waiting, returned, passed or filed), never ones they author.
 // `stages` lists the tabs the caller may open; stage defaults to the first.
 // Admin sees every stage, read-only unless they hold it.
 export async function GET(request: NextRequest) {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status")?.trim() || "waiting";
   if (!isQueueStatus(status)) {
     return NextResponse.json(
-      { error: "Status must be waiting, returned or passed." },
+      { error: "Status must be waiting, returned, passed or filed." },
       { status: 400 },
     );
   }
