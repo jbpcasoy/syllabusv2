@@ -3,11 +3,20 @@
 import type { JustificationLetterData } from "@/lib/forms/justification";
 import { getJustificationLetter } from "@/lib/syllabus-client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { JustificationLetterView } from "./justification-letter-view";
 
-/** The Justification Form letter of a syllabus, ready to print from the browser. */
-export function PrintableJustificationLetter({ syllabusId }: { syllabusId: string }) {
+/**
+ * The Justification Form letter of a syllabus, ready to print from the browser.
+ * With `autoPrint` the print dialog opens once the letter has loaded.
+ */
+export function PrintableJustificationLetter({
+  syllabusId,
+  autoPrint = false,
+}: {
+  syllabusId: string;
+  autoPrint?: boolean;
+}) {
   const [letter, setLetter] = useState<JustificationLetterData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +37,14 @@ export function PrintableJustificationLetter({ syllabusId }: { syllabusId: strin
 
     return () => controller.abort();
   }, [syllabusId, reloadKey]);
+
+  // Print once, after the letter has rendered.
+  const printed = useRef(false);
+  useEffect(() => {
+    if (!autoPrint || !letter || printed.current) return;
+    printed.current = true;
+    window.print();
+  }, [autoPrint, letter]);
 
   return (
     <div>

@@ -98,6 +98,7 @@ export function JustificationPanel({ syllabusId }: { syllabusId: string }) {
   }
 
   async function handlePreview() {
+    if (letter) return setLetter(null);
     setBusy(true);
     setActionError(null);
     try {
@@ -236,12 +237,15 @@ export function JustificationPanel({ syllabusId }: { syllabusId: string }) {
             type="button"
             onClick={handlePreview}
             disabled={busy}
+            aria-expanded={!!letter}
             className={`${button} bg-white text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50`}
           >
-            Preview the letter
+            {letter ? "Hide the letter" : "Preview the letter"}
           </button>
           <Link
-            href={`/syllabus/${syllabusId}/forms/justification`}
+            href={`/syllabus/${syllabusId}/forms/justification?print=1`}
+            target="_blank"
+            rel="noopener noreferrer"
             className={`${button} ml-3 inline-block bg-white text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50`}
           >
             Print the letter

@@ -4,11 +4,18 @@ import { redirect } from "next/navigation";
 
 export const metadata = { title: "Justification letter" };
 
-type PageProps = { params: Promise<{ id: string }> };
+type PageProps = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ print?: string | string[] }>;
+};
 
 // Access is checked by the export route the page loads from (lead only).
-export default async function SyllabusJustificationLetterPage({ params }: PageProps) {
+export default async function SyllabusJustificationLetterPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { id } = await params;
+  const { print } = await searchParams;
   const user = await getCurrentUser();
   if (!user) {
     redirect(
@@ -18,7 +25,7 @@ export default async function SyllabusJustificationLetterPage({ params }: PagePr
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 print:max-w-none print:p-0">
-      <PrintableJustificationLetter syllabusId={id} />
+      <PrintableJustificationLetter syllabusId={id} autoPrint={print === "1"} />
     </main>
   );
 }
