@@ -116,6 +116,7 @@ Data-driven over every manager page (campus, college, dean, department, departme
 - JUS-02 Entry needs a reason; save; letter preview addressed to the active CITL director.
 - JUS-03 Upload signed letter locks entries.
 - JUS-04 Reviewer or higher returns it with a reason; lead re-uploads.
+- JUS-06 Each upload of the signed letter, the re-upload included, notifies every chain holder (`justification_submitted`) with a link to the syllabus; the authors are not notified.
 - JUS-05 Never blocks filing; co-author can view; the program chair never sees it (the referencer case is REF-03).
 
 ### `references.spec.ts` [Part 7]

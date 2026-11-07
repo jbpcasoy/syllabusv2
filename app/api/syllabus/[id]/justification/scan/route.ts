@@ -4,10 +4,17 @@ import {
   findJustification,
   loadJustificationResponse,
 } from "@/lib/justification";
+import {
+  addNotifications,
+  notificationFacts,
+  notificationRecipients,
+  NOTIFY_EXPAND,
+} from "@/lib/notifications";
 import { checkPdfUpload } from "@/lib/pdf";
 import { createAdminPb, handlePbError } from "@/lib/pocketbase";
 import { getUserRoles } from "@/lib/roles";
 import { resolveSyllabusAccess } from "@/lib/syllabus";
+import { loadChainHolders } from "@/lib/syllabus-chain";
 import { submitScanError } from "@/lib/syllabus-justification";
 import { fetchVersionFile } from "@/lib/syllabus-version";
 import {
@@ -25,7 +32,8 @@ const notFound = () => NextResponse.json({ error: "Not found" }, { status: 404 }
 // POST /api/syllabus/:id/justification/scan  multipart: file=<PDF, max 20 MB>
 // Lead only. Uploads the signed letter's scan: draft or returned ->
 // submitted, which locks the entries. Rate-limited (429) and audited as
-// file.uploaded.
+// file.uploaded. Every chain holder is notified (justification_submitted),
+// since any of them may return the letter.
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const auth = await requireUser();
@@ -51,7 +59,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     const [syllabus, roles] = await Promise.all([
-      pb.collection("syllabi").getOne<Syllabus>(id),
+      pb.collection("syllabi").getOne<Syllabus>(id, { expand: NOTIFY_EXPAND }),
       getUserRoles(me),
     ]);
     const access = await resolveSyllabusAccess(pb, me, roles, syllabus);
@@ -73,19 +81,34 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: ruleError }, { status: 409 });
     }
 
+    const holders = await loadChainHolders(pb, syllabus.program);
+    const targets = notificationRecipients(
+      { type: "justification_submitted", stage: syllabus.stage, actor: me },
+      syllabus,
+      holders,
+      [],
+    );
+
     await pb.collection("syllabus_justifications").update(record.id, {
       scan: pdf.file,
       status: "submitted",
       submitted_at: new Date().toISOString(),
     });
     // The update replaced the previous scan, so there is nothing to undo:
-    // a failed audit row is logged and the upload stands.
+    // a failed audit and notification batch is logged and the upload stands.
     try {
       const batch = pb.createBatch();
       addUploadAudit(batch, me, id, "justification_scan", record.id);
+      addNotifications(
+        batch,
+        id,
+        me,
+        targets,
+        notificationFacts(syllabus, auth.user.name),
+      );
       await batch.send();
     } catch (error) {
-      console.error("Upload audit failed", record.id, error);
+      console.error("Upload audit or notifications failed", record.id, error);
     }
     return NextResponse.json(
       await loadJustificationResponse(pb, syllabus, { access, canReturn: false }),

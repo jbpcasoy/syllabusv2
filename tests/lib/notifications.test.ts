@@ -288,6 +288,26 @@ describe("notificationRecipients", () => {
     ).not.toContain(CO);
   });
 
+  it("on a signed justification, tells every chain holder once, at the first stage they hold", () => {
+    const holders: ChainHolders = [
+      ["reviewer1111111"],
+      ["dean11111111111", CO],
+      ["fdis11111111111"],
+      ["citl11111111111"],
+      ["dean11111111111"],
+    ];
+    expect(
+      notificationRecipients(event("justification_submitted", 5, LEAD), SYLLABUS, holders, [
+        { stage: 2, user: "standinstandins" },
+      ]),
+    ).toEqual([
+      { user: "reviewer1111111", kind: "justification_submitted", stage: 1 },
+      { user: "dean11111111111", kind: "justification_submitted", stage: 2 },
+      { user: "fdis11111111111", kind: "justification_submitted", stage: 3 },
+      { user: "citl11111111111", kind: "justification_submitted", stage: 4 },
+    ]);
+  });
+
   it("on a returned scan, tells only the lead", () => {
     expect(
       notificationRecipients(event("scan_returned", 5, "dean11111111111"), SYLLABUS, HOLDERS, []),
@@ -408,6 +428,14 @@ describe("notificationText", () => {
     expect(notificationText("scan_filed", 2, SYLLABUS_ID, FACTS)).toEqual({
       title: "IT 101 (BSIT) was filed with its signed scan",
       body: "Ana Cruz uploaded the wet-signed scan of IT 101 Intro to Computing (BSIT), which files it. Check that the scan is complete and signed. If it isn't, open the syllabus and return the scan as invalid with a reason.",
+      link: `/syllabus/${SYLLABUS_ID}`,
+    });
+  });
+
+  it("asks each chain holder to check a signed justification", () => {
+    expect(notificationText("justification_submitted", 1, SYLLABUS_ID, FACTS)).toEqual({
+      title: "The signed justification for IT 101 (BSIT) was uploaded",
+      body: "Ana Cruz uploaded the signed justification letter for IT 101 Intro to Computing (BSIT). Check that it is complete and signed. If it isn't, open the syllabus and return it for revision with a reason.",
       link: `/syllabus/${SYLLABUS_ID}`,
     });
   });
